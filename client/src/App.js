@@ -10,25 +10,31 @@ function App() {
   const [updatePrinterVals, setUpdatePrinterVals] = useState({});
 
   useEffect(()=> {
+    try {
     Axios.get('http://localhost:3001/api/get').then((response) => {
+      console.log("setting to data: ", response.data)
       setPrinterList(response.data);
     });
+  } catch (error) {
+    console.error("Error fetching printer data: ", error);
+  }
   }, []);
 
   const submitReview = () => {
     if (printerName === "") {
       return;
     }
+    try {
     Axios.post('http://localhost:3001/api/insert', {
         printerName: printerName,
        printerBrand: printerBrand
-      }).then(() => {
+      })
         setPrinterList([...printerList, {printerName: printerName, brand: printerBrand}]);
         setPrinterName('');
         setPrinterBrand('');
-      }).catch(error => {
+    } catch(error) {
         console.error('Error submitting review: ', error);
-      });
+    }
   };
 
   const deletePrinter = (name) => {

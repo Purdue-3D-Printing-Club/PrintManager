@@ -26,6 +26,11 @@ db.connect((err) => {
 app.get('/api/get', (req, res) =>{
     const sqlSelect = "SELECT * FROM printer";
     db.query(sqlSelect, (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send("Error accessing printer data");
+            return;
+        }
         res.send(result);
     });
 });
@@ -37,7 +42,12 @@ app.post('/api/insert', (req, res) => {
 
     const sqlInsert = "INSERT INTO printer (printerName, brand) VALUES (?,?)";
     db.query(sqlInsert, [printerName, printerBrand], (err, result) => {
-        console.log(result);
+        if (err) {
+            console.log(err);
+            res.status(500).send("Error inserting printer");
+            return;
+        }
+        res.send(result);
     });
 });
 
@@ -45,8 +55,13 @@ app.delete('/api/delete/:printerName', (req, res) => {
     const name = req.params.printerName;
     const sqlDelete = "DELETE FROM printer WHERE printerName=?";
 
-    db.query(sqlDelete, name, (err, res) => {
-        if (err) console.log(err);
+    db.query(sqlDelete, name, (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send("Error deleting printer");
+            return;
+        }
+        res.send(result);
     });
 });
 
@@ -55,8 +70,13 @@ app.put('/api/update', (req, res) => {
     const brand = req.body.printerBrand;
     const sqlUpdate = "UPDATE printer SET brand = ? WHERE printerName = ?";
 
-    db.query(sqlUpdate, [brand, name], (err, res) => {
-        if (err) console.log(err);
+    db.query(sqlUpdate, [brand, name], (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send("Error deleting printer");
+            return;
+        }
+        res.send(result);
     });
 });
 
