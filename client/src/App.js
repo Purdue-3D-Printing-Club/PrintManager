@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import Axios from 'axios'
+import Sidebar from './Sidebar';
 
 function App() {
   
   const [printerName, setPrinterName] = useState('');
   const [printerBrand, setPrinterBrand] = useState('');
+
   const [printerList, setPrinterList] = useState([]);
   const [updatePrinterVals, setUpdatePrinterVals] = useState({});
 
@@ -67,6 +69,9 @@ function App() {
 
   return (
     <div className="App">
+      <Sidebar printerList = {printerList} />
+      
+      <div className='main-content'>
       <h1>--Print Manager--</h1>
       <div className="form">
         <label>Printer Name:</label>
@@ -80,18 +85,19 @@ function App() {
         }}/>
 
         <button onClick={submitReview}>Submit</button>
-        {printerList.map(val => {
-          return <div className="printerCard" key={val.printerName}>
-              <h1>{val.printerName}</h1> 
-                <p>Printer Brand: {val.brand}</p>
-                <button onClick={() => {deletePrinter(val.printerName)}}>Delete</button>
-                <input id="updateInput" type="text" value={updatePrinterVals[val.printerName] || ""} onChange={(e) => {
-                  setUpdatePrinterVals({...updatePrinterVals, [val.printerName]: e.target.value})
+        {printerList.map(printer => {
+          return <div className="printerCard" key={printer.printerName}>
+              <h1>{printer.printerName}</h1> 
+                <p>Printer Brand: {printer.brand}</p>
+                <button onClick={() => {deletePrinter(printer.printerName)}}>Delete</button>
+                <input id="updateInput" type="text" value={updatePrinterVals[printer.printerName] || ""} onChange={(e) => {
+                  setUpdatePrinterVals({...updatePrinterVals, [printer.printerName]: e.target.value})
                   }}/>
-                <button onClick={() => {updatePrinter(val.printerName)}}>Update</button>
+                <button onClick={() => {updatePrinter(printer.printerName)}}>Update</button>
               </div>
         })}
       </div>
+    </div>
     </div>
   );
 }
