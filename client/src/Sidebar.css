@@ -59,13 +59,13 @@
     transition: outline 0.05s;
 }
 
-.sidePrinter:hover {
-    outline: 2px solid black;
+.sidePrinter:not(.selected):hover {
+    outline: 1px solid black;
     cursor: pointer;
 }
 
 .selected {
-    outline: 5px solid black;
+    outline: 4px solid rgb(0, 60, 0);
 }
 
 .lowerBar {
