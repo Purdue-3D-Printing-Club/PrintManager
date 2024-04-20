@@ -24,16 +24,62 @@
 
   .filament-card {
     background-color: #d2e0ff;
+    user-select: none;
     padding: 20px;
     border: 2px solid black;
     height:100px;
     border-radius: 10px;
     transition: background-color 0.2s;
   }
-  
-  .filament-card:hover {
+
+  .filament-card:not(.selected):hover {
     background-color: rgb(118, 152, 255);
     outline: 1px solid black;
+  }
+
+  .filament-header {
+    user-select: none;
+
+    font-weight: bold;
+    font-size: xx-large;
+
+    display:flex;
+  justify-content: center;
+  align-items: center;
+    position:fixed;
+    outline: 2px solid black;
+    width:50%;
+    height:60px;
+    margin-left:5%;
+    border-radius: 10px;
+    background-color: silver;
+  }
+
+  .filament-footer {
+    user-select: none;
+
+    font-weight: bold;
+    font-size: x-large;
+    overflow:hidden;
+    display:flex;
+  justify-content: center;
+  align-items: center;
+    position:absolute;
+    outline: 2px solid black;
+    bottom: 0px;
+    width:90%;
+    height:60px;
+    margin-left:5%;
+    border-radius: 10px;
+    background-color: rgb(29, 184, 29);
+  }
+  .filament-footer:hover {
+    background-color: rgb(7, 159, 7);
+    cursor: pointer;
+  }
+
+  .selected {
+    outline: 5px solid rgb(0, 80, 0);
   }
 
   .grid-container.menuOpen .filament-card:hover {

@@ -20,9 +20,12 @@ function App() {
 
   useEffect(() => {
     try {
-      Axios.get('http://localhost:3001/api/get').then((printers) => {
-        console.log("setting printers to data: ", printers.data);
-        setPrinterList(printers.data);
+      Axios.get('http://localhost:3001/api/get').then((response) => {
+        console.log(response);
+        console.log("setting printers to data: ", response.data.printers);
+        console.log("setting filament to data: ", response.data.filament);
+        setPrinterList(response.data.printers);
+        setFilamentList(response.data.filament);
       });
     } catch (error) {
       console.error("Error fetching printer data: ", error);
@@ -78,6 +81,11 @@ function App() {
     selectPrinter(printer);
     console.log("selected printer: " + printer.printerName);
   };
+  const handleFilamentClick = (filament) => {
+    selectFilament(filament);
+    console.log("selected filament: " + filament.filamentID);
+  };
+
   const handleOpenMenu = () => {
     setMenuOpen(!menuOpen);
     if (!menuOpen) {
@@ -89,21 +97,25 @@ function App() {
     console.log("Set menuOpen to: " + menuOpen);
   };
 
+ 
   return (
     <div className="App">
-      <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter} handleOpenMenu={handleOpenMenu} />
+      <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter} 
+               handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} />
       <div className='main-content'>
         <div className="header">
-          <h1>Print Manager</h1>
+          <h1>[Lab Name] - Print Manager</h1>
         </div>
         {menuOpen ? (
           <div className='menuBG active'>
-            <Menu menuOpen={menuOpen} filamentList={filamentList}></Menu>
+            <Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament} 
+                  handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}></Menu>
           </div>
         ) :
         (
           <div className='menuBG hidden'>
-            <Menu menuOpen={menuOpen} filamentList={filamentList}></Menu>
+            <Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament} 
+                  handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}></Menu>
           </div>
         )}
         <div style={{ height: '110px' }}></div>

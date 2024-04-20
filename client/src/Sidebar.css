@@ -65,7 +65,7 @@
 }
 
 .selected {
-    outline: 4px solid rgb(0, 60, 0);
+    outline: 5px solid rgb(0, 80, 0);
 }
 
 .lowerBar {

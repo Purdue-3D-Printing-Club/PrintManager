@@ -3,6 +3,8 @@
   font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
 }
 .header {
+  user-select: none;
+
   font-size: x-large;
   display:flex;
   justify-content: center;
@@ -30,9 +32,11 @@
   margin-left:-2px;
   top:110px;
 }
+
 .menuBG.hidden {
-  pointer-events: none
+  pointer-events: none;
 }
+
 .menuBG.active {
   opacity: 1;
 }

@@ -24,15 +24,27 @@ db.connect((err) => {
   });
 
 app.get('/api/get', (req, res) =>{
-    const sqlSelect = "SELECT * FROM printer";
-    db.query(sqlSelect, (err, result) => {
-        if (err) {
-            console.log(err);
+    const sqlSelectPrinters = "SELECT * FROM printer";
+    const sqlSelectFilament = "SELECT * FROM filament";
+
+    db.query(sqlSelectPrinters, (errPrinters, resultPrinters) => {
+        if (errPrinters) {
+            console.log(errPrinters);
             res.status(500).send("Error accessing printer data");
             return;
         }
-        res.send(result);
+        db.query(sqlSelectFilament, (errFilament, resultFilament) => {
+            if (errFilament) {
+                console.log(errFilament);
+                res.status(500).send("Error accessing filament data");
+                return;
+            }
+
+            res.send({printers:resultPrinters, filament:resultFilament});
+        });
     });
+    
+
 });
 
 app.post('/api/insert', (req, res) => {
