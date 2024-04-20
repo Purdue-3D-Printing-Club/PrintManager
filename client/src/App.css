@@ -41,6 +41,29 @@
   opacity: 1;
 }
 
+.err-msg, .success-msg {
+  position:absolute;
+  width:30%;
+  height:20%;
+  left:48%;
+  top:40%;
+  border-radius: 20px;
+  border: 4px solid black;
+  font-size: xx-large;
+  color:black;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.err-msg {
+  background-color: rgba(172, 9, 41, 0.92);
+}
+.success-msg {
+  background-color: rgba(16, 190, 54, 0.92);
+}
+
 .form {
   display: flex;
   flex-direction: column;

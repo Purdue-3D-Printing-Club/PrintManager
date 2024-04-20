@@ -48,12 +48,10 @@ app.get('/api/get', (req, res) =>{
 });
 
 app.post('/api/insert', (req, res) => {
-
-    const printerName = req.body.printerName;
-    const printerBrand = req.body.printerBrand;
-
-    const sqlInsert = "INSERT INTO printer (printerName, brand) VALUES (?,?)";
-    db.query(sqlInsert, [printerName, printerBrand], (err, result) => {
+    const b = req.body;
+    console.log(b);
+    const sqlInsert = "INSERT INTO printJob (printerName, gcode, usage_g, filamentIDLoaded) VALUES (?,?,?,?)";
+    db.query(sqlInsert, [b.printerName, b.gcode, b.usage_g,/* b.timeStarted,*/ b.filamentIDLoaded], (err, result) => {
         if (err) {
             console.log(err);
             res.status(500).send("Error inserting printer");
