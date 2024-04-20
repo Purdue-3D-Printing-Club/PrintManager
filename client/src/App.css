@@ -2,7 +2,14 @@
   text-align: center;
   font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
 }
-
+.header {
+  position:fixed;
+  width:75%;
+  top:0;
+  background-color: rgb(118, 152, 255);
+  height: 108px;
+  outline: 3px solid rgb(117, 117, 117);
+}
 .form {
   display: flex;
   flex-direction: column;

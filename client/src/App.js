@@ -4,7 +4,9 @@ import Axios from 'axios'
 import Sidebar from './Sidebar';
 
 function App() {
-  
+  const [selectedPrinter, selectPrinter] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const [printerName, setPrinterName] = useState('');
   const [printerBrand, setPrinterBrand] = useState('');
 
@@ -46,7 +48,7 @@ function App() {
     } catch (error) {
       console.error("Error deleting printer: ", error);
     }
-  }
+  };
 
   const updatePrinter = (name) => {
     try {
@@ -67,12 +69,24 @@ function App() {
   }
   };
 
+  const handlePrinterClick = (printer) => {
+    selectPrinter(printer);
+    console.log("selected printer: "+printer.printerName);
+  };
+  const handleOpenMenu = () => {
+    setMenuOpen(!menuOpen);
+    console.log("Set menuOpen to: "+menuOpen);
+  };
+
   return (
     <div className="App">
-      <Sidebar printerList = {printerList} />
+      <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter} handleOpenMenu={handleOpenMenu}/>
       
       <div className='main-content'>
-      <h1>--Print Manager--</h1>
+      <div className="header">
+        <h1>--Print Manager--</h1>
+        </div>
+        <div style={{height: '110px'}}></div>
       <div className="form">
         <label>Printer Name:</label>
         <input type="text" name="printerName" value={printerName} onChange={(e) => {
