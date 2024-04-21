@@ -59,12 +59,47 @@ app.get('/api/getCurrentJob', (req, res) => {
     db.query(sqlSelectCurrentJob, [printerName], (err, result) => {
         if (err) {
             console.log(err);
-            res.status(500).send("Error accessing printjob data");
+            res.status(500).send("Error accessing printjob current job data");
             return;
         }
         res.send({ currentJob: result });
     });
 });
+
+app.get('/api/getSelected', (req, res) => {
+    const jobID = req.query.jobID;
+    const printerName = req.query.printerName;
+    const sqlSelectgcode = "SELECT gcode, filamentIDLoaded FROM printjob WHERE jobID = ?";
+    const sqlSelectHistory = "SELECT * FROM printJob WHERE printerName = ?"
+    db.query(sqlSelectgcode, [jobID], (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send("Error accessing printjob gcode data");
+            return;
+        }
+        db.query(sqlSelectHistory, [printerName], (errHistory, resultHistory) => {
+            if (errHistory) {
+                console.log(errHistory);
+                res.status(500).send("Error accessing printjob gcode data");
+                return;
+            }
+            res.send({ res: result, historyList:resultHistory});
+        });
+    });
+});
+
+/*app.get('/api/getFilamentLoaded', (req, res) => {
+    const filamentID = req.query.filamentID;
+    const sqlSelectFilament = "SELECT * FROM filament WHERE filamentID = ?";
+    db.query(sqlSelectFilament, [filamentID], (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send("Error accessing printjob current filament data");
+            return;
+        }
+        res.send({ res: result });
+    });
+});*/
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;

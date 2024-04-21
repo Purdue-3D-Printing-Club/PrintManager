@@ -3,8 +3,6 @@
   font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
 }
 .header {
-  user-select: none;
-
   font-size: x-large;
   display:flex;
   justify-content: center;
@@ -23,9 +21,9 @@
 
 .menuBG {
   opacity: 0;
-  transition: opacity 0.3s ease-in-out;
+  transition: opacity 0.2s ease-in-out;
 
-  background-color: rgba(0,0,0,0.8);
+  background-color: rgba(0,0,0,0.75);
   position: fixed;
   width:75%;
   height:100%;
@@ -64,33 +62,106 @@
   background-color: rgba(16, 190, 54, 0.92);
 }
 
-.form {
+/* printer menu states: null, available, busy, or broken */
+.null {
+  padding: 2%;
+  font-weight: bold;
+  font-size: xx-large;
+  background-color: rgba(225, 225, 40,0.6);
+  justify-content: center;
+  align-items: center;
+  margin:15px;
+  margin-left:20px;
+
+  border-radius: 10px;
+  outline: 4px solid black;
+}
+.printer-header {
+  position: fixed;
+  background-color:silver;
+  width:50%;
+  height:40px;
+  font-size:xx-large;
+  font-weight: bold;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  left:37%;
+  top:111px;
+  border-radius: 10px;
+  padding: 5px;
+  outline: 3px solid black;
+  overflow: hidden;
+  white-space: nowrap;
+
+}
+.stat-msg, .filament-msg{
+  font-size:x-large;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding:5px;
+  outline: 2px solid black;
+
 }
 
-.form input {
-  width: 300px;
-  height: 60px;
-  margin: 10px;
-  font-size: 25px;
+.stat-msg {
+  background-color: #d2e0ff;
+  width:80%;
+  margin-left:10%;
 }
 
-.printerCard {
-  width: 500px;
-  height: 170px;
-  border: 2px solid black;
-  background-color: rgb(217, 248, 248);
-  border-radius: 15px;
-  margin: 10px;
+.filament-msg {
+  background-color: #d2e0ff;
+  margin-top: 10px;
+  width:80%;
+  margin-left:10%;
 }
 
-#updateInput {
-  width:100px;
-  height:20px;
-  margin: 10px;
-  font-size: 15px;
+.printer-btn {
+  width:175px;
+  background-color: silver;
+  font-size:x-large;
+  border-radius: 10px;
+  padding:10px;
+  outline: 2px solid black;
+  margin-right: 10px;
+  margin-top: 10px;
+  display:inline-flex;
+  justify-content: center;
+  user-select: none;
+}
+.printer-btn:hover {
+  opacity:80%;
+  cursor: pointer;
+}
+.wrapper-wrapper {
+  margin: auto;
+  width:90.2%;
+}
+.print-history {
+  margin: auto;
+  width:90%;
+
+  background-color: silver;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-weight: bold;
+  font-size: x-large;
+  outline: 2px solid black;
 }
 
+.history-wrapper {
+  border-collapse: collapse;
+  width:100%;
+}
+.history-wrapper th, .history-wrapper td {
+  border: 1px solid black; /* Add border around each cell */
+  padding: 8px;
+  font-size: large;
+  text-align: left;
+}
+.history-wrapper th {
+  background-color: #d2e0ff;
+}

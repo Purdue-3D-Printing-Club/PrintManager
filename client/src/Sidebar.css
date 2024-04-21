@@ -7,10 +7,10 @@
     background-color: #d2e0ff;
     font-weight: bold;
     overflow-y: auto;
-    user-select: none;
     outline: 3px solid rgb(117, 117, 117);
 }
 .sidebtn {
+    user-select: none;
     position:relative;
     padding: 5px;
     margin: 10px 20px;
@@ -51,6 +51,7 @@
 }
 
 .sidePrinter {
+    user-select: none;
     font-size: 20px;
     padding-top: 5px;
     padding-bottom: 5px;

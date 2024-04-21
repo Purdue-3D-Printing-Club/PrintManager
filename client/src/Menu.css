@@ -33,11 +33,11 @@
       border-radius: 10px;
       transition: background-color 0.2s;
     }
-    .filament-card:not(.already-used) {
+    .filament-card {
       background-color: #d2e0ff;
     }
     .already-used {
-      opacity:50%;
+      opacity:40%;
     }
 
     .filament-card:not(.selected):not(.already-used):hover {
