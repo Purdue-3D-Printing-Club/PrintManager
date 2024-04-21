@@ -26,7 +26,7 @@ db.connect((err) => {
 app.get('/api/get', (req, res) => {
     const sqlSelectPrinters = "SELECT * FROM printer";
     const sqlSelectFilament = "SELECT * FROM filament";
-    const sqlUsingFilament = "SELECT filamentIDLoaded FROM printjob";
+    const sqlUsingFilament = `SELECT filamentIDLoaded FROM printjob WHERE status = "active"`;
 
     db.query(sqlSelectPrinters, (errPrinters, resultPrinters) => {
         if (errPrinters) {
@@ -55,7 +55,7 @@ app.get('/api/get', (req, res) => {
 
 app.get('/api/getCurrentJob', (req, res) => {
     const printerName = req.query.printerName;
-    const sqlSelectCurrentJob = "SELECT jobID FROM printjob WHERE printerName = ?";
+    const sqlSelectCurrentJob = `SELECT jobID FROM printjob WHERE printerName = ? && (status = "active")`;
     db.query(sqlSelectCurrentJob, [printerName], (err, result) => {
         if (err) {
             console.log(err);
@@ -66,27 +66,32 @@ app.get('/api/getCurrentJob', (req, res) => {
     });
 });
 
-app.get('/api/getSelected', (req, res) => {
+app.get('/api/getgcode', (req, res) => {
     const jobID = req.query.jobID;
-    const printerName = req.query.printerName;
-    const sqlSelectgcode = "SELECT gcode, filamentIDLoaded FROM printjob WHERE jobID = ?";
-    const sqlSelectHistory = "SELECT * FROM printJob WHERE printerName = ?"
+    const sqlSelectgcode = `SELECT gcode, filamentIDLoaded FROM printjob WHERE jobID = ? && (status = "active")`;
     db.query(sqlSelectgcode, [jobID], (err, result) => {
         if (err) {
             console.log(err);
             res.status(500).send("Error accessing printjob gcode data");
             return;
         }
-        db.query(sqlSelectHistory, [printerName], (errHistory, resultHistory) => {
-            if (errHistory) {
-                console.log(errHistory);
-                res.status(500).send("Error accessing printjob gcode data");
-                return;
-            }
-            res.send({ res: result, historyList:resultHistory});
-        });
+        res.send({ res: result });
     });
 });
+
+app.get('/api/getHistory', (req, res) => {
+    const printerName = req.query.printerName;
+    const sqlSelectHistory = `SELECT * FROM printJob WHERE printerName = ?`
+    db.query(sqlSelectHistory, [printerName], (errHistory, resultHistory) => {
+        if (errHistory) {
+            console.log(errHistory);
+            res.status(500).send("Error accessing printjob gcode data");
+            return;
+        }
+        res.send({ historyList: resultHistory });
+    });
+});
+
 
 /*app.get('/api/getFilamentLoaded', (req, res) => {
     const filamentID = req.query.filamentID;
@@ -104,8 +109,8 @@ app.get('/api/getSelected', (req, res) => {
 app.post('/api/insert', (req, res) => {
     const b = req.body;
     const dateTime = new Date(b.timeStarted);
-    const sqlInsert = "INSERT INTO printJob (printerName, gcode, usage_g, timeStarted, filamentIDLoaded) VALUES (?,?,?,?,?)";
-    db.query(sqlInsert, [b.printerName, b.gcode, b.usage_g, dateTime, b.filamentIDLoaded], (err, result) => {
+    const sqlInsert = "INSERT INTO printjob (printerName, gcode, usage_g, timeStarted, filamentIDLoaded, status) VALUES (?,?,?,?,?,?)";
+    db.query(sqlInsert, [b.printerName, b.gcode, b.usage_g, dateTime, b.filamentIDLoaded, b.status], (err, result) => {
         if (err) {
             console.log(err);
             res.status(500).send("Error inserting printer");
@@ -138,16 +143,23 @@ app.put('/api/update', (req, res) => {
             break;
         case "printjob":
             sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE jobID = ?`;
+            console.log(sqlUpdate+", val: "+val+", id: "+id+"\n");
             break;
         default:
             return res.status(400).send("Invalid table");
     }
+    
 
     db.query(sqlUpdate, [val, id], (err, result) => {
         if (err) {
             console.log(err);
             res.status(500).send("Error updating database");
             return;
+        }
+        
+        if (table === "printjob") {
+            console.log(result);
+            console.log("\n");
         }
         res.send(result);
     });
