@@ -13,7 +13,7 @@ function Menu({ menuOpen, filamentList, handleFilamentClick, selectedFilament, s
 
                 <div className={`grid-container ${menuOpen ? 'menuOpen' : ''}`}>
 
-                    {filamentList.map(filament => {
+                    {filamentList.filter(filament => filament.amountLeft_g > 0).map(filament => {
                         return <div className={`filament-card ${selectedFilament === filament ? 'selected' : ''} 
                         ${usingFilament.includes(filament.filamentID) ? "already-used" : ""}`}
                             key={filament.filamentID}

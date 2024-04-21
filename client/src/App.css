@@ -139,6 +139,7 @@
 .wrapper-wrapper {
   margin: auto;
   width:90.2%;
+  margin-bottom:30px;
 }
 .print-history {
   margin: auto;
@@ -148,7 +149,7 @@
   padding-top: 10px;
   padding-bottom: 10px;
   font-weight: bold;
-  font-size: x-large;
+  font-size: xx-large;
   outline: 2px solid black;
 }
 
@@ -157,6 +158,8 @@
   width:100%;
 }
 .history-wrapper th, .history-wrapper td {
+  text-overflow:hidden;
+  overflow: hidden;
   border: 1px solid black; /* Add border around each cell */
   padding: 8px;
   font-size: large;
@@ -164,4 +167,9 @@
 }
 .history-wrapper th {
   background-color: #d2e0ff;
+  font-size: x-large;
+}
+.history-wrapper td {
+  overflow:hidden;
+  
 }

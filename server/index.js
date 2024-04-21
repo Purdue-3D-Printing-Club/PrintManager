@@ -67,8 +67,10 @@ app.get('/api/getCurrentJob', (req, res) => {
 });
 
 app.get('/api/getgcode', (req, res) => {
+
     const jobID = req.query.jobID;
-    const sqlSelectgcode = `SELECT gcode, filamentIDLoaded FROM printjob WHERE jobID = ? && (status = "active")`;
+    console.log("jobID from getgcode request: ", jobID);
+    const sqlSelectgcode = `SELECT gcode, filamentIDLoaded, usage_g FROM printjob WHERE jobID = ?`; // && (status = 'active')??
     db.query(sqlSelectgcode, [jobID], (err, result) => {
         if (err) {
             console.log(err);
@@ -78,6 +80,7 @@ app.get('/api/getgcode', (req, res) => {
         res.send({ res: result });
     });
 });
+
 
 app.get('/api/getHistory', (req, res) => {
     const printerName = req.query.printerName;
@@ -120,11 +123,11 @@ app.post('/api/insert', (req, res) => {
     });
 });
 
-app.delete('/api/delete/:printerName', (req, res) => {
-    const name = req.params.printerName;
-    const sqlDelete = "DELETE FROM printer WHERE printerName=?";
+app.delete('/api/deleteFilament/:filamentID', (req, res) => {
+    const filamentID = req.params.filamentID;
+    const sqlDelete = "DELETE FROM filament WHERE filamentID=?";
 
-    db.query(sqlDelete, name, (err, result) => {
+    db.query(sqlDelete, filamentID, (err, result) => {
         if (err) {
             console.log(err);
             res.status(500).send("Error deleting printer");
@@ -143,12 +146,14 @@ app.put('/api/update', (req, res) => {
             break;
         case "printjob":
             sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE jobID = ?`;
-            console.log(sqlUpdate+", val: "+val+", id: "+id+"\n");
+            break;
+        case "filament":
+            sqlUpdate = `UPDATE filament SET ${column} = ? WHERE filamentID = ?`;
             break;
         default:
             return res.status(400).send("Invalid table");
     }
-    
+
 
     db.query(sqlUpdate, [val, id], (err, result) => {
         if (err) {
@@ -156,11 +161,7 @@ app.put('/api/update', (req, res) => {
             res.status(500).send("Error updating database");
             return;
         }
-        
-        if (table === "printjob") {
-            console.log(result);
-            console.log("\n");
-        }
+
         res.send(result);
     });
 });
