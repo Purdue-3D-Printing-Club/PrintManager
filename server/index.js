@@ -13,19 +13,20 @@ const db = mysql.createConnection({
 
 app.use(cors());
 app.use(express.json());
-app.use(bodyParser.urlencoded({extended:true}));
+app.use(bodyParser.urlencoded({ extended: true }));
 
 db.connect((err) => {
     if (err) {
-      console.error('Error connecting to MySQL:', err);
-      return;
+        console.error('Error connecting to MySQL:', err);
+        return;
     }
     console.log('Connected to MySQL');
-  });
+});
 
-app.get('/api/get', (req, res) =>{
+app.get('/api/get', (req, res) => {
     const sqlSelectPrinters = "SELECT * FROM printer";
     const sqlSelectFilament = "SELECT * FROM filament";
+    const sqlUsingFilament = "SELECT filamentIDLoaded FROM printjob";
 
     db.query(sqlSelectPrinters, (errPrinters, resultPrinters) => {
         if (errPrinters) {
@@ -40,18 +41,36 @@ app.get('/api/get', (req, res) =>{
                 return;
             }
 
-            res.send({printers:resultPrinters, filament:resultFilament});
+            db.query(sqlUsingFilament, (errUsingFilament, resultUsingFilament) => {
+                if (errUsingFilament) {
+                    console.log(errUsingFilament);
+                    res.status(500).send("Error accessing usingFilament data");
+                    return;
+                }
+                res.send({ printers: resultPrinters, filament: resultFilament, usingFilament: resultUsingFilament });
+            });
         });
     });
-    
+});
 
+app.get('/api/getCurrentJob', (req, res) => {
+    const printerName = req.query.printerName;
+    const sqlSelectCurrentJob = "SELECT jobID FROM printjob WHERE printerName = ?";
+    db.query(sqlSelectCurrentJob, [printerName], (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send("Error accessing printjob data");
+            return;
+        }
+        res.send({ currentJob: result });
+    });
 });
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;
-    console.log(b);
-    const sqlInsert = "INSERT INTO printJob (printerName, gcode, usage_g, filamentIDLoaded) VALUES (?,?,?,?)";
-    db.query(sqlInsert, [b.printerName, b.gcode, b.usage_g,/* b.timeStarted,*/ b.filamentIDLoaded], (err, result) => {
+    const dateTime = new Date(b.timeStarted);
+    const sqlInsert = "INSERT INTO printJob (printerName, gcode, usage_g, timeStarted, filamentIDLoaded) VALUES (?,?,?,?,?)";
+    db.query(sqlInsert, [b.printerName, b.gcode, b.usage_g, dateTime, b.filamentIDLoaded], (err, result) => {
         if (err) {
             console.log(err);
             res.status(500).send("Error inserting printer");
@@ -76,14 +95,23 @@ app.delete('/api/delete/:printerName', (req, res) => {
 });
 
 app.put('/api/update', (req, res) => {
-    const name = req.body.printerName;
-    const brand = req.body.printerBrand;
-    const sqlUpdate = "UPDATE printer SET brand = ? WHERE printerName = ?";
+    const { table, column, val, id } = req.body;
+    let sqlUpdate;
+    switch (table) {
+        case "printer":
+            sqlUpdate = `UPDATE printer SET ${column} = ? WHERE printerName = ?`;
+            break;
+        case "printjob":
+            sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE jobID = ?`;
+            break;
+        default:
+            return res.status(400).send("Invalid table");
+    }
 
-    db.query(sqlUpdate, [brand, name], (err, result) => {
+    db.query(sqlUpdate, [val, id], (err, result) => {
         if (err) {
             console.log(err);
-            res.status(500).send("Error deleting printer");
+            res.status(500).send("Error updating database");
             return;
         }
         res.send(result);

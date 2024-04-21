@@ -18,8 +18,9 @@ function App() {
 
   const [printerList, setPrinterList] = useState([]);
   const [filamentList, setFilamentList] = useState([]);
+  const [usingFilament, setUsingFilament] = useState([]);
 
-  const [updatePrinterVals, setUpdatePrinterVals] = useState({});
+  const [printerBrands, setPrinterBrands] = useState({});
 
   const [message, setMessage] = useState('');
   const [showErr, setShowErr] = useState(false);
@@ -31,14 +32,19 @@ function App() {
         console.log(response);
         console.log("setting printers to data: ", response.data.printers);
         console.log("setting filament to data: ", response.data.filament);
+
+        //process usingFilament into integer array
+        const usingFilamentArr = response.data.usingFilament.map(obj => obj.filamentIDLoaded);
+
+        console.log("currently using filament: ", usingFilamentArr);
         setPrinterList(response.data.printers);
         setFilamentList(response.data.filament);
+        setUsingFilament(usingFilamentArr);
       });
     } catch (error) {
       console.error("Error fetching printer data: ", error);
     }
   }, []);
-
 
   const deletePrinter = (name) => {
     try {
@@ -49,24 +55,53 @@ function App() {
     }
   };
 
-  const updatePrinter = (name) => {
+  const updatePrinterBrand = (name) => {
     try {
       Axios.put('http://localhost:3001/api/update', {
-        printerName: name,
-        printerBrand: updatePrinterVals[name]
+        table: "printer",
+        column: "brand",
+        id: name,
+        val: printerBrands[name]
       });
       const updatedPrinterList = printerList.map(printer => {
         if (printer.printerName === name) {
-          return { ...printer, brand: updatePrinterVals[name] };
+          return { ...printer, brand: printerBrands[name] };
         }
         return printer;
       });
       setPrinterList(updatedPrinterList);
-      setUpdatePrinterVals({ ...updatePrinterVals, [name]: "" });
+      setPrinterBrands({ ...printerBrands, [name]: "" });
     } catch (error) {
       console.error("Error updating printer: ", error);
     }
   };
+
+  const updatePrinter = (column1, id, val, callback) => {
+    try {
+      Axios.put('http://localhost:3001/api/update', {
+        table: "printer",
+        column: column1,
+        id: id,
+        val: val
+      }).then(() => {
+        const updatedPrinterList = printerList.map(printer => {
+          if (printer.printerName === selectedPrinter.printerName) {
+            console.log(`updating local printer '${printer.printerName}''s ${column1} field to ${val}... it has status ${printer.status}`);
+            return { ...printer, [column1]: val };
+          }
+          return printer;
+        });
+        setPrinterList(updatedPrinterList);
+        if (typeof callback === 'function') {
+          callback();
+        }
+        
+      });
+    } catch (error) {
+      console.error("Error updating printer: ", error);
+    }
+  };
+
 
   const handleStartPrintClick = () => {
     //check for empty values
@@ -76,10 +111,10 @@ function App() {
     } else if ((filamentUsage === 0) || (filamentUsage === "")) {
       console.log("startPrintClick: err: no filamentUsage");
       showErrForDuration("No filament usage! Print not started.", 3000);
-     } else if (selectedFilament === null) {
+    } else if (selectedFilament === null) {
       console.log("startPrintClick: err: no filament selected");
       showErrForDuration("No filament selected! Print not started.", 3000);
-     } else if (selectedPrinter === null) {
+    } else if (selectedPrinter === null) {
       console.log("startPrintClick: err: no printer selected");
       showErrForDuration("No printer selected! Print not started.", 3000);
     } else if (selectedPrinter.status !== "available") {
@@ -88,30 +123,61 @@ function App() {
     } else {
       //all fields have valid values, insert the print to the "printJob" table
       console.log("startPrintClick: all fields valid, inserting to printJob");
-      
+
       try {
         Axios.post('http://localhost:3001/api/insert', {
           printerName: selectedPrinter.printerName,
           gcode: gcode,
           usage_g: filamentUsage,
-         // timeStarted: new Date(),
+          timeStarted: new Date().toISOString(),
           filamentIDLoaded: selectedFilament.filamentID
+        }).then(() => {
+          //update the current job of the printer that was selected for the print
+          try {
+            Axios.get(`http://localhost:3001/api/getCurrentJob?printerName=${selectedPrinter.printerName}`).then((response) => {
+              //update the printer status of the printer that was given the job
+              updatePrinter("status", selectedPrinter.printerName, "busy", () => {
+                //update the currentJob of the printer that was used for the printJob
+                updatePrinter("currentJob", selectedPrinter.printerName, response.data.currentJob[0].jobID, () => {
+                  const updatedPrinterList = printerList.map(printer => {
+                    if (printer.printerName === selectedPrinter.printerName) {
+                      console.log(`updating local printer '${printer.printerName}''s status field to busy... it has status ${printer.status}`);
+                      return { ...printer, status: "busy" };
+                    }
+                    return printer;
+                  });
+                  setPrinterList(updatedPrinterList);
+                });
+              });  
+            });
+          } catch (error) {
+            console.error("Error fetching printer data: ", error);
+          }
+
         });
       } catch (error) {
         console.error('Error submitting printJob: ', error);
       }
+
       
-      //also clear the fields of the text input and filament selected (leave printer selected as is)
+
+      //add the used filament to the usingFilamentList to prevent it from being used again
+      usingFilament.push(selectedFilament.filamentID);
+
+
+
+      //lastly, clear the fields of the text input and filament selected
       setFilamentUsage('');
       setgcode('');
       selectFilament(null);
+      selectPrinter(null);
 
       //close error message if its still open
       setShowErr(false);
 
       showMsgForDuration(`Print job successfully started!`, 3000);
     }
-  }
+  };
 
   const showErrForDuration = (msg, duration) => {
     if (!showErr && !showMsg) {
@@ -122,6 +188,7 @@ function App() {
       }, duration);
     }
   };
+
   const showMsgForDuration = (msg, duration) => {
     if (!showMsg) {
       setMessage(msg);
@@ -133,25 +200,39 @@ function App() {
   };
 
   const handlePrinterClick = (printer) => {
-    selectPrinter(printer);
-    console.log("selected printer: " + printer.printerName);
+    if (selectedPrinter === printer) {
+      selectPrinter(null);
+      console.log("unselected printer: " + printer.printerName);
+    } else {
+      selectPrinter(printer);
+      console.log("selected printer: " + printer.printerName);
+    }
   };
 
   const handleFilamentClick = (filament) => {
-    selectFilament(filament);
-    console.log("selected filament: " + filament.filamentID);
+    if (!usingFilament.includes(filament.filamentID)) {
+      if (selectedFilament === filament) {
+        selectFilament(null);
+        console.log("unselected filament: " + filament.filamentID);
+      } else {
+        selectFilament(filament);
+        console.log("selected filament: " + filament.filamentID);
+      }
+    }
   };
 
   const handlegcode = (e) => {
     const gcode = e.target.value;
     setgcode(gcode);
-    console.log("set gcode to "+gcode);
-  }
+    console.log("set gcode to " + gcode);
+  };
+
   const handleFilamentUsage = (e) => {
     const usage = e.target.value.replace(/\D/g, "");
     setFilamentUsage(usage);
-    console.log("set filament usage to "+usage);
-  }
+    console.log("set filament usage to " + usage);
+  };
+
   const handleOpenMenu = () => {
     setMenuOpen(!menuOpen);
     if (!menuOpen) {
@@ -159,36 +240,37 @@ function App() {
     } else {
       document.body.classList.remove('disable-scroll');
     }
-    
+
     console.log("Set menuOpen to: " + menuOpen);
   };
 
- 
   return (
     <div className="App">
-      <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter} 
-               handleOpenMenu={handleOpenMenu} menuOpen={menuOpen}/>
+      <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
+        handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} />
       <div className='main-content'>
         <div className="header">
           <h1>CS348 Test Lab - Print Manager</h1>
         </div>
-        
+
         {menuOpen ? (
           <div className='menuBG active'>
-            <Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament} 
-                  handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}
-                  handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
-                  handlegcode={handlegcode} gcode={gcode} handleStartPrintClick={handleStartPrintClick}></Menu>
+            <Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament}
+              handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}
+              handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
+              handlegcode={handlegcode} gcode={gcode} handleStartPrintClick={handleStartPrintClick}
+              usingFilament={usingFilament}></Menu>
           </div>
         ) :
-        (
-          <div className='menuBG hidden'>
-            <Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament} 
-                  handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}
-                  handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
-                  handlegcode={handlegcode} gcode={gcode} handleStartPrintClick={handleStartPrintClick}></Menu>
-          </div>
-        )}
+          (
+            <div className='menuBG hidden'>
+              <Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament}
+                handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}
+                handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
+                handlegcode={handlegcode} gcode={gcode} handleStartPrintClick={handleStartPrintClick}
+                usingFilament={usingFilament}></Menu>
+            </div>
+          )}
 
         {showErr && menuOpen && <div className="err-msg">{message}</div>}
         {showMsg && menuOpen && <div className="success-msg">{message}</div>}
@@ -211,16 +293,16 @@ function App() {
               <h1>{printer.printerName}</h1>
               <p>Printer Brand: {printer.brand}</p>
               <button onClick={() => { deletePrinter(printer.printerName) }}>Delete</button>
-              <input id="updateInput" type="text" value={updatePrinterVals[printer.printerName] || ""} onChange={(e) => {
-                setUpdatePrinterVals({ ...updatePrinterVals, [printer.printerName]: e.target.value })
+              <input id="updateInput" type="text" value={printerBrands[printer.printerName] || ""} onChange={(e) => {
+                setPrinterBrands({ ...printerBrands, [printer.printerName]: e.target.value })
               }} />
-              <button onClick={() => { updatePrinter(printer.printerName) }}>Update</button>
+              <button onClick={() => { updatePrinterBrand(printer.printerName) }}>Update</button>
             </div>
           })}
         </div>
-        
+
       </div>
-     
+
     </div>
   );
 }

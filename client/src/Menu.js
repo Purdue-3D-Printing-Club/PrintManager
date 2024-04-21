@@ -2,7 +2,7 @@ import React from 'react';
 import './Menu.css';
 
 function Menu({ menuOpen, filamentList, handleFilamentClick, selectedFilament, selectedPrinter,
-    handlegcode, gcode, handleFilamentUsage, filamentUsage, handleStartPrintClick }) {
+    handlegcode, gcode, handleFilamentUsage, filamentUsage, handleStartPrintClick, usingFilament}) {
 
     return (
         <div className='menu'>
@@ -14,7 +14,8 @@ function Menu({ menuOpen, filamentList, handleFilamentClick, selectedFilament, s
                 <div className={`grid-container ${menuOpen ? 'menuOpen' : ''}`}>
 
                     {filamentList.map(filament => {
-                        return <div className={`filament-card ${selectedFilament === filament ? 'selected' : ''}`}
+                        return <div className={`filament-card ${selectedFilament === filament ? 'selected' : ''} 
+                        ${usingFilament.includes(filament.filamentID) ? "already-used" : ""}`}
                             key={filament.filamentID}
                             onClick={() => { handleFilamentClick(filament) }}>
                             <div className='leftStripe' style={{ 'backgroundColor': filament.color }}></div>
@@ -25,9 +26,7 @@ function Menu({ menuOpen, filamentList, handleFilamentClick, selectedFilament, s
                                 <div className='filaText'>Brand: {filament.brand}</div>
                                 <div className='filaText'>Remaining: {filament.amountLeft_g}g</div>
                             </div>
-
                         </div>
-
                     })}
                 </div>
 
@@ -43,8 +42,6 @@ function Menu({ menuOpen, filamentList, handleFilamentClick, selectedFilament, s
                     {selectedPrinter ? "\"" + selectedPrinter.printerName + "\"" : "[NOT SELECTED]"} w/ filament&nbsp;
                     {selectedFilament ? selectedFilament.filamentID : "[NOT SELECTED]"}</div>
             </div>
-
-
         </div>
     );
 }
