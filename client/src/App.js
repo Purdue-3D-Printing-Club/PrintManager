@@ -190,61 +190,70 @@ function App() {
     } else if (selectedPrinter.status !== "available") {
       console.log("startPrintClick: selected printer is not available!");
       showErrForDuration(`Printer ${selectedPrinter.printerName} is not available! Print not started.`, 3000);
+    } else if (filamentUsage > selectedFilament.amountLeft_g) {
+      console.log("startPrintClick: filamentUsage exceeds the amount left on the selected spool!");
+      showWarningForDuration(`Not enough filament remaining on spool #${selectedFilament.filamentID}! (${filamentUsage}g > ${selectedFilament.amountLeft_g}g).`, 5000);
     } else {
       //all fields have valid values, insert the print to the "printJob" table
       console.log("startPrintClick: all fields valid, inserting to printJob");
+      startPrint();
+  };
+};
+  const handleWarningClick = () => {
+    setShowWarn(false);
+    startPrint();
+  }
 
-      try {
-        Axios.post('http://localhost:3001/api/insert', {
-          printerName: selectedPrinter.printerName,
-          gcode: gcode,
-          usage_g: filamentUsage,
-          timeStarted: new Date().toISOString(),
-          filamentIDLoaded: selectedFilament.filamentID,
-          status: "active"
-        }).then(() => {
-          //update the current job of the printer that was selected for the print
-          try {
-            Axios.get(`http://localhost:3001/api/getCurrentJob?printerName=${selectedPrinter.printerName}`).then((response) => {
-              console.log("CurrentJob data: ");
-              console.log(response.data);
-              //update the printer status of the printer that was given the job
-              updateTable("printer", "status", selectedPrinter.printerName, "busy", () => {
-                //update the currentJob of the printer that was used for the printJob
-                updateTable("printer", "currentJob", selectedPrinter.printerName, response.data.currentJob[0].jobID, () => {
-                  const updatedPrinterList = printerList.map(printer => {
-                    if (printer.printerName === selectedPrinter.printerName) {
-                      return { ...printer, status: "busy", currentJob: response.data.currentJob[0].jobID };
-                    }
-                    return printer;
-                  });
-                  setPrinterList(updatedPrinterList);
+  const startPrint = () => {
+    try {
+      Axios.post('http://localhost:3001/api/insert', {
+        printerName: selectedPrinter.printerName,
+        gcode: gcode,
+        usage_g: filamentUsage,
+        timeStarted: new Date().toISOString(),
+        filamentIDLoaded: selectedFilament.filamentID,
+        status: "active"
+      }).then(() => {
+        //update the current job of the printer that was selected for the print
+        try {
+          Axios.get(`http://localhost:3001/api/getCurrentJob?printerName=${selectedPrinter.printerName}`).then((response) => {
+            console.log("CurrentJob data: ");
+            console.log(response.data);
+            //update the printer status of the printer that was given the job
+            updateTable("printer", "status", selectedPrinter.printerName, "busy", () => {
+              //update the currentJob of the printer that was used for the printJob
+              updateTable("printer", "currentJob", selectedPrinter.printerName, response.data.currentJob[0].jobID, () => {
+                const updatedPrinterList = printerList.map(printer => {
+                  if (printer.printerName === selectedPrinter.printerName) {
+                    return { ...printer, status: "busy", currentJob: response.data.currentJob[0].jobID };
+                  }
+                  return printer;
                 });
+                setPrinterList(updatedPrinterList);
               });
             });
-          } catch (error) {
-            console.error("Error fetching printer data: ", error);
-          }
-
-        });
-      } catch (error) {
-        console.error('Error submitting printJob: ', error);
-      }
-
-      //add the used filament to the usingFilamentList to prevent it from being used again
-      usingFilament.push(selectedFilament.filamentID);
-
-      //lastly, clear the fields of the text input and filament selected
-      setFilamentUsage('');
-      setgcode('');
-      selectFilament(null);
-      selectPrinter(null);
-
-      //close error message if its still open
-      setShowErr(false);
-
-      showMsgForDuration(`Print job successfully started!`, 3000);
+          });
+        } catch (error) {
+          console.error("Error fetching printer data: ", error);
+        }
+      });
+    } catch (error) {
+      console.error('Error submitting printJob: ', error);
     }
+
+    //add the used filament to the usingFilamentList to prevent it from being used again
+    usingFilament.push(selectedFilament.filamentID);
+
+    //lastly, clear the fields of the text input and filament selected
+    setFilamentUsage('');
+    setgcode('');
+    selectFilament(null);
+    selectPrinter(null);
+
+    //close error message if its still open
+    setShowErr(false);
+
+    showMsgForDuration(`Print job successfully started!`, 3000);
   };
 
   const handlePrintDoneClick = (statusArg, callback) => {
@@ -306,7 +315,9 @@ function App() {
   };
 
   const showErrForDuration = (msg, duration) => {
-    if (!showErr && !showWarn && !showMsg) {
+    setShowWarn(false);
+    setShowMsg(false);
+    if (!showErr) {
       setMessage(msg);
       setShowErr(true);
       setTimeout(() => {
@@ -315,7 +326,9 @@ function App() {
     }
   };
   const showWarningForDuration = (msg, duration) => {
-    if (!showWarn && !showMsg) {
+    setShowErr(false);
+    setShowMsg(false);
+    if (!showWarn) {
       setMessage(msg);
       setShowWarn(true);
       setTimeout(() => {
@@ -325,6 +338,8 @@ function App() {
   };
 
   const showMsgForDuration = (msg, duration) => {
+    setShowWarn(false);
+    setShowErr(false);
     if (!showMsg) {
       setMessage(msg);
       setShowMsg(true);
@@ -422,6 +437,12 @@ function App() {
 
         {showErr && menuOpen && <div className="err-msg">{message}</div>}
         {showMsg && menuOpen && <div className="success-msg">{message}</div>}
+        {showWarn && menuOpen && <div className="warning-msg">
+          <div className="warning-content">
+            {message}<br></br>Continue anyway?
+            <div onClick={() => { handleWarningClick() }} style={{backgroundColor: "rgb(118, 152, 255)"}} className='printer-btn'>Continue</div>
+          </div>
+        </div>}
 
         <div style={{ height: '110px' }}></div>
 
@@ -448,7 +469,7 @@ function App() {
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
               <div onClick={() => { handleOpenMenu() }} className='menu-btn'>Open Print Menu</div>
               <div onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</div>
-              
+
             </div>}
             {selectedPrinter && (selectedPrinter.status === "broken") && <div>
               <div onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Printer Fixed</div>
@@ -495,11 +516,4 @@ function App() {
   );
 }
 
-/*
-
-          {selectedPrinter && (selectedPrinter.status === "busy") && <div>
-              Printer {selectedPrinter.printerName} is busy.
-            </div>}
-          
-*/
 export default App;

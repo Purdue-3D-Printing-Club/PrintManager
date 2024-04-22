@@ -39,12 +39,10 @@
   opacity: 1;
 }
 
-.err-msg, .success-msg {
+.err-msg, .success-msg, .warning-msg {
   position:absolute;
-  width:30%;
-  height:20%;
-  left:48%;
-  top:40%;
+  left:50%;
+  top:45%;
   border-radius: 20px;
   border: 4px solid black;
   font-size: xx-large;
@@ -53,6 +51,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-right: 20%;
+  padding:30px;
 }
 
 .err-msg {
@@ -60,6 +60,18 @@
 }
 .success-msg {
   background-color: rgba(16, 190, 54, 0.92);
+}
+
+.warning-msg {
+  background-color: rgba(240, 240, 120,0.9);
+
+}
+.warning-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
 /* printer menu states: null, available, busy, or broken */
@@ -72,7 +84,6 @@
   align-items: center;
   margin:15px;
   margin-left:20px;
-
   border-radius: 10px;
   outline: 4px solid black;
 }

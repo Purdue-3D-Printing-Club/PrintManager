@@ -28,26 +28,37 @@ app.get('/api/get', (req, res) => {
     const sqlSelectFilament = "SELECT * FROM filament";
     const sqlUsingFilament = `SELECT filamentIDLoaded FROM printjob WHERE status = "active"`;
 
-    db.query(sqlSelectPrinters, (errPrinters, resultPrinters) => {
-        if (errPrinters) {
-            console.log(errPrinters);
-            res.status(500).send("Error accessing printer data");
-            return;
-        }
-        db.query(sqlSelectFilament, (errFilament, resultFilament) => {
-            if (errFilament) {
-                console.log(errFilament);
-                res.status(500).send("Error accessing filament data");
+    //transaction with no isolation level: reads only (transaction ensures consistency)
+    db.beginTransaction(function (err) {
+        db.query(sqlSelectPrinters, (errPrinters, resultPrinters) => {
+            if (errPrinters) {
+                console.log(errPrinters);
+                res.status(500).send("Error accessing printer data");
                 return;
             }
-
-            db.query(sqlUsingFilament, (errUsingFilament, resultUsingFilament) => {
-                if (errUsingFilament) {
-                    console.log(errUsingFilament);
-                    res.status(500).send("Error accessing usingFilament data");
+            db.query(sqlSelectFilament, (errFilament, resultFilament) => {
+                if (errFilament) {
+                    console.log(errFilament);
+                    res.status(500).send("Error accessing filament data");
                     return;
                 }
-                res.send({ printers: resultPrinters, filament: resultFilament, usingFilament: resultUsingFilament });
+
+                db.query(sqlUsingFilament, (errUsingFilament, resultUsingFilament) => {
+                    if (errUsingFilament) {
+                        console.log(errUsingFilament);
+                        res.status(500).send("Error accessing usingFilament data");
+                        return;
+                    }
+
+                    db.commit(function (err) {
+                        if (err) {
+                            return db.rollback(function () {
+                                throw err;
+                            });
+                        }
+                        res.send({ printers: resultPrinters, filament: resultFilament, usingFilament: resultUsingFilament });
+                    });
+                });
             });
         });
     });
@@ -56,28 +67,48 @@ app.get('/api/get', (req, res) => {
 app.get('/api/getCurrentJob', (req, res) => {
     const printerName = req.query.printerName;
     const sqlSelectCurrentJob = `SELECT jobID FROM printjob WHERE printerName = ? && (status = "active")`;
-    db.query(sqlSelectCurrentJob, [printerName], (err, result) => {
-        if (err) {
-            console.log(err);
-            res.status(500).send("Error accessing printjob current job data");
-            return;
-        }
-        res.send({ currentJob: result });
+    //transaction with no isolation level: reads only (transaction ensures consistency)
+    db.beginTransaction(function (err) {
+        db.query(sqlSelectCurrentJob, [printerName], (err, result) => {
+            if (err) {
+                console.log(err);
+                res.status(500).send("Error accessing printjob current job data");
+                return;
+            }
+            db.commit(function (err) {
+                if (err) {
+                    return db.rollback(function () {
+                        throw err;
+                    });
+                }
+                res.send({ currentJob: result });
+            });
+        });
     });
 });
 
 app.get('/api/getgcode', (req, res) => {
 
     const jobID = req.query.jobID;
-    console.log("jobID from getgcode request: ", jobID);
-    const sqlSelectgcode = `SELECT gcode, filamentIDLoaded, usage_g FROM printjob WHERE jobID = ?`; // && (status = 'active')??
-    db.query(sqlSelectgcode, [jobID], (err, result) => {
-        if (err) {
-            console.log(err);
-            res.status(500).send("Error accessing printjob gcode data");
-            return;
-        }
-        res.send({ res: result });
+    const sqlSelectgcode = `SELECT gcode, filamentIDLoaded, usage_g FROM printjob WHERE jobID = ?`;
+
+    //transaction with no isolation level: reads only (transaction ensures consistency)
+    db.beginTransaction(function (err) {
+        db.query(sqlSelectgcode, [jobID], (err, result) => {
+            if (err) {
+                console.log(err);
+                res.status(500).send("Error accessing printjob gcode data");
+                return;
+            }
+            db.commit(function (err) {
+                if (err) {
+                    return db.rollback(function () {
+                        throw err;
+                    });
+                }
+                res.send({ res: result });
+            });
+        });
     });
 });
 
@@ -85,41 +116,48 @@ app.get('/api/getgcode', (req, res) => {
 app.get('/api/getHistory', (req, res) => {
     const printerName = req.query.printerName;
     const sqlSelectHistory = `SELECT * FROM printJob WHERE printerName = ?`
-    db.query(sqlSelectHistory, [printerName], (errHistory, resultHistory) => {
-        if (errHistory) {
-            console.log(errHistory);
-            res.status(500).send("Error accessing printjob gcode data");
-            return;
-        }
-        res.send({ historyList: resultHistory });
+
+    //transaction with no isolation level: reads only (transaction ensures consistency)
+    db.beginTransaction(function (err) {
+        db.query(sqlSelectHistory, [printerName], (errHistory, resultHistory) => {
+            if (errHistory) {
+                console.log(errHistory);
+                res.status(500).send("Error accessing printjob gcode data");
+                return;
+            }
+            db.commit(function (err) {
+                if (err) {
+                    return db.rollback(function () {
+                        throw err;
+                    });
+                }
+                res.send({ historyList: resultHistory });
+            });
+        });
     });
 });
-
-
-/*app.get('/api/getFilamentLoaded', (req, res) => {
-    const filamentID = req.query.filamentID;
-    const sqlSelectFilament = "SELECT * FROM filament WHERE filamentID = ?";
-    db.query(sqlSelectFilament, [filamentID], (err, result) => {
-        if (err) {
-            console.log(err);
-            res.status(500).send("Error accessing printjob current filament data");
-            return;
-        }
-        res.send({ res: result });
-    });
-});*/
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;
     const dateTime = new Date(b.timeStarted);
     const sqlInsert = "INSERT INTO printjob (printerName, gcode, usage_g, timeStarted, filamentIDLoaded, status) VALUES (?,?,?,?,?,?)";
-    db.query(sqlInsert, [b.printerName, b.gcode, b.usage_g, dateTime, b.filamentIDLoaded, b.status], (err, result) => {
-        if (err) {
-            console.log(err);
-            res.status(500).send("Error inserting printer");
-            return;
-        }
-        res.send(result);
+
+    db.beginTransaction(function (err) {
+        db.query(sqlInsert, [b.printerName, b.gcode, b.usage_g, dateTime, b.filamentIDLoaded, b.status], (err, result) => {
+            if (err) {
+                console.log(err);
+                res.status(500).send("Error inserting printer");
+                return;
+            }
+            db.commit(function (err) {
+                if (err) {
+                    return db.rollback(function () {
+                        throw err;
+                    });
+                }
+                res.send(result);
+            });
+        });
     });
 });
 
@@ -127,13 +165,22 @@ app.delete('/api/deleteFilament/:filamentID', (req, res) => {
     const filamentID = req.params.filamentID;
     const sqlDelete = "DELETE FROM filament WHERE filamentID=?";
 
-    db.query(sqlDelete, filamentID, (err, result) => {
-        if (err) {
-            console.log(err);
-            res.status(500).send("Error deleting printer");
-            return;
-        }
-        res.send(result);
+    db.beginTransaction(function (err) {
+        db.query(sqlDelete, filamentID, (err, result) => {
+            if (err) {
+                console.log(err);
+                res.status(500).send("Error deleting printer");
+                return;
+            }
+            db.commit(function (err) {
+                if (err) {
+                    return db.rollback(function () {
+                        throw err;
+                    });
+                }
+                res.send(result);
+            });
+        });
     });
 });
 
@@ -154,15 +201,22 @@ app.put('/api/update', (req, res) => {
             return res.status(400).send("Invalid table");
     }
 
-
-    db.query(sqlUpdate, [val, id], (err, result) => {
-        if (err) {
-            console.log(err);
-            res.status(500).send("Error updating database");
-            return;
-        }
-
-        res.send(result);
+    db.beginTransaction(function (err) {
+        db.query(sqlUpdate, [val, id], (err, result) => {
+            if (err) {
+                console.log(err);
+                res.status(500).send("Error updating database");
+                return;
+            }
+            db.commit(function (err) {
+                if (err) {
+                    return db.rollback(function () {
+                        throw err;
+                    });
+                }
+                res.send(result);
+            });
+        });
     });
 });
 
