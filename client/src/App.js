@@ -21,6 +21,7 @@ function App() {
   const [message, setMessage] = useState('');
   const [showErr, setShowErr] = useState(false);
   const [showMsg, setShowMsg] = useState(false);
+  const [showWarn, setShowWarn] = useState(false);
 
   //Printer menu data
   const [statMessage, setStatMessage] = useState("");
@@ -154,22 +155,22 @@ function App() {
     if (new_amount < 0) {
       new_amount = 0;
     }
-      //update the amount
-      console.log("updating the filament amountLeft_g value");
-      updateTable("filament", "amountLeft_g", filamentID, new_amount, () => {
-        //then, reflect the change on the local filamentList
-        const updatedFilamentList = filamentList.map(filament => {
-          if (filament.filamentID === filamentID) {
-            return { ...filament, amountLeft_g: new_amount };
-          }
-          return filament;
-        });
-        setFilamentList(updatedFilamentList);
-
-        if (typeof callback === 'function') {
-          callback();
+    //update the amount
+    console.log("updating the filament amountLeft_g value");
+    updateTable("filament", "amountLeft_g", filamentID, new_amount, () => {
+      //then, reflect the change on the local filamentList
+      const updatedFilamentList = filamentList.map(filament => {
+        if (filament.filamentID === filamentID) {
+          return { ...filament, amountLeft_g: new_amount };
         }
+        return filament;
       });
+      setFilamentList(updatedFilamentList);
+
+      if (typeof callback === 'function') {
+        callback();
+      }
+    });
   };
 
   const handleStartPrintClick = () => {
@@ -305,11 +306,20 @@ function App() {
   };
 
   const showErrForDuration = (msg, duration) => {
-    if (!showErr && !showMsg) {
+    if (!showErr && !showWarn && !showMsg) {
       setMessage(msg);
       setShowErr(true);
       setTimeout(() => {
         setShowErr(false);
+      }, duration);
+    }
+  };
+  const showWarningForDuration = (msg, duration) => {
+    if (!showWarn && !showMsg) {
+      setMessage(msg);
+      setShowWarn(true);
+      setTimeout(() => {
+        setShowWarn(false);
       }, duration);
     }
   };
@@ -436,7 +446,9 @@ function App() {
               <div onClick={() => { printerBroke() }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</div>
             </div>}
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
+              <div onClick={() => { handleOpenMenu() }} className='menu-btn'>Open Print Menu</div>
               <div onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</div>
+              
             </div>}
             {selectedPrinter && (selectedPrinter.status === "broken") && <div>
               <div onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Printer Fixed</div>

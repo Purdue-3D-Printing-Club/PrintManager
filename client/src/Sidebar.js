@@ -18,7 +18,7 @@ function getStatusColor (printerStatus) {
             <div className="sidebtn">
                     Sign-in
                 </div>
-                <div className="sidebtn" onClick={() => handleOpenMenu()}>
+                <div className="sidebtn" style={menuOpen ? {outline: "4px solid black"} : {}} onClick={() => handleOpenMenu()}>
                     {menuOpen ? "Close Print Menu" : "Open Print Menu"}
                 </div>
             </div>

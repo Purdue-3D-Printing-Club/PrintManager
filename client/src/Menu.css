@@ -25,9 +25,7 @@
 
     .filament-card {
       user-select: none;
-     
       display:flex;
-
       border: 2px solid black;
       height:120px;
       border-radius: 10px;
@@ -104,7 +102,7 @@
       outline: 5px solid rgb(0, 80, 0);
     }
 
-    .grid-container.menuOpen .filament-card:not(.selected):not(.already-used):hover {
+    .grid-container.menuOpen .filament-card:not(.already-used):hover {
       cursor: pointer;
     }
 

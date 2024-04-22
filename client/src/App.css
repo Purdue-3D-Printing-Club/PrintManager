@@ -119,9 +119,7 @@
   margin-left:10%;
 }
 
-.printer-btn {
-  width:175px;
-  background-color: silver;
+.printer-btn, .menu-btn {
   font-size:x-large;
   border-radius: 10px;
   padding:10px;
@@ -132,10 +130,22 @@
   justify-content: center;
   user-select: none;
 }
-.printer-btn:hover {
+
+.printer-btn {
+  width:175px;
+  background-color: silver;
+}
+
+.printer-btn:hover, .menu-btn:hover {
   opacity:80%;
   cursor: pointer;
 }
+
+.menu-btn {
+  background-color: rgb(118, 152, 255);
+  width:220px;
+}
+
 .wrapper-wrapper {
   margin: auto;
   width:90.2%;
