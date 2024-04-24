@@ -5,6 +5,8 @@ import Sidebar from './Sidebar';
 import Menu from './Menu'
 
 function App() {
+  let serverURL = "https://printmanager-server.onrender.com";
+
   const [filamentUsage, setFilamentUsage] = useState('');
   const [gcode, setgcode] = useState('');
 
@@ -31,7 +33,7 @@ function App() {
   //fill data arrays on the initial render
   useEffect(() => {
     try {
-      Axios.get('http://localhost:3001/api/get').then((response) => {
+      Axios.get(`${serverURL}/api/get`).then((response) => {
         console.log(response);
         console.log("setting printers to data: ", response.data.printers);
         console.log("setting filament to data: ", response.data.filament);
@@ -55,7 +57,7 @@ function App() {
     if (selectedPrinter !== null) {
       //get data from the database
       try {
-        Axios.get(`http://localhost:3001/api/getgcode?jobID=${selectedPrinter.currentJob}`).then((response) => {
+        Axios.get(`${serverURL}/api/getgcode?jobID=${selectedPrinter.currentJob}`).then((response) => {
           if (response.data.res[0] && (selectedPrinter.status === "busy")) {
             setStatMessage("This printer is busy printing: " + response.data.res[0].gcode);
             filamentList.map(filament => {
@@ -68,7 +70,7 @@ function App() {
           }
         });
 
-        Axios.get(`http://localhost:3001/api/getHistory?printerName=${selectedPrinter.printerName}`).then((response) => {
+        Axios.get(`${serverURL}/api/getHistory?printerName=${selectedPrinter.printerName}`).then((response) => {
           setHistoryList(response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted)));
         });
 
@@ -104,7 +106,7 @@ function App() {
 
   const updateTable = (table, column1, id, val, callback) => {
     try {
-      Axios.put('http://localhost:3001/api/update', {
+      Axios.put(`${serverURL}/api/update`, {
         table: table,
         column: column1,
         id: id,
@@ -206,7 +208,7 @@ function App() {
 
   const startPrint = () => {
     try {
-      Axios.post('http://localhost:3001/api/insert', {
+      Axios.post(`${serverURL}/api/insert`, {
         printerName: selectedPrinter.printerName,
         gcode: gcode,
         usage_g: filamentUsage,
@@ -216,7 +218,7 @@ function App() {
       }).then(() => {
         //update the current job of the printer that was selected for the print
         try {
-          Axios.get(`http://localhost:3001/api/getCurrentJob?printerName=${selectedPrinter.printerName}`).then((response) => {
+          Axios.get(`${serverURL}/api/getCurrentJob?printerName=${selectedPrinter.printerName}`).then((response) => {
             console.log("CurrentJob data: ");
             console.log(response.data);
             //update the printer status of the printer that was given the job
@@ -264,7 +266,7 @@ function App() {
 
         //set the printJob status to statusArg
         console.log("now setting printjob status to statusArg...");
-        Axios.put('http://localhost:3001/api/update', {
+        Axios.put(`${serverURL}/api/update`, {
           table: "printjob",
           column: "status",
           id: selectedPrinter.currentJob,
@@ -276,7 +278,7 @@ function App() {
 
             //get the filamentID with the job 
             console.log("getting printJob's filamentID...");
-            Axios.get(`http://localhost:3001/api/getgcode?jobID=${selectedPrinter.currentJob}`).then((response) => {
+            Axios.get(`${serverURL}/api/getgcode?jobID=${selectedPrinter.currentJob}`).then((response) => {
               console.log("filamentID response: ");
               console.log(response.data);
               if (response.data.res[0]) {
