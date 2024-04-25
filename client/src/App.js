@@ -5,7 +5,7 @@ import Sidebar from './Sidebar';
 import Menu from './Menu'
 
 function App() {
-  let serverURL = "https://printmanager-server.onrender.com";
+  const serverURL = "http://localhost:3001"; //local: http://localhost:3001 //Cloud: https://printmanager-server.onrender.com
 
   const [filamentUsage, setFilamentUsage] = useState('');
   const [gcode, setgcode] = useState('');
