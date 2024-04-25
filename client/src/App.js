@@ -3,6 +3,8 @@ import './App.css';
 import Axios from 'axios'
 import Sidebar from './Sidebar';
 import Menu from './Menu'
+import { Pie } from 'react-chartjs-2';
+import 'chart.js/auto';
 
 function App() {
   const serverURL = "http://localhost:3001"; //local: http://localhost:3001 //Cloud: https://printmanager-server.onrender.com
@@ -29,6 +31,12 @@ function App() {
   const [statMessage, setStatMessage] = useState("");
   const [filamentLoaded, setFilamentLoaded] = useState(null);
   const [historyList, setHistoryList] = useState([]);
+
+  //summary page data
+  const [printerNames, setPrinterNames] = useState([]);
+  const [frequencies, setFrequencies] = useState([]);
+  const [filamentSum, setFilamentSum] = useState([]);
+  const [loadingSummary, setLoadingSummary] = useState(true);
 
   //fill data arrays on the initial render
   useEffect(() => {
@@ -91,6 +99,21 @@ function App() {
           setFilamentLoaded(null);
           break;
         default:
+      }
+    } else {
+      try {
+        Axios.get(`${serverURL}/api/getfreq`).then((response) => {
+          console.log("frequencies: ");
+          console.log(response.data);
+          setPrinterNames(response.data.res.map(printer => printer.printerName));
+          setFrequencies(response.data.res.map(printer => printer.cnt));
+          setFilamentSum(response.data.res.map(printer => printer.sum));
+          setLoadingSummary(false);
+        });
+
+      } catch (error) {
+        console.error("Error fetching printer data: ", error);
+        setLoadingSummary(false);
       }
     }
   }, [selectedPrinter, filamentList]);
@@ -199,8 +222,8 @@ function App() {
       //all fields have valid values, insert the print to the "printJob" table
       console.log("startPrintClick: all fields valid, inserting to printJob");
       startPrint();
+    };
   };
-};
   const handleWarningClick = () => {
     setShowWarn(false);
     startPrint();
@@ -410,6 +433,7 @@ function App() {
   }
 
   return (
+
     <div className="App">
       <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
         handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} />
@@ -442,15 +466,66 @@ function App() {
         {showWarn && menuOpen && <div className="warning-msg">
           <div className="warning-content">
             {message}<br></br>Continue anyway?
-            <div onClick={() => { handleWarningClick() }} style={{backgroundColor: "rgb(118, 152, 255)"}} className='printer-btn'>Continue</div>
+            <div onClick={() => { handleWarningClick() }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
           </div>
         </div>}
 
         <div style={{ height: '110px' }}></div>
 
         <div className="printer-screen">
-          {(!selectedPrinter && !menuOpen) && <div className='null'>
-            No printer selected! <br></br>Choose one from the printer list on the left.
+          {(!selectedPrinter && !menuOpen) && <div>
+            <div className='null'>
+              No printer selected! <br></br>Choose one from the printer list on the left.
+            </div>
+            {!loadingSummary && <div>
+              <h2 style={{marginTop:"20px", marginBottom:"10px"}}>Summary</h2>
+              <div className='chart-wrapper'>
+                <div className='chart'>
+                <h2>Total Number of Jobs Per Printer</h2>
+                <Pie data={{
+                  labels: printerNames,
+                  datasets: [
+                    {
+                      data: frequencies,
+                    },
+                    {
+                      data: [],
+                    }
+                  ],
+                }} options={{
+                  plugins: {
+                    legend: {
+                      position: 'right', 
+                    },
+                  },
+                }}/>
+                </div>
+                <div style={{height:"40px"}}></div>
+                
+                <div className='chart'>
+                <h2>Total Filament Used Per Printer (g)</h2>
+                <Pie data={{
+                  labels: printerNames,
+                  datasets: [
+                    {
+                      data: filamentSum,
+                    },
+                    {
+                      data: [],
+                    }
+                  ],
+                }} options={{
+                  plugins: {
+                    legend: {
+                      position: 'right',
+                    },
+                  },
+                }}/>
+                </div>
+              </div>
+
+            </div>}
+
           </div>}
 
           {selectedPrinter && !menuOpen && <div>

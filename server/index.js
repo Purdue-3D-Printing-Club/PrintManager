@@ -1,32 +1,28 @@
-const PORT = process.env.PORT || 3001; // Use the port specified by Render or default to 3001
+const PORT = process.env.PORT || 3001;
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
+const isLocal = true;
 
-const pool = mysql.createPool({
-    host: "printmanager-server.database.windows.net",// "localhost",
-    user: "andrewtho5942", //|| "root",
-    password:  "E'xpX@L>6?!u;cE",//|| "password",
-    database: "printmanagerdb", //|| "printmanagerdb",
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    ssl: true
+const pool = isLocal ? mysql.createPool({
+    host: "localhost",
+    user: "root",
+    password: "password",
+    database: "printmanagerdb"
+}) : 
+mysql.createPool({
+    host: "34.122.154.87",
+    port: "3306",
+    user: "andrewtho5942",
+    password: "/I$5RH8#oXJZ{?OY",
+    database: "printmanagerdb"
 });
 
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-//pool.connect((err) => {
-//    if (err) {
-//        console.error('Error connecting to MySQL:', err);
-//        return;
-//    }
-//    console.log('Connected to MySQL');
-//});
 
 app.get('/api/get', (req, res) => {
 
@@ -127,10 +123,35 @@ app.get('/api/getgcode', (req, res) => {
     });
 });
 
+app.get('/api/getfreq', (req, res) => {
+    const sqlSelectFreq = `SELECT printerName, COUNT(*) AS cnt, SUM(usage_g) AS sum FROM printjob GROUP BY printerName`;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+
+        //transaction with no isolation level: reads only (transaction ensures consistency)
+        connection.beginTransaction(function (err) {
+            connection.query(sqlSelectFreq, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error accessing printjob freq data");
+                    connection.release();
+                    return;
+                }
+                res.send({ res: result });
+                connection.release();
+            });
+        });
+    });
+});
 
 app.get('/api/getHistory', (req, res) => {
     const printerName = req.query.printerName;
-    const sqlSelectHistory = `SELECT * FROM printJob WHERE printerName = ?`
+    const sqlSelectHistory = `SELECT * FROM printjob WHERE printerName = ?`
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting connection from pool:', err);
@@ -244,4 +265,3 @@ app.put('/api/update', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
-

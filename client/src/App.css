@@ -194,3 +194,31 @@
   overflow:hidden;
   
 }
+
+.chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  width:100%;
+  margin:auto;
+}
+.chart {
+  width:50%;
+  background-color: rgb(240,245,255);
+  padding-left:30px;
+  padding-right:30px;
+  border-radius: 10px;
+  outline: 2px solid black;
+  margin-top:10px;
+}
+
+h2{
+  background-color: white;
+  padding:5px;
+  outline: 2px solid black;
+  border-radius: 5px;
+  margin-top:15px;
+  margin-bottom:0px;
+}
