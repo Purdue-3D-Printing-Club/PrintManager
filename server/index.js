@@ -11,14 +11,15 @@ const pool = isLocal ? mysql.createPool({
     user: "root",
     password: "password",
     database: "printmanagerdb"
-}) : 
-mysql.createPool({
-    host: "34.122.154.87",
-    port: "3306",
-    user: "andrewtho5942",
-    password: "/I$5RH8#oXJZ{?OY",
-    database: "printmanagerdb"
-});
+}) :
+    mysql.createPool({
+        host: "34.122.154.87",
+        port: "3306",
+        user: "andrewtho5942",
+        password: "/I$5RH8#oXJZ{?OY",
+        database: "printmanagerdb",
+        transactionIsolation: 'REPEATABLE READ'
+    });
 
 app.use(cors());
 app.use(express.json());
@@ -36,32 +37,39 @@ app.get('/api/get', (req, res) => {
             res.status(500).send("Error accessing the database");
             return;
         }
-
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.query(sqlSelectPrinters, (errPrinters, resultPrinters) => {
-            if (errPrinters) {
-                console.log(errPrinters);
-                res.status(500).send("Error accessing printer data");
+        connection.beginTransaction((transactionErr) => {
+            if (transactionErr) {
+                console.error('Error starting transaction:', transactionErr);
+                res.status(500).send("Error starting transaction");
                 connection.release();
                 return;
             }
-            connection.query(sqlSelectFilament, (errFilament, resultFilament) => {
-                if (errFilament) {
-                    console.log(errFilament);
-                    res.status(500).send("Error accessing filament data");
+            //transaction with no isolation level: reads only (transaction ensures consistency)
+            connection.query(sqlSelectPrinters, (errPrinters, resultPrinters) => {
+                if (errPrinters) {
+                    console.log(errPrinters);
+                    res.status(500).send("Error accessing printer data");
                     connection.release();
                     return;
                 }
-
-                connection.query(sqlUsingFilament, (errUsingFilament, resultUsingFilament) => {
-                    if (errUsingFilament) {
-                        console.log(errUsingFilament);
-                        res.status(500).send("Error accessing usingFilament data");
+                connection.query(sqlSelectFilament, (errFilament, resultFilament) => {
+                    if (errFilament) {
+                        console.log(errFilament);
+                        res.status(500).send("Error accessing filament data");
                         connection.release();
                         return;
                     }
-                    res.send({ printers: resultPrinters, filament: resultFilament, usingFilament: resultUsingFilament });
-                    connection.release();
+
+                    connection.query(sqlUsingFilament, (errUsingFilament, resultUsingFilament) => {
+                        if (errUsingFilament) {
+                            console.log(errUsingFilament);
+                            res.status(500).send("Error accessing usingFilament data");
+                            connection.release();
+                            return;
+                        }
+                        res.send({ printers: resultPrinters, filament: resultFilament, usingFilament: resultUsingFilament });
+                        connection.release();
+                    });
                 });
             });
         });
@@ -136,6 +144,32 @@ app.get('/api/getfreq', (req, res) => {
         //transaction with no isolation level: reads only (transaction ensures consistency)
         connection.beginTransaction(function (err) {
             connection.query(sqlSelectFreq, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error accessing printjob freq data");
+                    connection.release();
+                    return;
+                }
+                res.send({ res: result });
+                connection.release();
+            });
+        });
+    });
+});
+
+app.get('/api/getdailyprints', (req, res) => {
+    const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt FROM printjob GROUP BY DATE(timeStarted)`;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+
+        //transaction with no isolation level: reads only (transaction ensures consistency)
+        connection.beginTransaction(function (err) {
+            connection.query(sqlSelectDaily, (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error accessing printjob freq data");
