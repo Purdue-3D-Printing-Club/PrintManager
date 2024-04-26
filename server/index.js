@@ -4,7 +4,7 @@ const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
-const isLocal = true;
+const isLocal = false;
 
 const pool = isLocal ? mysql.createPool({
     host: "localhost",
@@ -17,8 +17,7 @@ const pool = isLocal ? mysql.createPool({
         port: "3306",
         user: "andrewtho5942",
         password: "/I$5RH8#oXJZ{?OY",
-        database: "printmanagerdb",
-        transactionIsolation: 'REPEATABLE READ'
+        database: "printmanagerdb"
     });
 
 app.use(cors());
