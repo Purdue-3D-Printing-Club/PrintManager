@@ -1,2 +1,4 @@
 # PrintManager
 This project is a full-stack CRUD web app for CS348 - information systems. A complex UI was not a requirement for the project, but I made one anyway. The project uses what I like to call MERN* stack, (* The M stands for MySQL, not MongoDB). So the front-end (React, Node) uses an Express server to communicate with the MySQL database. The app is a basic 3d-printing manager app, where the user can select filaments and printers to start prints, as well as manage other aspects of a given 3d-printing lab such as printer availability and view the lab statistics/history. 
+
+The database is hosted on google cloud platform and locally on mySQL workshop, the server accesses this data through the mysql2 library on render, and the client/frontend is hosted on netlify, which uses axios to send requests and receive responses from the server.
