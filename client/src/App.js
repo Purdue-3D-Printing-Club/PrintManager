@@ -274,7 +274,7 @@ function App() {
     setShowWarn(false);
     startPrint();
   }
-
+  
   const startPrint = () => {
     try {
       Axios.post(`${serverURL}/api/insert`, {
@@ -490,7 +490,7 @@ function App() {
           handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} />
         <div className='main-content'>
           <div className="header">
-            <h1>CS348 Test Lab - Print Manager</h1>
+            <h1>3DPC - Print Manager</h1>
           </div>
 
           {menuOpen ? (
