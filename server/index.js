@@ -4,7 +4,7 @@ const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
-const isLocal = false;
+const isLocal = true;
 
 const pool = isLocal ? mysql.createPool({
     host: "localhost",

@@ -99,6 +99,7 @@
 
     .selected {
       outline: 5px solid rgb(0, 80, 0);
+      background-color: rgb(118, 152, 255);
     }
 
     .grid-container.menuOpen .filament-card:not(.already-used):hover {

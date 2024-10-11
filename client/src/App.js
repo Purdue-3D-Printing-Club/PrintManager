@@ -5,7 +5,7 @@ import Sidebar from './Sidebar';
 import Menu from './Menu'
 import { Pie } from 'react-chartjs-2';
 import Chart from 'chart.js/auto';
-const isLocal = false;
+const isLocal = true;
 
 function App() {
   const serverURL = isLocal ? "http://localhost:3001" : "https://printmanager-server.onrender.com";
