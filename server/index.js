@@ -4,21 +4,30 @@ const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
-const isLocal = true;
+const isLocal = process.env.ISLOCAL;
 
-const pool = isLocal ? mysql.createPool({
+const pool = isLocal ? mysql.createPool({ // for local development
     host: "localhost",
     user: "root",
     password: "password",
-    database: "printmanagerdb"
+    database: "printmanagerdb2" // was printmanagerdb database
 }) :
-    mysql.createPool({
-        host: "34.122.154.87",
-        port: "3306",
-        user: "andrewtho5942",
-        password: "/I$5RH8#oXJZ{?OY",
-        database: "printmanagerdb"
-    });
+mysql.createPool({ // for the 3DPC lab
+    host: "localhost",
+    user: "root",
+    password: "supervisor",
+    database: "printmanagerdb2" // was printmanagerdb database
+})
+console.log(isLocal)
+
+// Use the following connection for cloud hosting
+// mysql.createPool({
+    //     host: "34.122.154.87",
+    //     port: "3306",
+    //     user: "andrewtho5942",
+    //     password: "/I$5RH8#oXJZ{?OY",
+    //     database: "printmanagerdb" 
+    // });
 
 app.use(cors());
 app.use(express.json());
