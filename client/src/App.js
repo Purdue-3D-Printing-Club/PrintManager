@@ -11,11 +11,14 @@ const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
 function App() {
   const serverURL = isLocal ? "http://localhost:3001" : "https://printmanager-server.onrender.com";
 
+  const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width
+  const [isResizing, setIsResizing] = useState(false);
+
   const [filamentUsage, setFilamentUsage] = useState('');
   const [name, setname] = useState('');
   const [supervisor, setsupervisor] = useState('');
   const [gcode, setgcode] = useState('');
-  const [notes, setnotes] = useState('')
+  const [notes, setnotes] = useState('');
 
   const [selectedPrinter, selectPrinter] = useState(null);
 
@@ -190,9 +193,36 @@ function App() {
     }
   };*/
 
-  
+    // Add mouse event listeners to the document for resizing
+    React.useEffect(() => {
+      const handleMouseMove = (e) => {
+        if (isResizing) {
+          const newWidth = Math.max(175, Math.min(e.clientX, 400));
+          setSidebarWidth(newWidth);
+        }
+      };
 
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
   
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }, [isResizing]);
+
+  const handleMouseDown = (e) => {
+    setIsResizing(true);
+    document.body.style.cursor = 'ew-resize';
+    document.body.classList.add('no-select'); 
+  };
+
+  const handleMouseUp = () => {
+    setIsResizing(false);
+    document.body.style.cursor = 'default';
+    document.body.classList.remove('no-select'); 
+  };
+
   const getStatMsg = () => {
     if(selectedPrinter.status === 'busy' && curJob){
       return("This printer is busy printing: " + truncateString(curJob.gcode, 40))
@@ -533,8 +563,9 @@ function App() {
     return (
       <div className="App">
         <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
-          handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter}/>
-        <div className='main-content'>
+          handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth}/>
+        <div id="resizer" onMouseDown={handleMouseDown} style={{marginLeft:`${sidebarWidth-1}px`}}></div>
+        <div className='main-content' style={{  marginLeft:`${sidebarWidth}px` }}>
           <div style={{ height: selectedPrinter ? '100px' : '65px' }}></div>
 
           <div className="printer-screen">
@@ -605,7 +636,7 @@ function App() {
                 <br/>
                 {
                 (curJob && selectedPrinter.status==='busy') &&
-                <div className='stat-msg' style={{backgroundColor:'white', textAlign:'left'}}>
+                <div className='stat-msg info' style={{backgroundColor:'white', textAlign:'left'}}>
                   &nbsp;Name: {curJob.name}
                   <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
                   &nbsp;Supervisor: {curJob.supervisor_name}
@@ -682,13 +713,13 @@ function App() {
                 
 
               
-              <div className='printer-header'>
-                {selectedPrinter.printerName} - {selectedPrinter.model}
+              <div className='printer-header' style={{ left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 4)`, width: `calc((100% - ${sidebarWidth}px)/2)` }}>
+                              {selectedPrinter.printerName} - {selectedPrinter.model}
               </div>
             </div>}
-            <div className="header">
-                <h1>3DPC - Print Manager</h1>
-              </div>
+            <div className="header" style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
+              <h1>3DPC - Print Manager</h1>
+            </div>
             
           </div>
           {menuOpen ? (

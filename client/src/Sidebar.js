@@ -1,7 +1,7 @@
 import React from 'react';
 import './Sidebar.css';
 
-const Sidebar = ({printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter}) => {
+const Sidebar = ({printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width}) => {
 
 function getStatusColor (printerStatus) {
     switch (printerStatus) {
@@ -13,14 +13,14 @@ function getStatusColor (printerStatus) {
 }
     
     return (
-        <div className="sidebar">
-            <div className="mask">
+        <div className="sidebar" style={{width:`${width}px`}}>
+            <div className="mask" style={{width:`${width}px`}}>
                 <div className="sidebtn" style={menuOpen ? {outline: "4px solid black"} : {}} >{/*onClick={() => handleOpenMenu()}>*/}
                     {/*menuOpen ? "Close Print Menu" : "Open Print Menu"*/}
                     Disabled
                 </div>
             </div>
-            <div className="hdr">
+            <div className="hdr" style={{width:`${width}px`}}>
                 Printer List
             </div>
             <div style={{height: '115px'}}></div>

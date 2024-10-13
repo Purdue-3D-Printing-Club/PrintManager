@@ -3,13 +3,14 @@
     top: 0;
     left: 0;
     bottom: 0;
-    width: 25%;
     background-color: #d2e0ff;
     font-weight: bold;
     overflow-y: auto;
     outline: 3px solid rgb(117, 117, 117);
 }
-
+.sidebar::-webkit-scrollbar {
+    display: none; /* Hides the scrollbar */
+  }
 .sidebtn {
     user-select: none;
     position:relative;
@@ -27,19 +28,15 @@
     .sidebtn:hover {
         background-color: rgb(98, 125, 235);
     }
-    
+
 .mask {
     position: fixed;
-    width:25%;
-    height:60px;
+    height:80px;
     background-color: #d2e0ff;
 }
 
-
-
 .hdr {
     position:fixed;
-    width:25%;
     top:70px;
     height:40px;
     background-color: silver;
