@@ -4,7 +4,7 @@ import Axios from 'axios'
 import Sidebar from './Sidebar';
 import { Pie } from 'react-chartjs-2';
 import Chart from 'chart.js/auto';
-import { ReactComponent as ExitIcon } from './exit.svg';
+import { ReactComponent as ExitIcon } from './images/exit.svg';
 
 const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
 
@@ -67,6 +67,18 @@ function App() {
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
+    const generateDateRange = (startDate, endDate) => {
+      const dateArray = [];
+      let currentDate = new Date(startDate);
+      
+      while (currentDate <= new Date(endDate)) {
+        dateArray.push(formatDate(new Date(currentDate),false));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      return dateArray;
+    };
+    
     console.log('updating printer screen')
     //Update the data that is shown
     if (selectedPrinter !== null) {
@@ -106,36 +118,53 @@ function App() {
               console.log("daily data:");
               console.log(response2.data);
               if (chartRef.current && response2.data) {
-                const ctx = chartRef.current.getContext('2d');
-                const dailyCnt = response2.data.res.map(day => day.cnt);
-                const dates = response2.data.res.map(day => formatDate(day.date, false));
 
-                // Destroy existing chart if it already exists
+                const dailyData = response2.data.res;
+                const startDate = dailyData.length > 0 ? dailyData[0].date : null;
+                const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
+
+                if (startDate && endDate) {
+                  const allDates = generateDateRange(startDate, endDate);
+                  console.log(allDates)
+                  const dataMap = new Map(dailyData.map(day => [formatDate(day.date,false), day.cnt]));
+                  console.log(dataMap)
+                  // Fill in missing dates with 0
+                  const filledDailyCnt = allDates.map(date => dataMap.get(date) || 0);
+                  console.log(filledDailyCnt)
+                  // Destroy existing chart if it already exists
                 if (chartRef.current.chart) {
                   chartRef.current.chart.destroy();
                 }
 
-                // Create new chart instance
-                chartRef.current.chart = new Chart(ctx, {
-                  type: 'line',
-                  data: {
-                    labels: dates,
-                    datasets: [{
-                      label: 'Prints Completed',
-                      data: dailyCnt,
-                      fill: false,
-                      borderColor: 'rgba(75, 192, 192, 1)',
-                      tension: 0.1,
-                    }],
-                  },
-                  options: {
-                    plugins: {
-                      legend: {
-                        position: 'bottom',
+                  // Create the line chart
+                  const ctx = chartRef.current.getContext('2d');
+                  chartRef.current.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                      labels: allDates,
+                      datasets: [{
+                        label: 'Prints Completed',
+                        data: filledDailyCnt,
+                        fill: false,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        tension: 0.1,
+                      }],
+                    },
+                    options: {
+                      plugins: {
+                        legend: {
+                          position: 'bottom',
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: false,
+                          min: 1,
+                        },
                       },
                     },
-                  },
-                });
+                  });
+                }
               }
             });
           } catch (error) {
@@ -160,6 +189,10 @@ function App() {
       console.error("Error deleting printer: ", error);
     }
   };*/
+
+  
+
+  
   const getStatMsg = () => {
     if(selectedPrinter.status === 'busy' && curJob){
       return("This printer is busy printing: " + truncateString(curJob.gcode, 40))
@@ -343,7 +376,7 @@ function App() {
       //close error message if its still open
       setShowErr(false);
 
-      showMsgForDuration(`Print job successfully started!`, 3000);
+      showMsgForDuration(`Print job successfully started!`, 6000);
     };
 
     const handlePrintDoneClick = (statusArg, callback) => {
@@ -572,12 +605,12 @@ function App() {
                 <br/>
                 {
                 (curJob && selectedPrinter.status==='busy') &&
-                <div className='stat-msg'>
-                  <span>Name: {curJob.name}</span><br/>
-                  <hr style={{ border: 'none', borderTop: '2px solid black', width: '100%', margin:'5px' }} />
-                  <span>Supervisor: {curJob.supervisor_name}</span><br/>
-                  <hr style={{ border: 'none', borderTop: '2px solid black', width: '100%', margin:'5px' }} />
-                  <span>Notes: {curJob.notes}</span>
+                <div className='stat-msg' style={{backgroundColor:'white', textAlign:'left'}}>
+                  &nbsp;Name: {curJob.name}
+                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
+                  &nbsp;Supervisor: {curJob.supervisor_name}
+                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
+                  &nbsp;Notes: {curJob.notes}
                 </div>
                 }
 
@@ -645,6 +678,8 @@ function App() {
                   </tbody>
                 </table>
               </div>
+              <div style={{height:'75px'}}/>
+                
 
               
               <div className='printer-header'>

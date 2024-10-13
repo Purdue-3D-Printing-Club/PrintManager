@@ -1,6 +1,30 @@
+
+
+body,html{
+  margin: 0;
+  padding: 0; 
+  overflow-x: hidden !important;
+}
+
+.main-content{
+  margin-left:25%;
+  overflow-x: hidden !important;
+  overflow-y:hidden !important;
+}
+
 .App {
   text-align: center;
   font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+  background-image: url('./images/dudley_overlay.png');
+  background-size: cover;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  width: 100vw;
+  overflow-x: hidden !important;
+}
+html::-webkit-scrollbar {
+  display: none; /* Hides the scrollbar */
 }
 .header {
   font-size: x-large;
@@ -8,8 +32,9 @@
   justify-content: center;
   align-items: center;
   position:fixed;
-  width:75%;
+  width: calc(calc(99.8vw - 25%));
   top:0;
+  left:25.2%;
   background-color: rgba(118, 152, 255,0.6);
   height: 68px;
   outline: 3px solid rgb(117, 117, 117);
@@ -62,7 +87,7 @@
   
   border-radius: 20px;
   border: 4px solid black;
-  font-size: xx-large;
+  font-size: x-large;
   color:black;
   font-weight: bold;
   padding:30px;
@@ -75,8 +100,8 @@
   transform-origin: center;
   height:100px;
   width:100px;
-  top:-27px;
-  right:-27px;
+  top:-29px;
+  right:-29px;
   transition: stroke 0.2s ease; /* Add transition for stroke color */
 }
 
@@ -109,7 +134,7 @@
   padding: 2%;
   font-weight: bold;
   font-size: xx-large;
-  background-color: rgba(225, 225, 40,0.6);
+  background-color: rgba(225, 225, 40,0.7);
   justify-content: center;
   align-items: center;
   margin:15px 20px 20px;
@@ -150,12 +175,13 @@
 
 .stat-msg {
   background-color: #d2e0ff;
-  width:80%;
-  margin-left:10%;
-  word-wrap: break-word; 
-  white-space: normal; 
-  overflow-wrap: anywhere;
+  text-align: left !important;
+  width: 80%; 
+  margin-left: 10%;
+  padding: 10px;
+  display: flex; 
   flex-direction: column;
+  align-items: flex-start;
 }
 
 .filament-msg {
@@ -178,12 +204,13 @@
   padding-left: 15px;
   padding-right: 15px;
   background-color: silver;
-  transition: opacity 0.2s ease; 
+  transition: opacity 0.15s ease; 
+  opacity:80%;
 }
 
 
 .printer-btn:hover, .menu-btn:hover, .printer-btn:focus{
-  opacity:75%;
+  opacity:100%;
   cursor: pointer;
 }
 
@@ -245,7 +272,7 @@
 }
 .chart {
   width:50%;
-  background-color: rgb(240,245,255);
+  background-color: rgb(245,245,245);
   padding-left:30px;
   padding-right:30px;
   border-radius: 10px;
@@ -254,10 +281,10 @@
 }
 
 h2{
-  background-color: rgb(245,245,245);
+  background-color: rgb(255,255,255);
   padding:5px;
   outline: 2px solid black;
   border-radius: 5px;
-  margin: 15px 0px 0px;
+  margin: 10px 0px 10px 5px;
   
 }
