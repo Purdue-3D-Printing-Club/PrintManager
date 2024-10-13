@@ -1,7 +1,7 @@
 import React from 'react';
 import './Sidebar.css';
 
-const Sidebar = ({printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen}) => {
+const Sidebar = ({printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter}) => {
 
 function getStatusColor (printerStatus) {
     switch (printerStatus) {
@@ -15,20 +15,21 @@ function getStatusColor (printerStatus) {
     return (
         <div className="sidebar">
             <div className="mask">
-            <div className="sidebtn">
-                    Sign-in
-                </div>
-                <div className="sidebtn" style={menuOpen ? {outline: "4px solid black"} : {}} onClick={() => handleOpenMenu()}>
-                    {menuOpen ? "Close Print Menu" : "Open Print Menu"}
+                <div className="sidebtn" style={menuOpen ? {outline: "4px solid black"} : {}} >{/*onClick={() => handleOpenMenu()}>*/}
+                    {/*menuOpen ? "Close Print Menu" : "Open Print Menu"*/}
+                    Disabled
                 </div>
             </div>
             <div className="hdr">
                 Printer List
             </div>
-            <div style={{height: '155px'}}></div>
+            <div style={{height: '115px'}}></div>
             <div className='lowerBar'>
+                    <div className={'sidePrinter'}
+                         onClick={() => selectPrinter(null)}
+                         style={{backgroundColor: 'rgb(118, 152, 255)'}}> Clear Selection </div>
                 {printerList.map((printer, index) => {
-                    return <div className={`sidePrinter ${selectedPrinter === printer ? 'selected' : ''}`}
+                    return <div className={`sidePrinter ${(selectedPrinter && (selectedPrinter.printerName === printer.printerName)) ? 'selected' : ''}`}
                          key={index}
                          onClick={() => handlePrinterClick(printer)}
                          style={{backgroundColor: getStatusColor(printer.status)}}

@@ -13,7 +13,7 @@
     user-select: none;
     position:relative;
     padding: 5px;
-    margin: 10px 20px;
+    margin: 15px 20px;
     height:30px;
     font-size: 25px;
     border-radius: 5px;
@@ -22,23 +22,23 @@
     overflow: hidden;
     white-space: nowrap;
     transition: background-color 0.2s;
-}
-
+    }
+    .sidebtn:hover {
+        background-color: rgb(98, 125, 235);
+    }
 .mask {
     position: fixed;
     width:25%;
-    height:120px;
+    height:60px;
     background-color: #d2e0ff;
 }
 
-.sidebtn:hover {
-    background-color: rgb(98, 125, 235);
-}
+
 
 .hdr {
     position:fixed;
     width:25%;
-    top:110px;
+    top:70px;
     height:40px;
     background-color: silver;
     font-size: 30px;
@@ -58,6 +58,7 @@
     margin: 5px 10px;
     border-radius: 5px;
     transition: outline 0.05s;
+    overflow:hidden;
 }
 
 .sidePrinter:not(.selected):hover {

@@ -1,33 +1,34 @@
+require('dotenv').config();
 const PORT = process.env.PORT || 3001;
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
-const isLocal = process.env.ISLOCAL;
+const isLocal = process.env.ISLOCAL == 'true';
 
 const pool = isLocal ? mysql.createPool({ // for local development
     host: "localhost",
     user: "root",
     password: "password",
-    database: "printmanagerdb2" // was printmanagerdb database
+    database: "printmanagerdb2"
 }) :
 mysql.createPool({ // for the 3DPC lab
     host: "localhost",
     user: "root",
     password: "supervisor",
-    database: "printmanagerdb2" // was printmanagerdb database
+    database: "printmanagerdb2"
 })
-console.log(isLocal)
 
 // Use the following connection for cloud hosting
 // mysql.createPool({
     //     host: "34.122.154.87",
     //     port: "3306",
     //     user: "andrewtho5942",
-    //     password: "/I$5RH8#oXJZ{?OY",
+    //     password: process.env.PSWD,
     //     database: "printmanagerdb" 
     // });
+
 
 app.use(cors());
 app.use(express.json());
@@ -36,8 +37,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.get('/api/get', (req, res) => {
 
     const sqlSelectPrinters = "SELECT * FROM printer";
-    const sqlSelectFilament = "SELECT * FROM filament";
-    const sqlUsingFilament = `SELECT filamentIDLoaded FROM printjob WHERE status = "active"`;
+    //const sqlSelectFilament = "SELECT * FROM filament";
+    //const sqlUsingFilament = `SELECT filamentIDLoaded FROM printjob WHERE status = "active"`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -60,7 +61,7 @@ app.get('/api/get', (req, res) => {
                     connection.release();
                     return;
                 }
-                connection.query(sqlSelectFilament, (errFilament, resultFilament) => {
+                /*connection.query(sqlSelectFilament, (errFilament, resultFilament) => {
                     if (errFilament) {
                         console.log(errFilament);
                         res.status(500).send("Error accessing filament data");
@@ -78,7 +79,10 @@ app.get('/api/get', (req, res) => {
                         res.send({ printers: resultPrinters, filament: resultFilament, usingFilament: resultUsingFilament });
                         connection.release();
                     });
-                });
+                });*/
+
+                res.send({ printers: resultPrinters });
+                connection.release();
             });
         });
     });
@@ -111,10 +115,10 @@ app.get('/api/getCurrentJob', (req, res) => {
     });
 });
 
-app.get('/api/getgcode', (req, res) => {
+app.get('/api/getjob', (req, res) => {
 
     const jobID = req.query.jobID;
-    const sqlSelectgcode = `SELECT gcode, filamentIDLoaded, usage_g FROM printjob WHERE jobID = ?`;
+    const sqlSelectJob = `SELECT * FROM printjob WHERE jobID = ?`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -125,10 +129,10 @@ app.get('/api/getgcode', (req, res) => {
 
         //transaction with no isolation level: reads only (transaction ensures consistency)
         connection.beginTransaction(function (err) {
-            connection.query(sqlSelectgcode, [jobID], (err, result) => {
+            connection.query(sqlSelectJob, [jobID], (err, result) => {
                 if (err) {
                     console.log(err);
-                    res.status(500).send("Error accessing printjob gcode data");
+                    res.status(500).send("Error accessing printjob data");
                     connection.release();
                     return;
                 }
@@ -219,7 +223,7 @@ app.get('/api/getHistory', (req, res) => {
 app.post('/api/insert', (req, res) => {
     const b = req.body;
     const dateTime = new Date(b.timeStarted);
-    const sqlInsert = "INSERT INTO printjob (printerName, gcode, usage_g, timeStarted, filamentIDLoaded, status) VALUES (?,?,?,?,?,?)";
+    const sqlInsert = "INSERT INTO printjob (printerName, gcode, usage_g, timeStarted, status, name, supervisor_name, notes) VALUES (?,?,?,?,?,?,?,?)";
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -228,7 +232,7 @@ app.post('/api/insert', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlInsert, [b.printerName, b.gcode, b.usage_g, dateTime, b.filamentIDLoaded, b.status], (err, result) => {
+            connection.query(sqlInsert, [b.printerName, b.gcode, b.usage_g, dateTime,b.status,b.name,b.supervisor,b.notes], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error inserting printer");
@@ -242,7 +246,7 @@ app.post('/api/insert', (req, res) => {
     });
 });
 
-app.delete('/api/deleteFilament/:filamentID', (req, res) => {
+/*app.delete('/api/deleteFilament/:filamentID', (req, res) => {
     const filamentID = req.params.filamentID;
     const sqlDelete = "DELETE FROM filament WHERE filamentID=?";
     pool.getConnection((err, connection) => {
@@ -264,7 +268,7 @@ app.delete('/api/deleteFilament/:filamentID', (req, res) => {
             });
         });
     });
-});
+});*/
 
 app.put('/api/update', (req, res) => {
     const { table, column, val, id } = req.body;
@@ -274,11 +278,11 @@ app.put('/api/update', (req, res) => {
             sqlUpdate = `UPDATE printer SET ${column} = ? WHERE printerName = ?`;
             break;
         case "printjob":
-            sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE jobID = ?`;
+            sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE printerName = ? AND status = "active"`;
             break;
-        case "filament":
+        /*case "filament":
             sqlUpdate = `UPDATE filament SET ${column} = ? WHERE filamentID = ?`;
-            break;
+            break; */
         default:
             return res.status(400).send("Invalid table");
     }
