@@ -223,6 +223,15 @@ function App() {
     document.body.classList.remove('no-select'); 
   };
 
+  function getStatusColor (printerStatus) {
+    switch (printerStatus) {
+        case "available": return "#1ecb60";
+        case "busy": return "rgb(225, 225, 40)";
+        case "broken": return "rgb(246, 97, 97)";
+        default: return "silver";
+    } 
+}
+
   const getStatMsg = () => {
     if(selectedPrinter.status === 'busy' && curJob){
       return("This printer is busy printing: " + truncateString(curJob.gcode, 40))
@@ -563,8 +572,10 @@ function App() {
     return (
       <div className="App">
         <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
-          handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth}/>
+          handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}/>
+       
         <div id="resizer" onMouseDown={handleMouseDown} style={{marginLeft:`${sidebarWidth-1}px`}}></div>
+       
         <div className='main-content' style={{  marginLeft:`${sidebarWidth}px` }}>
           <div style={{ height: selectedPrinter ? '100px' : '65px' }}></div>
 
@@ -672,7 +683,7 @@ function App() {
               </div>}
 
               {selectedPrinter && (selectedPrinter.status === "broken") && <div>
-                <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Printer Fixed</button>
+                <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Fixed</button>
               </div>}
               <div style={{ height: "50px" }}></div>
               <div className="print-history">Print History [{historyList.length}]</div>
@@ -713,7 +724,8 @@ function App() {
                 
 
               
-              <div className='printer-header' style={{ left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 4)`, width: `calc((100% - ${sidebarWidth}px)/2)` }}>
+              <div className='printer-header' style={{ left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 4)`, width: `calc((100% - ${sidebarWidth}px)/2)`,
+                   backgroundColor: `${getStatusColor(selectedPrinter.status)}`}}>
                               {selectedPrinter.printerName} - {selectedPrinter.model}
               </div>
             </div>}

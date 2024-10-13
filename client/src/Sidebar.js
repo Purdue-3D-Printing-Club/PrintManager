@@ -1,16 +1,8 @@
 import React from 'react';
 import './Sidebar.css';
 
-const Sidebar = ({printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width}) => {
+const Sidebar = ({printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width, getStatusColor}) => {
 
-function getStatusColor (printerStatus) {
-    switch (printerStatus) {
-        case "available": return "#1ecb60";
-        case "busy": return "rgb(225, 225, 40)";
-        case "broken": return "rgb(246, 97, 97)";
-        default: return "silver";
-    } 
-}
     
     return (
         <div className="sidebar" style={{width:`${width}px`}}>

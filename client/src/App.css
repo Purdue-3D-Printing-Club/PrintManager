@@ -151,7 +151,7 @@ html::-webkit-scrollbar {
 .printer-header {
   position: fixed;
   background-color:silver;
-  height:40px;
+  height:35px;
   font-size:xx-large;
   font-weight: bold;
   display: flex;
