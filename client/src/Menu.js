@@ -2,7 +2,7 @@ import React from 'react';
 import './Menu.css';
 
 function Menu({ menuOpen, filamentList, handleFilamentClick, selectedFilament, selectedPrinter,
-    handlegcode, gcode, handleFilamentUsage, filamentUsage, handleStartPrintClick, usingFilament}) {
+    handlefiles, files, handleFilamentUsage, filamentUsage, handleStartPrintClick, usingFilament}) {
 
     return (
         <div className='menu'>
@@ -33,7 +33,7 @@ function Menu({ menuOpen, filamentList, handleFilamentClick, selectedFilament, s
                 <div style={{ height: '100px' }}></div>
                 <div className='filament-header'>Filament List</div>
                 <div className='printForm'>
-                    <div className='topForm'> Gcode: <input value={gcode} onChange={handlegcode} style={{ 'fontSize': 'large' }}></input></div>
+                    <div className='topForm'> Files: <input value={files} onChange={handlefiles} style={{ 'fontSize': 'large' }}></input></div>
                     <div className='botForm'> Filament Usage: <input value={filamentUsage} type="text" onChange={handleFilamentUsage}
                         style={{ width: '40px', 'fontSize': 'large' }}></input> g</div>
                 </div>

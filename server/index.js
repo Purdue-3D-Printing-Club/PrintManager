@@ -169,6 +169,107 @@ app.get('/api/getfreq', (req, res) => {
     });
 });
 
+app.get('/api/getsupervisordata', (req, res) => {
+    //const sqlSelectSupervisor = `SELECT supervisorName, COUNT(*) AS cnt FROM printjob GROUP BY supervisorName HAVING supervisorName IS NOT NULL`;
+    const sqlSelectSupervisor = `
+    (SELECT supervisorName, COUNT(*) AS cnt, SUM(usage_g) AS sum 
+    FROM printjob 
+    WHERE name IS NOT NULL 
+    GROUP BY supervisorName 
+    HAVING supervisorName IS NOT NULL
+    ORDER BY cnt DESC 
+    LIMIT 15)
+  
+    UNION ALL
+  
+    (SELECT 'Other' AS name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
+    FROM printjob 
+    WHERE name IS NOT NULL 
+    AND name NOT IN (
+      SELECT name 
+      FROM (SELECT supervisorName
+        FROM printjob 
+        WHERE name IS NOT NULL 
+        GROUP BY supervisorName 
+        HAVING supervisorName IS NOT NULL
+        ORDER BY COUNT(*) DESC 
+        LIMIT 15) AS top_names
+    ))
+  `;
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+
+        //transaction with no isolation level: reads only (transaction ensures consistency)
+        connection.beginTransaction(function (err) {
+            connection.query(sqlSelectSupervisor, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error accessing printjob supervisor data");
+                    connection.release();
+                    return;
+                }
+                res.send({ res: result });
+                connection.release();
+            });
+        });
+    });
+});
+
+app.get('/api/getfilamentdata', (req, res) => {
+
+const sqlSelectFilamentData = `
+  (SELECT name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
+  FROM printjob 
+  WHERE name IS NOT NULL 
+  GROUP BY name 
+  ORDER BY sum DESC 
+  LIMIT 15)
+
+  UNION ALL
+
+  (SELECT 'Other' AS name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
+  FROM printjob 
+  WHERE name IS NOT NULL 
+  AND name NOT IN (
+    SELECT name 
+    FROM (
+      SELECT name 
+      FROM printjob 
+      WHERE name IS NOT NULL 
+      GROUP BY name 
+      ORDER BY SUM(usage_g) DESC 
+      LIMIT 15
+    ) AS top_names
+  ))
+`;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+
+        //transaction with no isolation level: reads only (transaction ensures consistency)
+        connection.beginTransaction(function (err) {
+            connection.query(sqlSelectFilamentData, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error accessing printjob supervisor data");
+                    connection.release();
+                    return;
+                }
+                res.send({ res: result });
+                connection.release();
+            });
+        });
+    });
+});
+
 app.get('/api/getdailyprints', (req, res) => {
     const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt FROM printjob GROUP BY DATE(timeStarted)`;
 
@@ -209,7 +310,7 @@ app.get('/api/getHistory', (req, res) => {
             connection.query(sqlSelectHistory, [printerName], (errHistory, resultHistory) => {
                 if (errHistory) {
                     console.log(errHistory);
-                    res.status(500).send("Error accessing printjob gcode data");
+                    res.status(500).send("Error accessing printjob files data");
                     connection.release();
                     return;
                 }
@@ -222,8 +323,10 @@ app.get('/api/getHistory', (req, res) => {
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;
+    // console.log('inserting');
+    // console.log(b);
     const dateTime = new Date(b.timeStarted);
-    const sqlInsert = "INSERT INTO printjob (printerName, gcode, usage_g, timeStarted, status, name, supervisor_name, notes) VALUES (?,?,?,?,?,?,?,?)";
+    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted, status, name, supervisorName, notes, partNames, email) VALUES (?,?,?,?,?,?,?,?,?,?)";
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -232,7 +335,7 @@ app.post('/api/insert', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlInsert, [b.printerName, b.gcode, b.usage_g, dateTime,b.status,b.name,b.supervisor,b.notes], (err, result) => {
+            connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime,b.status,b.name,b.supervisor,b.notes,b.partNames,b.email], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error inserting printer");

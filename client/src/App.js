@@ -16,9 +16,11 @@ function App() {
 
   const [filamentUsage, setFilamentUsage] = useState('');
   const [name, setname] = useState('');
+  const [email, setemail] = useState('');
   const [supervisor, setsupervisor] = useState('');
-  const [gcode, setgcode] = useState('');
+  const [files, setfiles] = useState('');
   const [notes, setnotes] = useState('');
+  const [partNames, setpartnames] = useState('');
 
   const [selectedPrinter, selectPrinter] = useState(null);
 
@@ -40,9 +42,22 @@ function App() {
   //summary page data
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
+  const [supervisorData, setSupervisorData] = useState([]);
+  const [nameFilamentData, setNameFilamentData] = useState([]);
   const [filamentSum, setFilamentSum] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const chartRef = useRef(null);
+
+  const clearFields = () => {
+    setname('');
+    setFilamentUsage('');
+    setemail('');
+    setsupervisor('');
+    setfiles('');
+    setnotes('');
+    setpartnames('');
+  }
+
 
   //fill data arrays on the initial render
   useEffect(() => {
@@ -91,9 +106,9 @@ function App() {
         if(selectedPrinter.currentJob !== "" &&  selectedPrinter.currentJob !== null) {
           //get the current job and store it
           Axios.get(`${serverURL}/api/getjob?jobID=${selectedPrinter.currentJob}`).then((response) => {
-            console.log('got current job')
-            console.log(response.data.res)
-            setCurJob(response.data.res[0])
+            console.log('got current job');
+            console.log(response.data.res);
+            setCurJob(response.data.res[0]);
           });
         } else {
           setCurJob(null)
@@ -117,59 +132,71 @@ function App() {
           setFilamentSum(sortedData.map(printer => printer.sum));
 
           try {
-            Axios.get(`${serverURL}/api/getdailyprints`).then((response2) => {
-              console.log("daily data:");
-              console.log(response2.data);
-              if (chartRef.current && response2.data) {
+            Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
+              console.log('supervisor data:')
+              const sortedData = response.data.res.sort((a, b) => b.cnt - a.cnt);
+              setSupervisorData(sortedData);
+              console.log(sortedData)
+              Axios.get(`${serverURL}/api/getfilamentdata`).then((response) => {
+                console.log('filament name data:')
+                setNameFilamentData(response.data.res);
+                console.log(response.data.res)
+  
+              Axios.get(`${serverURL}/api/getdailyprints`).then((response2) => {
+                console.log("daily data:");
+                console.log(response2.data);
+                if (chartRef.current && response2.data) {
 
-                const dailyData = response2.data.res;
-                const startDate = dailyData.length > 0 ? dailyData[0].date : null;
-                const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
+                  const dailyData = response2.data.res;
+                  const startDate = dailyData.length > 0 ? dailyData[0].date : null;
+                  const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
 
-                if (startDate && endDate) {
-                  const allDates = generateDateRange(startDate, endDate);
-                  console.log(allDates)
-                  const dataMap = new Map(dailyData.map(day => [formatDate(day.date,false), day.cnt]));
-                  console.log(dataMap)
-                  // Fill in missing dates with 0
-                  const filledDailyCnt = allDates.map(date => dataMap.get(date) || 0);
-                  console.log(filledDailyCnt)
-                  // Destroy existing chart if it already exists
-                if (chartRef.current.chart) {
-                  chartRef.current.chart.destroy();
-                }
+                  if (startDate && endDate) {
+                    const allDates = generateDateRange(startDate, endDate);
+                    console.log(allDates)
+                    const dataMap = new Map(dailyData.map(day => [formatDate(day.date,false), day.cnt]));
+                    console.log(dataMap)
+                    // Fill in missing dates with 0
+                    const filledDailyCnt = allDates.map(date => dataMap.get(date) || 0);
+                    console.log(filledDailyCnt)
+                    // Destroy existing chart if it already exists
+                  if (chartRef.current.chart) {
+                    chartRef.current.chart.destroy();
+                  }
 
-                  // Create the line chart
-                  const ctx = chartRef.current.getContext('2d');
-                  chartRef.current.chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                      labels: allDates,
-                      datasets: [{
-                        label: 'Prints Completed',
-                        data: filledDailyCnt,
-                        fill: false,
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        tension: 0.1,
-                      }],
-                    },
-                    options: {
-                      plugins: {
-                        legend: {
-                          position: 'bottom',
+                    // Create the line chart
+                    const ctx = chartRef.current.getContext('2d');
+                    chartRef.current.chart = new Chart(ctx, {
+                      type: 'line',
+                      data: {
+                        labels: allDates,
+                        datasets: [{
+                          label: 'Prints Completed',
+                          data: filledDailyCnt,
+                          fill: false,
+                          borderColor: 'rgba(75, 192, 192, 1)',
+                          tension: 0.1,
+                        }],
+                      },
+                      options: {
+                        plugins: {
+                          legend: {
+                            position: 'bottom',
+                          },
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: false,
+                            min: 1,
+                          },
                         },
                       },
-                      scales: {
-                        y: {
-                          beginAtZero: false,
-                          min: 1,
-                        },
-                      },
-                    },
-                  });
+                    });
+                  }
                 }
-              }
+              });
             });
+          });
           } catch (error) {
             console.error("Error getting daily stats: ", error);
           }
@@ -234,7 +261,7 @@ function App() {
 
   const getStatMsg = () => {
     if(selectedPrinter.status === 'busy' && curJob){
-      return("This printer is busy printing: " + truncateString(curJob.gcode, 40))
+      return("This printer is busy printing: " + truncateString(curJob.partNames, 80))
     } else if (selectedPrinter.status === 'available'){
       return("This printer is available!")
     }else if(selectedPrinter.status === 'broken') {
@@ -281,6 +308,7 @@ function App() {
   }
 
   const truncateString = (str, maxLen) => {
+    if(str === null) return('')
     if (str.length > maxLen-3) {
       return str.substring(0, maxLen-3) + '...';
     }
@@ -328,20 +356,26 @@ function App() {
   };
 
   const handleStartPrintClick = () => {
-      if(selectedPrinter !== null && !showErr && !showMsg && !showWarn) {
+      if(selectedPrinter !== null) {
         //check for empty values
       if (name.length === 0) {
         console.log("startPrintClick: err: no name");
         showErrForDuration("No Name! Print not started.", 6000);
-      }  else if (supervisor.length === 0) {
+      } else if (email.length === 0) {
+        console.log("startPrintClick: err: no email");
+        showErrForDuration("No Email! Print not started.", 6000);
+      } else if (supervisor.length === 0) {
         console.log("startPrintClick: err: no supervisor");
         showErrForDuration("No Supervisor! Print not started.", 6000);
-      } else if (gcode.length === 0) {
-        console.log("startPrintClick: err: no gcode");
-        showErrForDuration("No GCODE! Print not started.", 6000);
+      } else if (partNames.length === 0) {
+        console.log("startPrintClick: err: no partNames");
+        showErrForDuration("No Part Names! Print not started.", 6000);
+      } else if (files.length === 0) {
+        console.log("startPrintClick: err: no files");
+        showErrForDuration("No Files! Print not started.", 6000);
       } else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
-        showErrForDuration("No filament usage! Print not started.", 6000);
+        showErrForDuration("No Filament Usage! Print not started.", 6000);
       } else {
         //all fields have valid values, insert the print to the "printJob" table
         console.log("startPrintClick: all fields valid, inserting to printJob");
@@ -359,13 +393,15 @@ function App() {
     try {
       Axios.post(`${serverURL}/api/insert`, {
         printerName: selectedPrinter.printerName,
-        gcode: truncateString(gcode,  256),
+        files: truncateString(files,  256),
         usage_g: Math.abs(filamentUsage) > 2147483647 ? 2147483647 : filamentUsage,
         timeStarted: new Date().toISOString(),
         status: "active",
         name: truncateString(name, 64),
         supervisor: truncateString(supervisor, 64),
-        notes: truncateString(notes,512)
+        notes: truncateString(notes, 256),
+        partNames:truncateString(partNames, 256),
+        email:truncateString(email, 64)
       }).then(() => {
         setTimeout(() => {
           //update the current job of the printer that was selected for the print
@@ -402,11 +438,7 @@ function App() {
       }
 
       //lastly, clear the fields of the text input and filament selected
-      setFilamentUsage('');
-      setname('');
-      setsupervisor('');
-      setgcode('');
-      setnotes('');
+      clearFields();
       console.log('selectedPrinter');
 
   
@@ -457,7 +489,6 @@ function App() {
         console.error("Error updating printer: ", error);
       }
     };
-
     const showErrForDuration = (msg, duration) => {
       setShowWarn(false);
       setShowMsg(false);
@@ -512,32 +543,77 @@ function App() {
       }
     };
 
-
-    const handlegcode = (e) => {
-      const gcode = e.target.value;
-      setgcode(gcode);
-      console.log("set gcode to " + gcode);
+    const fillFromSheets = (e) => {
+      try{
+        const url = 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec';
+        fetch(url).then(response => response.json()).then(data => {
+          if(data !== null && data.length > 0) {
+            console.log('fetched form data: ');
+            console.log(data)
+            showMsgForDuration('Form Filled Successfully!', 6000);
+            
+            let formData = data[0];
+            // fill the form's fields with the data we just pulled...
+            setname(formData[1]);
+            setemail(formData[2]);
+            //setsupervisor() no supervisor in the google form rn
+            setfiles(formData[4]);
+            setnotes(formData[8]);
+            setpartnames(formData[9]);
+          } else {
+            showErrForDuration('Error Filling Form...', 6000);
+          }
+        });        
+      } catch(e) {
+        showErrForDuration('Error Filling Form...', 6000);
+      }
     };
+
+    const handlefiles = (e) => {
+      const files = e.target.value;
+      setfiles(files);
+      console.log("set files to " + files);
+    };
+
     const handlenotes = (e) => {
       const notes = e.target.value;
       setnotes(notes);
       console.log("set notes to " + notes);
     };
+
     const handleFileUpload = (e) => {
-      const file = e.target.files[0];
+      let filesList = Array.from(e.target.files).map((file)=>{
+        return (file.name)
+      })
+      const file = filesList.join(', ');
       if (file) {
-          setgcode(file.name);
+          setfiles(file);
+          console.log("set file to: "+file)
       }
   };
+
     const handlename = (e) => {
       const name = e.target.value;
       setname(name);
       console.log("set name to " + name);
     };
+
+    const handleemail = (e) => {
+      const email = e.target.value;
+      setemail(email);
+      console.log("set email to " + email);
+    };
+
     const handlesupervisor = (e) => {
       const supervisor = e.target.value;
       setsupervisor(supervisor);
       console.log("set supervisor to " + supervisor);
+    };
+
+    const handlePartNames = (e) => {
+      const names = e.target.value;
+      setpartnames(names);
+      console.log("set partNames to " + names);
     };
 
     const handleFilamentUsage = (e) => {
@@ -555,7 +631,6 @@ function App() {
       }
 
       console.log("Set menuOpen to: " + menuOpen);
-      
     };
 
     function formatDate(isoString, time) {
@@ -633,6 +708,50 @@ function App() {
                     <h2 style={{ marginBottom: "10px" }}>Total Prints By Day</h2>
                     <canvas ref={chartRef} width="400" height="300"></canvas>
                   </div>
+
+                  <div style={{ height: '40px' }} />
+
+                  <div className='chart'>
+                    <h2>Number of Prints By Supervisor</h2>
+                    <Pie data={{
+                      labels: supervisorData.map((entry)=>{return(entry.supervisorName)}),
+                      datasets: [
+                        {
+                          data: supervisorData.map((entry)=>{return(entry.cnt)}),
+                        },
+                        {
+                          data: [],
+                        }
+                      ],
+                    }} options={{
+                      plugins: {
+                        legend: {
+                          position: 'right',
+                        },
+                      },
+                    }} />
+                  </div>
+
+                  <div className='chart'>
+                    <h2>Filament Used by Person</h2>
+                    <Pie data={{
+                      labels: nameFilamentData.map((entry)=>{return(entry.name)}),
+                      datasets: [
+                        {
+                          data: nameFilamentData.map((entry)=>{return(entry.sum)}),
+                        },
+                        {
+                          data: [],
+                        }
+                      ],
+                    }} options={{
+                      plugins: {
+                        legend: {
+                          position: 'right',
+                        },
+                      },
+                    }} />
+                  </div>
                 </div>
                 <div style={{ height: '80px' }} />
               </div>}
@@ -650,7 +769,11 @@ function App() {
                 <div className='stat-msg info' style={{backgroundColor:'white', textAlign:'left'}}>
                   &nbsp;Name: {curJob.name}
                   <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
-                  &nbsp;Supervisor: {curJob.supervisor_name}
+                  &nbsp;Email: {curJob.email}
+                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
+                  &nbsp;Supervisor: {curJob.supervisorName}
+                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
+                  &nbsp;Files: {curJob.files}
                   <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
                   &nbsp;Notes: {curJob.notes}
                 </div>
@@ -661,16 +784,27 @@ function App() {
                 <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
                 <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
                 <button onClick={() => { printerBroke() }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
+                <br/>
+                {
+                  curJob && curJob.files.split(',').map((link, index)=>{
+                    return(<button className='printer-btn' key={index} onClick={() => window.open(link.trim(), "_blank")}>
+                      Download File {index + 1}
+                    </button>)
+                  })
+                }
               </div>}
               
               {selectedPrinter && (selectedPrinter.status === "available") && <div>
                 <div className='printForm'>
-                    <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                    <div> Supervisor:&nbsp; <input value={supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                    <div> Gcode:&nbsp;
-                    <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
-                      <button tabIndex="-1" className="file-upload" onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small'  }}>browse</button>
-                      <input value={gcode} onChange={handlegcode} style={{ width: '300px', 'fontSize': 'large' }}></input>
+                    <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom:'5px', cursor:'pointer'  }}>Autofill From Latest Submission...</button>
+                    <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                    <div> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>                    
+                    <div> Supervisor:&nbsp;&nbsp; <input value={supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                    <div> Part Names:&nbsp; <input value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                    <div> Files:&nbsp;&nbsp;
+                    <input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
+                      <button tabIndex="-1" className="file-upload" onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight:'2px',marginLeft:'4px'  }}>browse...</button>
+                      <input value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
                     </div>
                     <div> Filament Usage: <input value={filamentUsage} type="text" onChange={handleFilamentUsage} style={{ width: '40px', 'fontSize': 'large' }}></input> g</div>
                     <div style={{marginTop:'10px'}}> -- Notes (Optional) -- 
@@ -680,6 +814,7 @@ function App() {
                 <br/>
                 <button  onClick={() => { handleStartPrintClick() }} style={{backgroundColor: "rgba(30, 203, 96,0.8)"}}  className='printer-btn'>Start Print</button>
                 <button  onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
+                <button  onClick={() => { clearFields() }} style={{backgroundColor: 'rgba(118, 152, 255,0.8)'}} className='printer-btn'>Clear Form</button>
               </div>}
 
               {selectedPrinter && (selectedPrinter.status === "broken") && <div>
@@ -691,12 +826,14 @@ function App() {
                 <table className='history-wrapper'>
                   <thead>
                     <tr>
-                      <th>GCODE Name</th>
+                      <th>Parts</th>
                       <th>Name</th>
+                      <th>Email</th>
+                      <th>Supervisor</th>
                       <th>Time Started</th>
-                      {/* <th>Filament Loaded</th> */}
                       <th>Used (g)</th>
                       <th>Status</th>
+                      <th>Files</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -709,12 +846,14 @@ function App() {
                       }
 
                       return <tr style={{ backgroundColor: color }} key={job.jobID}>
-                        <td>{truncateString(job.gcode,40)}</td>
+                        <td>{truncateString(job.partNames,40)}</td>
                         <td>{truncateString(job.name,20)}</td>
+                        <td>{truncateString(job.email,20)}</td>
+                        <td>{truncateString(job.supervisorName,20)}</td>
                         <td>{formatDate(job.timeStarted, true)}</td>
-                        {/* <td>{job.filamentIDLoaded}</td> */}
                         <td>{job.usage_g}</td>
                         <td>{job.status}</td>
+                        <td>{truncateString(job.files,256)}</td>
                       </tr>
                     })}
                   </tbody>
@@ -740,7 +879,7 @@ function App() {
               //<Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament}
                // handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}
                // handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
-               // handlegcode={handlegcode} gcode={gcode} handleStartPrintClick={handleStartPrintClick}
+               // handlefiles={handlefiles} files={files} handleStartPrintClick={handleStartPrintClick}
                // usingFilament={usingFilament}></Menu>
                 }
             </div>
@@ -750,7 +889,7 @@ function App() {
                 {/* <Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament}
                   handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}
                   handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
-                  handlegcode={handlegcode} gcode={gcode} handleStartPrintClick={handleStartPrintClick}
+                  handlefiles={handlefiles} files={files} handleStartPrintClick={handleStartPrintClick}
                   usingFilament={usingFilament}></Menu>
               */}
               </div> 

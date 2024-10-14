@@ -75,7 +75,7 @@ html::-webkit-scrollbar {
  margin-top:5px;
  flex-direction: column;
  position:relative;
- background-color: rgb(227, 227, 227);
+ background-color: rgb(222, 222, 222);
  font-size: x-large;
  padding:10px 30px 10px;
  border-radius: 10px;
@@ -210,7 +210,7 @@ html::-webkit-scrollbar {
   font-size:x-large;
   border-radius: 10px;
   padding:10px;
-  outline: 2px solid black;
+  outline: 1px solid black;
   margin-right: 10px;
   margin-top: 10px;
   display:inline-flex;
