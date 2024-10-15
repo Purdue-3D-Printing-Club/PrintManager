@@ -309,6 +309,13 @@ h2{
   margin: 10px 0px 10px 5px;
   
 }
+.supervisor-input{
+  transition: opacity 0.2s ease;
+}
+.supervisor-input.disabled{
+    opacity: 0.4;
+    pointer-events: none;
+}
 
 /* Hide the default checkbox */
 .checkbox-container input[type="checkbox"] {
