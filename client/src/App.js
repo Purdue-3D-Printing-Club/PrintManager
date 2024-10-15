@@ -49,6 +49,8 @@ function App() {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const chartRef = useRef(null);
 
+  const popupTime = 8000;
+
   const clearFields = () => {
     setname('');
     setFilamentUsage('');
@@ -366,25 +368,25 @@ function App() {
         //check for empty values
       if (name.length === 0) {
         console.log("startPrintClick: err: no name");
-        showErrForDuration("No Name! Print not started.", 6000);
+        showErrForDuration("No Name! Print not started.", popupTime);
       } else if (email.length === 0) {
         console.log("startPrintClick: err: no email");
-        showErrForDuration("No Email! Print not started.", 6000);
+        showErrForDuration("No Email! Print not started.", popupTime);
       } else if (supervisor.length === 0) {
         console.log("startPrintClick: err: no supervisor");
-        showErrForDuration("No Supervisor! Print not started.", 6000);
+        showErrForDuration("No Supervisor! Print not started.", popupTime);
       } else if (partNames.length === 0) {
         console.log("startPrintClick: err: no partNames");
-        showErrForDuration("No Part Names! Print not started.", 6000);
+        showErrForDuration("No Part Names! Print not started.", popupTime);
       } else if (files.length === 0) {
         console.log("startPrintClick: err: no files");
-        showErrForDuration("No Files! Print not started.", 6000);
+        showErrForDuration("No Files! Print not started.", popupTime);
       } else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
-        showErrForDuration("No Filament Usage! Print not started.", 6000);
+        showErrForDuration("No Filament Usage! Print not started.", popupTime);
       } else if (filamentUsage > 1000) {
         console.log("startPrintClick: warn: filamentUsage > 1000g");
-        showWarningForDuration("Warning: Filament Usage Exceeds 1kg", 6000);
+        showWarningForDuration("Warning: Filament Usage Exceeds 1kg", popupTime);
       } else {
         //all fields have valid values, insert the print to the "printJob" table
         console.log("startPrintClick: all fields valid, inserting to printJob");
@@ -456,7 +458,7 @@ function App() {
       //close error message if its still open
       setShowErr(false);
 
-      showMsgForDuration(`Print job successfully started!`, 6000);
+      showMsgForDuration(`Print job successfully started!`, popupTime);
     };
 
     const handlePrintDoneClick = (statusArg, callback) => {
@@ -503,15 +505,16 @@ function App() {
                  "you complete your request. If you have questions regarding your print please contact " +
                  "us at print3d@purdue.edu. \n\n\nThank you, 3DPC Supervisor"
                 }).then(() => {
-                  showMsgForDuration('Email Sent Successfully', 6000);
+                  showMsgForDuration('Email Sent Successfully', popupTime);
                   console.log('Email sent successfully');
                 });
                 
               } catch (e) {
-                showErrForDuration('Error Sending Email', 6000);
+                showErrForDuration('Error Sending Email', popupTime);
                 console.log('Error sending email:', e);
               }
-  
+            } else {
+              showErrForDuration('No Email Sent. (Temp. Disabled)', popupTime);
             }
             
             selectedPrinter.status='available'
@@ -588,7 +591,7 @@ function App() {
           if(data !== null && data.length > 0) {
             console.log('fetched form data: ');
             console.log(data)
-            showMsgForDuration('Form Filled Successfully!', 6000);
+            showMsgForDuration('Form Filled Successfully!', popupTime);
             
             let formData = data[0];
             // fill the form's fields with the data we just pulled...
@@ -599,11 +602,11 @@ function App() {
             setnotes(formData[8]);
             setpartnames(formData[9]);
           } else {
-            showErrForDuration('Error Filling Form...', 6000);
+            showErrForDuration('Error Filling Form...', popupTime);
           }
         });        
       } catch(e) {
-        showErrForDuration('Error Filling Form...', 6000);
+        showErrForDuration('Error Filling Form...', popupTime);
       }
     };
 
