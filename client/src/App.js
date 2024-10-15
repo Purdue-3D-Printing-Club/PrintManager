@@ -21,6 +21,7 @@ function App() {
   const [files, setfiles] = useState('');
   const [notes, setnotes] = useState('');
   const [partNames, setpartnames] = useState('');
+  const [sendEmail, setSendEmail] = useState(true);
 
   const [selectedPrinter, selectPrinter] = useState(null);
 
@@ -250,6 +251,11 @@ function App() {
     document.body.classList.remove('no-select'); 
   };
 
+  const handleSendEmailChange = () => {
+    setSendEmail(!sendEmail);
+    console.log('changed sendEmail to '+sendEmail);
+  }
+
   function getStatusColor (printerStatus) {
     switch (printerStatus) {
         case "available": return "#1ecb60";
@@ -376,6 +382,9 @@ function App() {
       } else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
         showErrForDuration("No Filament Usage! Print not started.", 6000);
+      } else if (filamentUsage > 1000) {
+        console.log("startPrintClick: warn: filamentUsage > 1000g");
+        showWarningForDuration("Warning: Filament Usage Exceeds 1kg", 6000);
       } else {
         //all fields have valid values, insert the print to the "printJob" table
         console.log("startPrintClick: all fields valid, inserting to printJob");
@@ -393,7 +402,7 @@ function App() {
     try {
       Axios.post(`${serverURL}/api/insert`, {
         printerName: selectedPrinter.printerName,
-        files: truncateString(files,  256),
+        files: truncateString(files,  512),
         usage_g: Math.abs(filamentUsage) > 2147483647 ? 2147483647 : filamentUsage,
         timeStarted: new Date().toISOString(),
         status: "active",
@@ -476,10 +485,38 @@ function App() {
             });
             setPrinterList(updatedPrinterList);
             console.log(updatedPrinterList)
-      
+            
+            //Email the user and set popup message
+            if(false){//sendEmail) {
+              let success = statusArg === 'available'
+              try {
+                Axios.post(`${serverURL}/api/send-email`, {
+                to: curJob.email,
+                subject: "3DPC: Print " + (success ? 'Completed' : 'Failed'),
+                text: success ? "Your 3D print of parts [" + curJob.partNames + "] has been completed. It has been dropped off at the " +
+                 "1st floor of Lambertus Hall room 1234 in the 3DPC drop-box, for more information " +
+                 "on where it is located. If you have questions regarding your print please contact " +
+                 "us at print3d@purdue.edu.\n\n\nThank you, 3DPC Supervisor"
+                 :
+                "Your 3D print of parts [" + curJob.partNames + "] has not been completed. Please come back into the lab ( Lambertus Hall " +
+                 "room 1234) to figure out the issues with the print and possible solutions we can do " +
+                 "you complete your request. If you have questions regarding your print please contact " +
+                 "us at print3d@purdue.edu. \n\n\nThank you, 3DPC Supervisor"
+                }).then(() => {
+                  showMsgForDuration('Email Sent Successfully', 6000);
+                  console.log('Email sent successfully');
+                });
+                
+              } catch (e) {
+                showErrForDuration('Error Sending Email', 6000);
+                console.log('Error sending email:', e);
+              }
+  
+            }
+            
             selectedPrinter.status='available'
             setCurJob(null)
-            //selectPrinter(null);
+
             console.log("Print finished, done updating the database.");
 
             });
@@ -489,6 +526,7 @@ function App() {
         console.error("Error updating printer: ", error);
       }
     };
+
     const showErrForDuration = (msg, duration) => {
       setShowWarn(false);
       setShowMsg(false);
@@ -507,17 +545,17 @@ function App() {
       setShowErr(false);
     }
     
-    // const showWarningForDuration = (msg, duration) => {
-    //   setShowErr(false);
-    //   setShowMsg(false);
-    //   if (!showWarn) {
-    //     setMessage(msg);
-    //     setShowWarn(true);
-    //     setTimeout(() => {
-    //       setShowWarn(false);
-    //     }, duration);
-    //   }
-    // };
+    const showWarningForDuration = (msg, duration) => {
+      setShowErr(false);
+      setShowMsg(false);
+      if (!showWarn) {
+        setMessage(msg);
+        setShowWarn(true);
+        setTimeout(() => {
+          setShowWarn(false);
+        }, duration);
+      }
+    };
 
     const showMsgForDuration = (msg, duration) => {
       setShowWarn(false);
@@ -556,7 +594,7 @@ function App() {
             // fill the form's fields with the data we just pulled...
             setname(formData[1]);
             setemail(formData[2]);
-            //setsupervisor() no supervisor in the google form rn
+            setsupervisor(formData[10])
             setfiles(formData[4]);
             setnotes(formData[8]);
             setpartnames(formData[9]);
@@ -766,20 +804,28 @@ function App() {
                 <br/>
                 {
                 (curJob && selectedPrinter.status==='busy') &&
-                <div className='stat-msg info' style={{backgroundColor:'white', textAlign:'left'}}>
-                  &nbsp;Name: {curJob.name}
-                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
-                  &nbsp;Email: {curJob.email}
-                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
-                  &nbsp;Supervisor: {curJob.supervisorName}
-                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
-                  &nbsp;Files: {curJob.files}
-                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
-                  &nbsp;Notes: {curJob.notes}
-                </div>
+                <div>
+                  <div className='stat-msg info' style={{backgroundColor:'white', textAlign:'left'}}>
+                    &nbsp;Name: {curJob.name}
+                    <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
+                    &nbsp;Email: {curJob.email}
+                    <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
+                    &nbsp;Supervisor: {curJob.supervisorName}
+                    <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
+                    &nbsp;Files: {curJob.files}
+                    <hr style={{ borderTop: '2px solid black', width: '100%', marginTop:'5px' }} />
+                    &nbsp;Notes: {curJob.notes}
+                  </div>
+                  {/* Checkbox to toggle email sending */}
+                  <label
+                    className={`checkbox-container ${sendEmail ? 'active' : ''}`}>
+                    <input type="checkbox" checked={sendEmail} onChange={handleSendEmailChange}/>
+                    <span className="custom-checkbox"></span>
+                    <span style={{  userSelect: 'none'}} className="checkbox-label">Send Email</span>
+                  </label>
+               </div>
                 }
-
-              <div style={{ height: "5px" }}></div>
+              
               {(selectedPrinter.status === "busy") && <div>
                 <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
                 <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
@@ -787,9 +833,13 @@ function App() {
                 <br/>
                 {
                   curJob && curJob.files.split(',').map((link, index)=>{
-                    return(<button className='printer-btn' key={index} onClick={() => window.open(link.trim(), "_blank")}>
+                    if(link.trim().startsWith('https://')){
+                      return(<button className='printer-btn' key={index} onClick={() => window.open(link.trim(), "_blank")}>
                       Download File {index + 1}
-                    </button>)
+                      </button>)
+                    }else{
+                      return('')
+                    }
                   })
                 }
               </div>}
@@ -797,14 +847,14 @@ function App() {
               {selectedPrinter && (selectedPrinter.status === "available") && <div>
                 <div className='printForm'>
                     <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom:'5px', cursor:'pointer'  }}>Autofill From Latest Submission...</button>
-                    <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                    <div> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>                    
-                    <div> Supervisor:&nbsp;&nbsp; <input value={supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                    <div> Part Names:&nbsp; <input value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                    <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                    <div> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>                    
+                    <div> Supervisor:&nbsp;&nbsp; <input placeholder="Supervisor Name" value={supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                    <div> Part Names:&nbsp; <input placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                     <div> Files:&nbsp;&nbsp;
                     <input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
                       <button tabIndex="-1" className="file-upload" onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight:'2px',marginLeft:'4px'  }}>browse...</button>
-                      <input value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
+                      <input  placeholder="GDrive Links Preferred (From Form)" value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
                     </div>
                     <div> Filament Usage: <input value={filamentUsage} type="text" onChange={handleFilamentUsage} style={{ width: '40px', 'fontSize': 'large' }}></input> g</div>
                     <div style={{marginTop:'10px'}}> -- Notes (Optional) -- 
@@ -815,6 +865,18 @@ function App() {
                 <button  onClick={() => { handleStartPrintClick() }} style={{backgroundColor: "rgba(30, 203, 96,0.8)"}}  className='printer-btn'>Start Print</button>
                 <button  onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
                 <button  onClick={() => { clearFields() }} style={{backgroundColor: 'rgba(118, 152, 255,0.8)'}} className='printer-btn'>Clear Form</button>
+                <br/>
+                {
+                  files && files.split(',').map((link, index)=>{
+                    if(link.trim().startsWith('https://')){
+                      return(<button className='printer-btn' key={index} onClick={() => window.open(link.trim(), "_blank")}>
+                      Download File {index + 1}
+                      </button>)
+                    }else{
+                      return('')
+                    }
+                  })
+                }
               </div>}
 
               {selectedPrinter && (selectedPrinter.status === "broken") && <div>
@@ -826,13 +888,13 @@ function App() {
                 <table className='history-wrapper'>
                   <thead>
                     <tr>
+                      <th>Time Started</th>
+                      <th>Status</th>
                       <th>Parts</th>
                       <th>Name</th>
                       <th>Email</th>
                       <th>Supervisor</th>
-                      <th>Time Started</th>
                       <th>Used (g)</th>
-                      <th>Status</th>
                       <th>Files</th>
                     </tr>
                   </thead>
@@ -846,13 +908,13 @@ function App() {
                       }
 
                       return <tr style={{ backgroundColor: color }} key={job.jobID}>
+                        <td>{formatDate(job.timeStarted, true)}</td>
+                        <td>{job.status}</td>
                         <td>{truncateString(job.partNames,40)}</td>
                         <td>{truncateString(job.name,20)}</td>
                         <td>{truncateString(job.email,20)}</td>
                         <td>{truncateString(job.supervisorName,20)}</td>
-                        <td>{formatDate(job.timeStarted, true)}</td>
                         <td>{job.usage_g}</td>
-                        <td>{job.status}</td>
                         <td>{truncateString(job.files,256)}</td>
                       </tr>
                     })}
@@ -896,7 +958,7 @@ function App() {
             )}
           {showErr  && <div className="err-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}
           {showMsg && <div className="success-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}
-          {showWarn && <div className="warning-msg"><ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon>
+          {showWarn && <div style={{paddingBottom:'10px'}} className="warning-msg"><ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon>
             <div className="warning-content">
               {message}<br></br>Continue anyway?
               <div onClick={() => { handleWarningClick() }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>

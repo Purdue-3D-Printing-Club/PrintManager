@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
 const isLocal = process.env.ISLOCAL == 'true';
+const nodemailer = require('nodemailer')
 
 const pool = isLocal ? mysql.createPool({ // for local development
     host: "localhost",
@@ -33,6 +34,38 @@ mysql.createPool({ // for the 3DPC lab
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: '3dpcemailing@gmail.com',
+      pass: process.env.EMAIL_PSWD
+    }
+  });
+
+  // Sends an email when called
+  app.post('/api/send-email', (req, res) => {
+    const b = req.body;
+    try{    
+    transporter.sendMail({
+        from: '3dpcemailing@gmail.com',
+        to: b.to,
+        subject: b.subject,
+        text: b.text
+      }, (error, info) => {
+        if (error) {
+          return res.status(500).send(error.toString());
+        }
+        res.send('Email sent: ' + info.response);
+      });
+    }catch(e){
+        console.log(e);
+    }
+    });
+    
+
 
 app.get('/api/get', (req, res) => {
 

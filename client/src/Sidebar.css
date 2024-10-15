@@ -7,9 +7,10 @@
     font-weight: bold;
     overflow-y: auto;
     outline: 3px solid rgb(117, 117, 117);
+    scrollbar-width: none;
 }
 .sidebar::-webkit-scrollbar {
-    display: none; /* Hides the scrollbar */
+    display: none;
   }
 .sidebtn {
     user-select: none;
