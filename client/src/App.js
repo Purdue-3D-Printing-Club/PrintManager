@@ -21,8 +21,8 @@ function App() {
   const [files, setfiles] = useState('');
   const [notes, setnotes] = useState('');
   const [partNames, setpartnames] = useState('');
-  const [sendEmail, setSendEmail] = useState(true);
-  const [supervisorPrint, setSupervisorPrint] = useState(false);
+  const [sendEmail, setSendEmail] = useState(false);
+  const [supervisorPrint, setSupervisorPrint] = useState(true);
 
   const [selectedPrinter, selectPrinter] = useState(null);
 
