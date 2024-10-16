@@ -9,15 +9,17 @@
     outline: 3px solid rgb(117, 117, 117);
     scrollbar-width: none;
 }
+
 .sidebar::-webkit-scrollbar {
     display: none;
-  }
+}
+
 .sidebtn {
     user-select: none;
-    position:relative;
+    position: relative;
     padding: 5px;
     margin: 15px 20px;
-    height:30px;
+    height: 30px;
     font-size: 25px;
     border-radius: 5px;
     background-color: rgb(118, 152, 255);
@@ -25,24 +27,25 @@
     overflow: hidden;
     white-space: nowrap;
     transition: background-color 0.2s;
-    }
-    .sidebtn:hover {
-        background-color: rgb(98, 125, 235);
-    }
+}
+
+.sidebtn:hover {
+    background-color: rgb(98, 125, 235);
+}
 
 .mask {
     position: fixed;
-    height:80px;
+    height: 80px;
     background-color: #d2e0ff;
 }
 
 .hdr {
-    position:fixed;
-    top:70px;
-    height:40px;
+    position: fixed;
+    top: 70px;
+    height: 40px;
     background-color: silver;
     font-size: 30px;
-    display:flex;
+    display: flex;
     justify-content: center;
     align-items: center;
     outline: 2px solid rgb(117, 117, 117);
@@ -58,12 +61,13 @@
     margin: 5px 10px;
     border-radius: 5px;
     transition: outline 0.05s;
-    overflow:hidden;
+    overflow: hidden;
 }
 
 .sidePrinter:not(.selected):hover {
     outline: 1px solid black;
 }
+
 .sidePrinter:hover {
     cursor: pointer;
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import './Menu.css';
 
 function Menu({ menuOpen, filamentList, handleFilamentClick, selectedFilament, selectedPrinter,
-    handlefiles, files, handleFilamentUsage, filamentUsage, handleStartPrintClick, usingFilament}) {
+    handlefiles, files, handleFilamentUsage, filamentUsage, handleStartPrintClick, usingFilament }) {
 
     return (
         <div className='menu'>

@@ -1,15 +1,14 @@
-
-
-body,html{
+body,
+html {
   margin: 0;
-  padding: 0; 
+  padding: 0;
   overflow-x: hidden !important;
   scrollbar-width: none;
 }
 
-.main-content{
+.main-content {
   overflow-x: hidden !important;
-  overflow-y:hidden !important;
+  overflow-y: hidden !important;
 }
 
 .no-select {
@@ -38,12 +37,12 @@ html::-webkit-scrollbar {
 
 .header {
   font-size: x-large;
-  display:flex;
+  display: flex;
   justify-content: center;
   align-items: center;
-  position:fixed;
-  top:0;
-  background-color: rgba(118, 152, 255,0.6);
+  position: fixed;
+  top: 0;
+  background-color: rgba(118, 152, 255, 0.6);
   height: 68px;
   outline: 3px solid rgb(117, 117, 117);
   overflow: hidden;
@@ -59,12 +58,12 @@ html::-webkit-scrollbar {
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
 
-  background-color: rgba(0,0,0,0.75);
+  background-color: rgba(0, 0, 0, 0.75);
   position: fixed;
-  width:75%;
-  height:100%;
-  margin-left:-2px;
-  top:70px;
+  width: 75%;
+  height: 100%;
+  margin-left: -2px;
+  top: 70px;
 }
 
 .menuBG.hidden {
@@ -74,46 +73,50 @@ html::-webkit-scrollbar {
 .menuBG.active {
   opacity: 1;
 }
+
 .printForm {
- margin-top:5px;
- flex-direction: column;
- position:relative;
- background-color: rgb(222, 222, 222);
- font-size: x-large;
- padding:10px 30px 10px;
- border-radius: 10px;
- outline: 2px solid black;
- display:inline-flex;
- justify-content: center;
+  margin-top: 5px;
+  flex-direction: column;
+  position: relative;
+  background-color: rgb(222, 222, 222);
+  font-size: x-large;
+  padding: 10px 30px 10px;
+  border-radius: 10px;
+  outline: 2px solid black;
+  display: inline-flex;
+  justify-content: center;
 
 }
 
-.err-msg, .success-msg, .warning-msg {
-  position:fixed;
-  top:16%;
-  right:0%;
-  
+.err-msg,
+.success-msg,
+.warning-msg {
+  position: fixed;
+  top: 16%;
+  right: 0%;
+
   border-radius: 20px;
   border: 4px solid black;
   font-size: x-large;
-  color:black;
+  color: black;
   font-weight: bold;
-  padding:30px;
+  padding: 30px;
   user-select: none;
 }
 
 .msg-exit {
-  position:absolute;
+  position: absolute;
   transform: scale(0.3);
   transform-origin: center;
-  height:100px;
-  width:100px;
-  top:-29px;
-  right:-29px;
-  transition: stroke 0.2s ease; /* Add transition for stroke color */
+  height: 100px;
+  width: 100px;
+  top: -29px;
+  right: -29px;
+  transition: stroke 0.2s ease;
+  /* Add transition for stroke color */
 }
 
-.msg-exit:hover{
+.msg-exit:hover {
   stroke: white;
   cursor: pointer;
 }
@@ -121,14 +124,16 @@ html::-webkit-scrollbar {
 .err-msg {
   background-color: rgba(246, 97, 97, 0.95);
 }
+
 .success-msg {
   background-color: rgba(16, 190, 54, 0.95);
 }
 
 .warning-msg {
-  background-color: rgba(240, 240, 120,0.95);
+  background-color: rgba(240, 240, 120, 0.95);
 
 }
+
 .warning-content {
   display: flex;
   flex-direction: column;
@@ -142,25 +147,25 @@ html::-webkit-scrollbar {
   padding: 2%;
   font-weight: bold;
   font-size: xx-large;
-  background-color: rgba(225, 225, 40,0.7);
+  background-color: rgba(225, 225, 40, 0.7);
   justify-content: center;
   align-items: center;
-  margin:15px 20px 20px;
-  margin-left:20px;
+  margin: 15px 20px 20px;
+  margin-left: 20px;
   border-radius: 10px;
   outline: 4px solid black;
 }
 
 .printer-header {
   position: fixed;
-  background-color:silver;
-  height:35px;
-  font-size:xx-large;
+  background-color: silver;
+  height: 35px;
+  font-size: xx-large;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  top:72px;
+  top: 72px;
   border-radius: 10px;
   padding: 5px 10px 5px;
   outline: 3px solid black;
@@ -168,36 +173,38 @@ html::-webkit-scrollbar {
   white-space: nowrap;
 
 }
-.stat-msg, .filament-msg{
-  font-size:x-large;
+
+.stat-msg,
+.filament-msg {
+  font-size: x-large;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  padding:5px;
+  padding: 5px;
   outline: 2px solid black;
 }
 
 #resizer {
-  position:fixed;
-  top:110px;
+  position: fixed;
+  top: 110px;
   width: 4px;
-  height:100vh;
+  height: 100vh;
   background: black;
   cursor: ew-resize;
 }
 
 .stat-msg {
   background-color: #d2e0ff;
-  width: 80%; 
+  width: 80%;
   margin-left: 10%;
   padding: 10px;
-  display: flex; 
+  display: flex;
   flex-direction: column;
-  
+
 }
 
-.info{
+.info {
   text-align: left;
   align-items: flex-start;
 }
@@ -205,49 +212,51 @@ html::-webkit-scrollbar {
 .filament-msg {
   background-color: #d2e0ff;
   margin-top: 10px;
-  width:80%;
-  margin-left:10%;
+  width: 80%;
+  margin-left: 10%;
 }
 
 .printer-btn {
-  font-size:x-large;
+  font-size: x-large;
   border-radius: 10px;
-  padding:10px;
+  padding: 10px;
   outline: 1px solid black;
   margin-right: 10px;
   margin-top: 10px;
-  display:inline-flex;
+  display: inline-flex;
   justify-content: center;
   user-select: none;
   padding-left: 15px;
   padding-right: 15px;
   background-color: silver;
-  transition: opacity 0.15s ease; 
-  opacity:80%;
+  transition: opacity 0.15s ease;
+  opacity: 80%;
 }
 
 
-.printer-btn:hover, .menu-btn:hover, .printer-btn:focus{
-  opacity:100%;
+.printer-btn:hover,
+.menu-btn:hover,
+.printer-btn:focus {
+  opacity: 100%;
   cursor: pointer;
 }
 
-.file-upload:hover{
+.file-upload:hover {
   cursor: pointer;
 }
 
 .wrapper-wrapper {
   margin: auto;
-  width:90.2%;
-  max-height:70vh;
-  margin-bottom:30px;
+  width: 90.2%;
+  max-height: 70vh;
+  margin-bottom: 30px;
   overflow-x: auto;
-  
+
 }
 
 .print-history {
   margin: auto;
-  width:90%;
+  width: 90%;
 
   background-color: silver;
   padding-top: 10px;
@@ -259,27 +268,32 @@ html::-webkit-scrollbar {
 
 .history-wrapper {
   border-collapse: collapse;
-  width:100%;
+  width: 100%;
   min-width: 700px;
 }
-.history-wrapper th, .history-wrapper td {
-  text-overflow:hidden;
+
+.history-wrapper th,
+.history-wrapper td {
+  text-overflow: hidden;
   overflow: hidden;
-  border: 1px solid black; /* Add border around each cell */
+  border: 1px solid black;
+  /* Add border around each cell */
   padding: 8px;
   font-size: large;
   text-align: left;
   white-space: nowrap;
 }
+
 .history-wrapper th {
   background-color: #d2e0ff;
   font-size: x-large;
   position: sticky;
   top: 0;
 }
+
 .history-wrapper td {
-  overflow:hidden;
-  
+  overflow: hidden;
+
 }
 
 .chart-wrapper {
@@ -288,50 +302,56 @@ html::-webkit-scrollbar {
   justify-content: center;
   align-items: center;
   text-align: center;
-  width:100%;
-  margin:auto;
-}
-.chart {
-  width:50%;
-  background-color: rgb(245,245,245);
-  padding-left:30px;
-  padding-right:30px;
-  border-radius: 10px;
-  outline: 2px solid black;
-  margin-top:10px;
+  width: 100%;
+  margin: auto;
 }
 
-h2{
-  background-color: rgb(255,255,255);
-  padding:5px;
+.chart {
+  width: 50%;
+  background-color: rgb(245, 245, 245);
+  padding-left: 30px;
+  padding-right: 30px;
+  border-radius: 10px;
+  outline: 2px solid black;
+  margin-top: 10px;
+}
+
+h2 {
+  background-color: rgb(255, 255, 255);
+  padding: 5px;
   outline: 2px solid black;
   border-radius: 5px;
   margin: 10px 0px 10px 5px;
-  
+
 }
-.supervisor-input{
+
+.supervisor-input {
   transition: opacity 0.2s ease;
 }
-.supervisor-input.disabled{
-    opacity: 0.4;
-    pointer-events: none;
+
+.supervisor-input.disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 /* Hide the default checkbox */
 .checkbox-container input[type="checkbox"] {
   display: none;
 }
+
 .checkbox-container {
-  margin-top:10px;
+  margin-top: 10px;
   display: inline-flex;
   align-items: center;
   cursor: pointer;
   padding: 10px;
   border-radius: 5px;
   border: 2px solid #ccc;
-  background-color: #f2f2f2; /* Default background color */
+  background-color: #f2f2f2;
+  /* Default background color */
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
+
 .custom-checkbox {
   width: 20px;
   height: 20px;
@@ -342,12 +362,13 @@ h2{
   position: relative;
 }
 
-.checkbox-container input[type="checkbox"]:checked + .custom-checkbox {
-  background-color: #4CAF50; /* Active color */
+.checkbox-container input[type="checkbox"]:checked+.custom-checkbox {
+  background-color: #4CAF50;
+  /* Active color */
   border-color: #4CAF50;
 }
 
-.checkbox-container input[type="checkbox"]:checked + .custom-checkbox::after {
+.checkbox-container input[type="checkbox"]:checked+.custom-checkbox::after {
   display: block;
 }
 

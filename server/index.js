@@ -14,21 +14,21 @@ const pool = isLocal ? mysql.createPool({ // for local development
     password: "password",
     database: "printmanagerdb2"
 }) :
-mysql.createPool({ // for the 3DPC lab
-    host: "localhost",
-    user: "root",
-    password: "supervisor",
-    database: "printmanagerdb2"
-})
+    mysql.createPool({ // for the 3DPC lab
+        host: "localhost",
+        user: "root",
+        password: "supervisor",
+        database: "printmanagerdb2"
+    })
 
 // Use the following connection for cloud hosting
 // mysql.createPool({
-    //     host: "34.122.154.87",
-    //     port: "3306",
-    //     user: "andrewtho5942",
-    //     password: process.env.PSWD,
-    //     database: "printmanagerdb" 
-    // });
+//     host: "34.122.154.87",
+//     port: "3306",
+//     user: "andrewtho5942",
+//     password: process.env.PSWD,
+//     database: "printmanagerdb" 
+// });
 
 
 app.use(cors());
@@ -40,31 +40,31 @@ const transporter = nodemailer.createTransport({
     port: 587,
     secure: false,
     auth: {
-      user: '3dpcemailing@gmail.com',
-      pass: process.env.EMAIL_PSWD
+        user: '3dpcemailing@gmail.com',
+        pass: process.env.EMAIL_PSWD
     }
-  });
+});
 
-  // Sends an email when called
-  app.post('/api/send-email', (req, res) => {
+// Sends an email when called
+app.post('/api/send-email', (req, res) => {
     const b = req.body;
-    try{    
-    transporter.sendMail({
-        from: '3dpcemailing@gmail.com',
-        to: b.to,
-        subject: b.subject,
-        text: b.text
-      }, (error, info) => {
-        if (error) {
-          return res.status(500).send(error.toString());
-        }
-        res.send('Email sent: ' + info.response);
-      });
-    }catch(e){
+    try {
+        transporter.sendMail({
+            from: '3dpcemailing@gmail.com',
+            to: b.to,
+            subject: b.subject,
+            text: b.text
+        }, (error, info) => {
+            if (error) {
+                return res.status(500).send(error.toString());
+            }
+            res.send('Email sent: ' + info.response);
+        });
+    } catch (e) {
         console.log(e);
     }
-    });
-    
+});
+
 
 
 app.get('/api/get', (req, res) => {
@@ -254,7 +254,7 @@ app.get('/api/getsupervisordata', (req, res) => {
 
 app.get('/api/getfilamentdata', (req, res) => {
 
-const sqlSelectFilamentData = `
+    const sqlSelectFilamentData = `
   (SELECT name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
   FROM printjob 
   WHERE name IS NOT NULL 
@@ -368,7 +368,7 @@ app.post('/api/insert', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime,b.status,b.name,b.supervisor,b.notes,b.partNames,b.email], (err, result) => {
+            connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor, b.notes, b.partNames, b.email], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error inserting printer");

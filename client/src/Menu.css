@@ -1,132 +1,138 @@
   .menu {
-      background-color: white;
-      position: fixed;
-      margin-left: 7.5%;
-      margin-top: 0.5%;
-      width:60%;
-      height:82.5%;
-      border-radius: 20px;
-      border: 4px solid rgb(118, 152, 255);
-    }
+    background-color: white;
+    position: fixed;
+    margin-left: 7.5%;
+    margin-top: 0.5%;
+    width: 60%;
+    height: 82.5%;
+    border-radius: 20px;
+    border: 4px solid rgb(118, 152, 255);
+  }
 
-    .grid-wrapper {
-      width:100%;
-      height:100%;
-      overflow: auto;
-    }
+  .grid-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+  }
 
-    .grid-container {
-      padding:20px;
-      display:grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap:10px;
-    }
+  .grid-container {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
 
-    .filament-card {
-      user-select: none;
-      display:flex;
-      border: 2px solid black;
-      height:120px;
-      border-radius: 10px;
-      transition: background-color 0.2s;
-    }
-    .filament-card {
-      background-color: #d2e0ff;
-    }
-    .already-used {
-      opacity:40%;
-    }
+  .filament-card {
+    user-select: none;
+    display: flex;
+    border: 2px solid black;
+    height: 120px;
+    border-radius: 10px;
+    transition: background-color 0.2s;
+  }
 
-    .filament-card:not(.selected):not(.already-used):hover {
-      background-color: rgb(118, 152, 255);
-      outline: 1px solid black;
-    }
+  .filament-card {
+    background-color: #d2e0ff;
+  }
 
-    .filament-footer, .filament-header, .printForm {
-      user-select: none;
-      font-weight: bold;
-      display:flex;
-      
-      align-items: center;
-      border-radius: 10px;
-      outline: 2px solid black;
-    }
+  .already-used {
+    opacity: 40%;
+  }
 
-    .printForm {
-       flex-direction: column;
-       justify-content: space-between;
-      position:absolute;
-      bottom:42px;
-      height:65px;
-      margin-left: 5%;
-      background-color: silver;
-      width:90%;
-      font-size: x-large;
-      padding-top:3px;
-      padding-bottom:3px;
-    }
+  .filament-card:not(.selected):not(.already-used):hover {
+    background-color: rgb(118, 152, 255);
+    outline: 1px solid black;
+  }
 
-    .filament-header {
-      font-size: xx-large;
-      justify-content: center;
-      position:absolute;
-      top:0px;
-      width:90%;
-      height:60px;
-      margin-left:5%;
-      background-color: silver;
-      overflow: hidden;
-      white-space: nowrap;
-    }
+  .filament-footer,
+  .filament-header,
+  .printForm {
+    user-select: none;
+    font-weight: bold;
+    display: flex;
 
-    .filament-footer {
-      justify-content: center;
-      font-size: x-large;
-      position:absolute;
-      bottom: 0px;
-      width:90%;
-      height:40px;
-      margin-left:5%;
-      background-color: rgb(29, 184, 29); 
-      overflow: hidden;
-      white-space: nowrap;
-    }
+    align-items: center;
+    border-radius: 10px;
+    outline: 2px solid black;
+  }
 
-    .filament-footer:hover {
-      background-color: rgb(7, 159, 7);
-      cursor: pointer;
-    }
+  .printForm {
+    flex-direction: column;
+    justify-content: space-between;
+    position: absolute;
+    bottom: 42px;
+    height: 65px;
+    margin-left: 5%;
+    background-color: silver;
+    width: 90%;
+    font-size: x-large;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
 
-    .selected {
-      outline: 5px solid rgb(0, 80, 0);
-      background-color: rgb(118, 152, 255);
-    }
+  .filament-header {
+    font-size: xx-large;
+    justify-content: center;
+    position: absolute;
+    top: 0px;
+    width: 90%;
+    height: 60px;
+    margin-left: 5%;
+    background-color: silver;
+    overflow: hidden;
+    white-space: nowrap;
+  }
 
-    .grid-container.menuOpen .filament-card:not(.already-used):hover {
-      cursor: pointer;
-    }
+  .filament-footer {
+    justify-content: center;
+    font-size: x-large;
+    position: absolute;
+    bottom: 0px;
+    width: 90%;
+    height: 40px;
+    margin-left: 5%;
+    background-color: rgb(29, 184, 29);
+    overflow: hidden;
+    white-space: nowrap;
+  }
 
-.topForm, .botForm {
-  height:50%;
-}
+  .filament-footer:hover {
+    background-color: rgb(7, 159, 7);
+    cursor: pointer;
+  }
 
-.leftStripe {
-  width:20%;
-  height:100%;
-  padding: 0px;
-  margin: 0px;
-  border-radius: 8px;
-  position:relative;
-}
+  .selected {
+    outline: 5px solid rgb(0, 80, 0);
+    background-color: rgb(118, 152, 255);
+  }
 
-.filamentID {
-  display: flex;
-  justify-content: center;
-  align-items: top;
-  margin: auto;
-}
-.filaText {
-  overflow: hidden;
-  white-space: nowrap;
-  padding-top: 2px;
-}
+  .grid-container.menuOpen .filament-card:not(.already-used):hover {
+    cursor: pointer;
+  }
+
+  .topForm,
+  .botForm {
+    height: 50%;
+  }
+
+  .leftStripe {
+    width: 20%;
+    height: 100%;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 8px;
+    position: relative;
+  }
+
+  .filamentID {
+    display: flex;
+    justify-content: center;
+    align-items: top;
+    margin: auto;
+  }
+
+  .filaText {
+    overflow: hidden;
+    white-space: nowrap;
+    padding-top: 2px;
+  }
