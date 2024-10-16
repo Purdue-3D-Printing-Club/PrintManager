@@ -399,7 +399,7 @@ function App() {
       } else if (email.length === 0) {
         console.log("startPrintClick: err: no email");
         showErrForDuration("No Email! Print not started.", popupTime);
-      } else if (supervisor.length === 0) {
+      } else if ((supervisor.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no supervisor");
         showErrForDuration("No Supervisor! Print not started.", popupTime);
       } else if (partNames.length === 0) {
