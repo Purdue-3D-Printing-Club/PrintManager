@@ -7,9 +7,9 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
     return (
         <div className="sidebar" style={{ width: `${width}px` }}>
             <div className="mask" style={{ width: `${width}px` }}>
-                <div className="sidebtn" style={menuOpen ? { outline: "4px solid black" } : {}} >{/*onClick={() => handleOpenMenu()}>*/}
-                    {/*menuOpen ? "Close Print Menu" : "Open Print Menu"*/}
-                    Disabled
+                <div className="sidebtn" style={menuOpen ? { outline: "4px solid black" } : {}} onClick={() => handleOpenMenu()}>{/*onClick={() => handleOpenMenu()}>*/}
+                    {menuOpen ? "Close" : "Settings"}
+                    {/* Disabled */}
                 </div>
             </div>
             <div className="hdr" style={{ width: `${width}px` }}>

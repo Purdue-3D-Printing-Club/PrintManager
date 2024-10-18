@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import Axios from 'axios'
 import Sidebar from './Sidebar';
+import Settings from './Settings';
 import { Pie } from 'react-chartjs-2';
 import Chart from 'chart.js/auto';
 import { ReactComponent as ExitIcon } from './images/exit.svg';
@@ -23,6 +24,8 @@ function App() {
   const [partNames, setpartnames] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [supervisorPrint, setSupervisorPrint] = useState(false);
+  const [personalFilament, setPersonalFilament] = useState(false);
+
 
   const [selectedPrinter, selectPrinter] = useState(null);
 
@@ -47,7 +50,9 @@ function App() {
   const [nameFilamentData, setNameFilamentData] = useState([]);
   const [filamentSum, setFilamentSum] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(true);
-  const chartRef = useRef(null);
+  const lineRef1 = useRef(null);
+  const lineRef2 = useRef(null);
+  const [loading, setLoading] = useState(true)
 
   const popupTime = 8000;
 
@@ -59,6 +64,19 @@ function App() {
     setfiles('');
     setnotes('');
     setpartnames('');
+  }
+
+  const cancelPrint = () => {
+    fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}`, { method: 'DELETE', }).then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    }).then(data => {
+      handlePrinterStatusChange('available')
+    }).catch(error => {
+      console.error('Error:', error);
+    });
   }
 
 
@@ -78,14 +96,6 @@ function App() {
 
   }, [serverURL]);
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  })
-
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
     const generateDateRange = (startDate, endDate) => {
@@ -101,9 +111,10 @@ function App() {
     };
 
     console.log('updating printer screen')
+    console.log(selectedPrinter)
     //Update the data that is shown
-    if (selectedPrinter !== null) {
-
+    if (selectedPrinter !== null && selectedPrinter !== undefined) {
+      console.log('selectedPrinter exists')
       //get data from the database
       try {
         if (selectedPrinter.currentJob !== "" && selectedPrinter.currentJob !== null) {
@@ -148,7 +159,7 @@ function App() {
                 Axios.get(`${serverURL}/api/getdailyprints`).then((response2) => {
                   console.log("daily data:");
                   console.log(response2.data);
-                  if (chartRef.current && response2.data) {
+                  if (lineRef1.current && response2.data) {
 
                     const dailyData = response2.data.res;
                     const startDate = dailyData.length > 0 ? dailyData[0].date : null;
@@ -156,20 +167,17 @@ function App() {
 
                     if (startDate && endDate) {
                       const allDates = generateDateRange(startDate, endDate);
-                      console.log(allDates)
                       const dataMap = new Map(dailyData.map(day => [formatDate(day.date, false), day.cnt]));
-                      console.log(dataMap)
                       // Fill in missing dates with 0
                       const filledDailyCnt = allDates.map(date => dataMap.get(date) || 0);
-                      console.log(filledDailyCnt)
                       // Destroy existing chart if it already exists
-                      if (chartRef.current.chart) {
-                        chartRef.current.chart.destroy();
+                      if (lineRef1.current.chart) {
+                        lineRef1.current.chart.destroy();
                       }
 
                       // Create the line chart
-                      const ctx = chartRef.current.getContext('2d');
-                      chartRef.current.chart = new Chart(ctx, {
+                      const ctx = lineRef1.current.getContext('2d');
+                      lineRef1.current.chart = new Chart(ctx, {
                         type: 'line',
                         data: {
                           labels: allDates,
@@ -187,16 +195,67 @@ function App() {
                               position: 'bottom',
                             },
                           },
+                          responsive: true,
+                          maintainAspectRatio: true,
+                          aspectRatio: 2,
                           scales: {
                             y: {
-                              beginAtZero: false,
-                              min: 1,
+                              beginAtZero: true,
                             },
                           },
                         },
                       });
                     }
                   }
+                  if (lineRef2.current && response2.data) {
+
+                    const dailyData = response2.data.res;
+                    const startDate = dailyData.length > 0 ? dailyData[0].date : null;
+                    const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
+
+                    if (startDate && endDate) {
+                      const allDates = generateDateRange(startDate, endDate);
+                      const dataMap = new Map(dailyData.map(day => [formatDate(day.date, false), day.sum]));
+                      // Fill in missing dates with 0
+                      const filledDailyCnt = allDates.map(date => dataMap.get(date) || 0);
+                      // Destroy existing chart if it already exists
+                      if (lineRef2.current.chart) {
+                        lineRef2.current.chart.destroy();
+                      }
+
+                      // Create the line chart
+                      const ctx = lineRef2.current.getContext('2d');
+                      lineRef2.current.chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                          labels: allDates,
+                          datasets: [{
+                            label: 'Filament Used',
+                            data: filledDailyCnt,
+                            fill: false,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            tension: 0.1,
+                          }],
+                        },
+                        options: {
+                          plugins: {
+                            legend: {
+                              position: 'bottom',
+                            },
+                          },
+                          responsive: true,
+                          maintainAspectRatio: true,
+                          aspectRatio: 2,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                            },
+                          },
+                        },
+                      });
+                    }
+                  }
+                  setLoading(false);
                 });
               });
             });
@@ -213,16 +272,6 @@ function App() {
       }
     }
   }, [selectedPrinter, serverURL, menuOpen, printerList]);
-  
-
-  /*const deletePrinter = (name) => {
-    try {
-      Axios.delete(`http://localhost:3001/api/delete/${name}`);
-      setPrinterList(printerList.filter(printer => printer.printerName !== name));
-    } catch (error) {
-      console.error("Error deleting printer: ", error);
-    }
-  };*/
 
   // Add mouse event listeners to the document for resizing
   React.useEffect(() => {
@@ -242,6 +291,17 @@ function App() {
     };
   }, [isResizing]);
 
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  })
+
+
+
   function getDirectDownloadLink(driveLink) {
     // Regular expression to extract the file ID from different Google Drive URL formats
     const fileIdMatch = driveLink.match(/(?:drive\.google\.com\/.*?id=|drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=)([a-zA-Z0-9_-]{10,})/);
@@ -255,7 +315,6 @@ function App() {
       return driveLink;
     }
   }
-
 
   const handleMouseDown = (e) => {
     setIsResizing(true);
@@ -279,6 +338,11 @@ function App() {
     setSupervisorPrint(!supervisorPrint);
   }
 
+  const handlePersonalFilamentChange = () => {
+    console.log('changed personalFilament to ' + !personalFilament);
+    setPersonalFilament(!personalFilament);
+  }
+
   function getStatusColor(printerStatus) {
     switch (printerStatus) {
       case "available": return "#1ecb60";
@@ -297,7 +361,7 @@ function App() {
     } else if (selectedPrinter.status === 'broken') {
       return ("This printer is broken.. (0_0)")
     } else if (selectedPrinter.status === 'testing') {
-      return ("This printer is currently in testing, and not available to print on.")
+      return ("This printer is currently in testing, and is not available to print on.")
     } else {
       return ("")
     }
@@ -308,29 +372,31 @@ function App() {
       e.target.tagName === 'INPUT' ||
       e.target.tagName === 'TEXTAREA';
 
-    switch (e.key) {
-      case 'Enter': if (!isInputFocused) {
-        handleStartPrintClick();
-      } break;
-      case 'ArrowLeft':
-        if (!isInputFocused) {
+    if (!isInputFocused) {
+      switch (e.key) {
+        case 'Enter':
+          handleStartPrintClick();
+          break;
+        case 'ArrowLeft':
           movePrinter(-1);
-        } break;
-      case 'ArrowRight':
-        if (!isInputFocused) {
+          break;
+        case 'ArrowRight':
           movePrinter(1);
-        } break;
-      default:
+          break;
+        default:
+      }
     }
   }
 
   const movePrinter = (direction) => {
+    console.log('moving printer by arrow key...')
+    console.log(selectedPrinter)
     if (selectedPrinter === null) {
       selectPrinter(printerList[0]);
       return;
     }
     try {
-      let curIndex = printerList.indexOf(selectedPrinter);
+      let curIndex = printerList.findIndex(printer => printer.printerName === selectedPrinter.printerName);
       curIndex = (curIndex + direction) % printerList.length;
       if (curIndex === -1) curIndex = printerList.length - 1;
       selectPrinter(printerList[curIndex]);
@@ -340,7 +406,7 @@ function App() {
   }
 
   const truncateString = (str, maxLen) => {
-    if (str === null) return ('')
+    if (str === null || str === undefined) return ('')
     if (str.length > maxLen - 3) {
       return str.substring(0, maxLen - 3) + '...';
     }
@@ -365,6 +431,7 @@ function App() {
   };
 
   const handlePrinterStatusChange = (statusArg) => {
+    console.log('changing printer ' + selectedPrinter.printerName + '\'s status to ' + statusArg)
     //first, update the database to have the new printer status
     updateTable("printer", "status", selectedPrinter.printerName, statusArg, () => {
       //then, update the local printer array to reflect this change
@@ -376,7 +443,8 @@ function App() {
       });
       setPrinterList(updatedPrinterList);
       selectedPrinter.status = statusArg;
-      //selectPrinter(null);
+      //  let selectedBtn = Array.from(document.getElementsByClassName('sidePrinter')).filter(node => node.innerHTML.startsWith(selectedPrinter.printerName))[0]
+      //  selectedBtn.click()
     });
   };
 
@@ -432,14 +500,15 @@ function App() {
       Axios.post(`${serverURL}/api/insert`, {
         printerName: selectedPrinter.printerName,
         files: truncateString(files, 512),
-        usage_g: Math.abs(filamentUsage) > 2147483647 ? 2147483647 : filamentUsage,
+        usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
         timeStarted: new Date().toISOString(),
         status: "active",
         name: truncateString(name, 64),
-        supervisor: supervisorPrint? truncateString(name, 64) : truncateString(supervisor, 64),
+        supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
         notes: truncateString(notes, 256),
         partNames: truncateString(partNames, 256),
-        email: truncateString(email, 64)
+        email: truncateString(email, 64),
+        personalFilament: personalFilament
       }).then(() => {
         setTimeout(() => {
           //update the current job of the printer that was selected for the print
@@ -515,27 +584,28 @@ function App() {
             console.log(updatedPrinterList)
 
             //Email the user and set popup message
-            if (sendEmail) {
+            if (false) {//sendEmail) {
               console.log('sending email...')
               let success = statusArg === 'completed'
               try {
                 Axios.post(`${serverURL}/api/send-email`, {
                   to: curJob.email,
                   subject: "3DPC: Print " + (success ? 'Completed' : 'Failed'),
-                  text: success ? "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames + 
+                  text: success ? "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
                     "] that started at " + formatDate(curJob.timeStarted, true) + " has been completed. It has been dropped off at the " +
-                    "1st floor of Lambertus Hall room 1234 in the 3DPC drop-box, for more information " +
-                    "on where it is located. If you have questions regarding your print please contact " +
-                    "us at print3d@purdue.edu.\n\n\nThank you, 3DPC Supervisor"
+                    "1st floor of Lambertus Hall room 1234 in the 3DPC drop-box.\n\n\nThank you, 3DPC Supervisor"
                     :
-                   "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames + 
-                    "] that started at " + formatDate(curJob.timeStarted, true) + " has not been completed. Please come back into the lab ( Lambertus Hall " +
-                    "room 1234) to figure out the issues with the print and possible solutions we can do " +
-                    "you complete your request. If you have questions regarding your print please contact " +
-                    "us at print3d@purdue.edu. \n\n\nThank you, 3DPC Supervisor"
+                    "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
+                    "] that started at " + formatDate(curJob.timeStarted, true) + " has not been completed."+
+                    " If this has happened for the third time, this print will be discarded and you will need"+
+                    " to come back to the lab (LMBS1234) to try again. Otherwise, a supervisor will restart"+
+                    " the print for you.\n\n\nThank you, 3DPC Supervisor"
                 }).then(() => {
                   showMsgForDuration('Email Sent Successfully', popupTime);
                   console.log('Email sent successfully');
+                }).catch((error) => {
+                  showErrForDuration('Error Sending Email', popupTime);
+                  console.error('Error sending email:', error.response ? error.response.data : error.message);
                 });
 
               } catch (e) {
@@ -689,7 +759,16 @@ function App() {
   };
 
   const handleFilamentUsage = (e) => {
-    const usage = e.target.value.replace(/\D/g, "");
+    // only allow numbers and periods
+    const filtered = e.target.value.replace(/[^0-9.]/g, "");
+    // only allow up to two decimal places
+    let usage = filtered.indexOf('.') !== -1 ? filtered.slice(0, filtered.indexOf('.') + 1 + 2) : filtered;
+    //remove extra period marks
+    const parts = usage.split('.');
+    if (parts.length > 2) {
+      usage = parts[0] + '.' + parts.slice(1).join('').replace(/\./g, '');
+    }
+
     setFilamentUsage(usage);
     console.log("set filament usage to " + usage);
   };
@@ -734,100 +813,92 @@ function App() {
             {!loadingSummary && <div>
               <h2 style={{ fontSize: "xx-large" }}>Lab Summary</h2>
               <div className='chart-wrapper'>
-                <div className='chart'>
-                  <h2>Total Number of Jobs Per Printer</h2>
-                  <Pie data={{
-                    labels: printerNames,
-                    datasets: [
-                      {
-                        data: frequencies,
-                      },
-                      {
-                        data: [],
-                      }
-                    ],
-                  }} options={{
-                    plugins: {
-                      legend: {
-                        position: 'right',
-                      },
-                    },
-                  }} />
-                </div>
-                <div style={{ height: "40px" }}></div>
+                {!loading && <div className='pie'>
+                  <div className='pie-chart'>
+                    <h2>Total Number of Jobs Per Printer</h2>
+                    <Pie data={{
+                      labels: printerNames.map(name => truncateString(name, 15)),
+                      datasets: [{ data: frequencies, },
+                      { data: [], }],
+                    }}
+                      options={{
+                        maintainAspectRatio: true,
+                        aspectRatio: 1,
+                        plugins: {
+                          legend: {
+                            position: 'right',
+                          },
+                        },
+                      }} />
+                  </div>
 
-                <div className='chart'>
-                  <h2>Total Filament Used Per Printer (g)</h2>
-                  <Pie data={{
-                    labels: printerNames,
-                    datasets: [
-                      {
-                        data: filamentSum,
-                      },
-                      {
-                        data: [],
-                      }
-                    ],
-                  }} options={{
-                    plugins: {
-                      legend: {
-                        position: 'right',
-                      },
-                    },
-                  }} />
-                </div>
-                <div style={{ marginTop: '50px' }} className='chart'>
+                  <div className='pie-chart'>
+                    <h2>Total Filament Used Per Printer (g)</h2>
+                    <Pie data={{
+                      labels: printerNames.map(name => truncateString(name, 15)),
+                      datasets: [{ data: filamentSum, },
+                      { data: [], }],
+                    }}
+                      options={{
+                        plugins: {
+                          legend: {
+                            position: 'right',
+                          },
+                        },
+                      }} />
+                  </div>
+                </div>}
+                <div className='line-chart'>
                   <h2 style={{ marginBottom: "10px" }}>Total Prints By Day</h2>
-                  <canvas ref={chartRef} width="400" height="300"></canvas>
+                  <canvas ref={lineRef1} width="400" height="300"></canvas>
                 </div>
-
-                <div style={{ height: '40px' }} />
-
-                <div className='chart'>
-                  <h2>Number of Prints By Supervisor</h2>
-                  <Pie data={{
-                    labels: supervisorData.map((entry) => { return (entry.supervisorName) }),
-                    datasets: [
-                      {
-                        data: supervisorData.map((entry) => { return (entry.cnt) }),
-                      },
-                      {
-                        data: [],
-                      }
-                    ],
-                  }} options={{
-                    plugins: {
-                      legend: {
-                        position: 'right',
-                      },
-                    },
-                  }} />
+                <div className='line-chart'>
+                  <h2 style={{ marginBottom: "10px" }}>Total Filament Usage By Day (g)</h2>
+                  <canvas ref={lineRef2} width="400" height="300"></canvas>
                 </div>
+                {!loading && <div className="pie">
+                  <div className='pie-chart'>
+                    <h2>Number of Prints By Supervisor</h2>
+                    <Pie data={{
+                      labels: supervisorData.map((entry) => { return (truncateString(entry.supervisorName, 20)) }),
+                      datasets: [{
+                        data: supervisorData.map((entry) => {
+                          return (entry.cnt)
+                        }),
+                      },
+                      { data: [], }],
+                    }} options={{
+                      plugins: {
+                        legend: {
+                          position: 'right',
+                        },
+                      },
+                    }} />
+                  </div>
 
-                <div className='chart'>
-                  <h2>Filament Used by Person</h2>
-                  <Pie data={{
-                    labels: nameFilamentData.map((entry) => { return (entry.name) }),
-                    datasets: [
-                      {
+                  <div className='pie-chart'>
+                    <h2>Filament Used by Person</h2>
+                    <Pie data={{
+                      labels: nameFilamentData.map((entry) => { return (truncateString(entry.name, 20)) }),
+                      datasets: [{
                         data: nameFilamentData.map((entry) => { return (entry.sum) }),
                       },
                       {
                         data: [],
                       }
-                    ],
-                  }} options={{
-                    plugins: {
-                      legend: {
-                        position: 'right',
+                      ],
+                    }} options={{
+                      plugins: {
+                        legend: {
+                          position: 'right',
+                        },
                       },
-                    },
-                  }} />
-                </div>
+                    }} />
+                  </div>
+                </div>}
               </div>
               <div style={{ height: '80px' }} />
             </div>}
-
           </div>}
 
           {selectedPrinter && !menuOpen && <div>
@@ -865,6 +936,7 @@ function App() {
               <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
               <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
               <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
+              <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Cancel Print</button>
               <br />
               {
                 curJob && curJob.files.split(',').map((link, index) => {
@@ -884,14 +956,14 @@ function App() {
                 <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Autofill From Latest Submission...</button>
                 <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                <div className={`supervisor-input ${supervisorPrint ? 'disabled' : ''}`}> Supervisor:&nbsp;&nbsp; <input placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                <div className={`supervisor-input ${supervisorPrint ? 'disabled' : ''}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div> Part Names:&nbsp; <input placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div> Files:&nbsp;&nbsp;
                   <input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
                   <button tabIndex="-1" className="file-upload" onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
                   <input placeholder="GDrive Links Preferred (From Form)" value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
                 </div>
-                <div> Filament Usage: <input value={filamentUsage} type="text" onChange={handleFilamentUsage} style={{ width: '40px', 'fontSize': 'large' }}></input> g</div>
+                <div> Filament Usage: <input value={filamentUsage} placeholder="123" type="text" onChange={handleFilamentUsage} style={{ width: '40px', 'fontSize': 'large' }}></input> g</div>
                 <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
                   <br />
                   <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea></div>
@@ -902,12 +974,19 @@ function App() {
               <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
               <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
               <br />
-              {/* Checkbox to toggle email sending */}
+              {/* Checkbox to toggle supervisor print */}
               <label
                 className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
                 <input type="checkbox" checked={supervisorPrint} onChange={handleSupervisorPrintChange} />
                 <span className="custom-checkbox"></span>
                 <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
+              </label>
+              {/* Checkbox to toggle personal filament */}
+              <label
+                className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
+                <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
+                <span className="custom-checkbox"></span>
+                <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
               </label>
               <br />
               {
@@ -963,7 +1042,7 @@ function App() {
                       <td>{job.status}</td>
                       <td>{truncateString(job.partNames, 40)}</td>
                       <td>{truncateString(job.name, 20)}</td>
-                      <td>{truncateString(job.email, 20)}</td>
+                      <td>{truncateString(job.email, 30)}</td>
                       <td>{truncateString(job.supervisorName, 20)}</td>
                       <td>{job.usage_g}</td>
                       <td>{truncateString(job.files, 256)}</td>
@@ -972,8 +1051,7 @@ function App() {
                 </tbody>
               </table>
             </div>
-            <div style={{ height: '75px' }} />
-
+            <div style={{ height: '10px' }} />
 
 
             <div className='printer-header' style={{
@@ -989,24 +1067,19 @@ function App() {
 
         </div>
         {menuOpen ? (
-          <div className='menuBG active'>
+          <div className='menuBG active' style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
             {
-              //<Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament}
-              // handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}
-              // handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
-              // handlefiles={handlefiles} files={files} handleStartPrintClick={handleStartPrintClick}
-              // usingFilament={usingFilament}></Menu>
+              <Settings menuOpen={menuOpen} selectedPrinter={selectedPrinter}
+              handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
+              handlefiles={handlefiles} files={files} handleStartPrintClick={handleStartPrintClick} sidebarWidth={sidebarWidth}/>
             }
           </div>
         ) :
           (
-            <div className='menuBG hidden'>
-              {/* <Menu menuOpen={menuOpen} filamentList={filamentList} selectedFilament={selectedFilament}
-                  handleFilamentClick={handleFilamentClick} selectedPrinter={selectedPrinter}
-                  handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
-                  handlefiles={handlefiles} files={files} handleStartPrintClick={handleStartPrintClick}
-                  usingFilament={usingFilament}></Menu>
-              */}
+            <div className='menuBG hidden' style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
+              <Settings menuOpen={menuOpen} selectedPrinter={selectedPrinter}
+              handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
+              handlefiles={handlefiles} files={files} handleStartPrintClick={handleStartPrintClick} sidebarWidth={sidebarWidth}/>
             </div>
           )}
         {showErr && <div className="err-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}

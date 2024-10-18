@@ -40,7 +40,7 @@ const transporter = nodemailer.createTransport({
     port: 587,
     secure: false,
     auth: {
-        user: '3dpcemailing@gmail.com',
+        user: 'purdue3dpcprintjobs@gmail.com',
         pass: process.env.EMAIL_PSWD
     }
 });
@@ -50,7 +50,7 @@ app.post('/api/send-email', (req, res) => {
     const b = req.body;
     try {
         transporter.sendMail({
-            from: '3dpcemailing@gmail.com',
+            from: 'purdue3dpcprintjobs@gmail.com',
             to: b.to,
             subject: b.subject,
             text: b.text
@@ -211,7 +211,7 @@ app.get('/api/getsupervisordata', (req, res) => {
     GROUP BY supervisorName 
     HAVING supervisorName IS NOT NULL
     ORDER BY cnt DESC 
-    LIMIT 15)
+    LIMIT 10)
   
     UNION ALL
   
@@ -226,7 +226,7 @@ app.get('/api/getsupervisordata', (req, res) => {
         GROUP BY supervisorName 
         HAVING supervisorName IS NOT NULL
         ORDER BY COUNT(*) DESC 
-        LIMIT 15) AS top_names
+        LIMIT 10) AS top_names
     ))
   `;
     pool.getConnection((err, connection) => {
@@ -260,7 +260,7 @@ app.get('/api/getfilamentdata', (req, res) => {
   WHERE name IS NOT NULL 
   GROUP BY name 
   ORDER BY sum DESC 
-  LIMIT 15)
+  LIMIT 10)
 
   UNION ALL
 
@@ -275,7 +275,7 @@ app.get('/api/getfilamentdata', (req, res) => {
       WHERE name IS NOT NULL 
       GROUP BY name 
       ORDER BY SUM(usage_g) DESC 
-      LIMIT 15
+      LIMIT 10
     ) AS top_names
   ))
 `;
@@ -304,7 +304,7 @@ app.get('/api/getfilamentdata', (req, res) => {
 });
 
 app.get('/api/getdailyprints', (req, res) => {
-    const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt FROM printjob GROUP BY DATE(timeStarted)`;
+    const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt, SUM(usage_g) AS sum FROM printjob GROUP BY DATE(timeStarted)`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -328,6 +328,7 @@ app.get('/api/getdailyprints', (req, res) => {
         });
     });
 });
+
 
 app.get('/api/getHistory', (req, res) => {
     const printerName = req.query.printerName;
@@ -356,10 +357,9 @@ app.get('/api/getHistory', (req, res) => {
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;
-    // console.log('inserting');
-    // console.log(b);
     const dateTime = new Date(b.timeStarted);
-    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted, status, name, supervisorName, notes, partNames, email) VALUES (?,?,?,?,?,?,?,?,?,?)";
+    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted, status, name, supervisorName, "+
+    "notes, partNames, email, personalFilament) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -368,7 +368,8 @@ app.post('/api/insert', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor, b.notes, b.partNames, b.email], (err, result) => {
+            connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
+                 b.notes, b.partNames, b.email,b.personalFilament], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error inserting printer");
@@ -382,9 +383,9 @@ app.post('/api/insert', (req, res) => {
     });
 });
 
-/*app.delete('/api/deleteFilament/:filamentID', (req, res) => {
-    const filamentID = req.params.filamentID;
-    const sqlDelete = "DELETE FROM filament WHERE filamentID=?";
+app.delete('/api/cancelPrint/:printerName', (req, res) => {
+    const printerName = req.params.printerName;
+    const sqlDelete = 'DELETE FROM printJob WHERE printerName=? AND status = "active"';
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting connection from pool:', err);
@@ -392,10 +393,10 @@ app.post('/api/insert', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlDelete, filamentID, (err, result) => {
+            connection.query(sqlDelete, printerName, (err, result) => {
                 if (err) {
                     console.log(err);
-                    res.status(500).send("Error deleting printer");
+                    res.status(500).send("Error deleting printJob");
                     connection.release();
                     return;
                 }
@@ -404,7 +405,7 @@ app.post('/api/insert', (req, res) => {
             });
         });
     });
-});*/
+});
 
 app.put('/api/update', (req, res) => {
     const { table, column, val, id } = req.body;

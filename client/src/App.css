@@ -60,9 +60,7 @@ html::-webkit-scrollbar {
 
   background-color: rgba(0, 0, 0, 0.75);
   position: fixed;
-  width: 75%;
   height: 100%;
-  margin-left: -2px;
   top: 70px;
 }
 
@@ -247,7 +245,7 @@ html::-webkit-scrollbar {
 
 .wrapper-wrapper {
   margin: auto;
-  width: 90.2%;
+  width: 95.2%;
   max-height: 70vh;
   margin-bottom: 30px;
   overflow-x: auto;
@@ -256,7 +254,7 @@ html::-webkit-scrollbar {
 
 .print-history {
   margin: auto;
-  width: 90%;
+  width: 95%;
 
   background-color: silver;
   padding-top: 10px;
@@ -298,22 +296,44 @@ html::-webkit-scrollbar {
 
 .chart-wrapper {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
   align-items: center;
   text-align: center;
   width: 100%;
   margin: auto;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.chart {
-  width: 50%;
+
+.pie-chart {
   background-color: rgb(245, 245, 245);
-  padding-left: 30px;
-  padding-right: 30px;
+  padding-left: 20px;
+  padding-right: 20px;
+  margin: 10px 20px 20px 0px;
   border-radius: 10px;
   outline: 2px solid black;
-  margin-top: 10px;
+  width:32%;
+}
+.pie {
+  display: flex; /* Use flexbox */
+  width: 100vw;
+  justify-content: center;
+  }
+
+  canvas {
+    width: 100%; 
+    height: 100%;
+    margin:10px;
+  }
+
+.line-chart { 
+  width: 90%;
+  background-color: rgb(245, 245, 245);
+  padding-left: 20px;
+  padding-right: 20px;
+  margin: 40px 20px 20px 0px;
+  border-radius: 10px;
+  outline: 2px solid black;
 }
 
 h2 {
@@ -341,6 +361,7 @@ h2 {
 
 .checkbox-container {
   margin-top: 10px;
+  margin-right:10px;
   display: inline-flex;
   align-items: center;
   cursor: pointer;
