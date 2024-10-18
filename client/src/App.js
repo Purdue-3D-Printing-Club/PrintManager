@@ -197,7 +197,7 @@ function App() {
                           },
                           responsive: true,
                           maintainAspectRatio: true,
-                          aspectRatio: 2,
+                          aspectRatio: 2.5,
                           scales: {
                             y: {
                               beginAtZero: true,
@@ -245,7 +245,7 @@ function App() {
                           },
                           responsive: true,
                           maintainAspectRatio: true,
-                          aspectRatio: 2,
+                          aspectRatio: 2.5,
                           scales: {
                             y: {
                               beginAtZero: true,
@@ -1051,7 +1051,7 @@ function App() {
                 </tbody>
               </table>
             </div>
-            <div style={{ height: '10px' }} />
+            <div style={{ height: '10vh' }} />
 
 
             <div className='printer-header' style={{
