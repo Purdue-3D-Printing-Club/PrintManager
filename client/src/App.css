@@ -345,11 +345,11 @@ h2 {
 
 }
 
-.supervisor-input {
+.enabled, .disabled {
   transition: opacity 0.2s ease;
 }
 
-.supervisor-input.disabled {
+.disabled {
   opacity: 0.4;
   pointer-events: none;
 }

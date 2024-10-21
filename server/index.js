@@ -355,6 +355,33 @@ app.get('/api/getHistory', (req, res) => {
     });
 });
 
+app.get('/api/getFailureCount', (req, res) => {
+    const parts = req.query.parts;
+    const name = req.query.name;
+
+    const sqlSelectFailureCount = `SELECT COUNT(*) AS cnt FROM printjob WHERE partNames = ? AND name = ? AND status = "failed"`
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+        //transaction with no isolation level: reads only (transaction ensures consistency)
+        connection.beginTransaction(function (err) {
+            connection.query(sqlSelectFailureCount, [parts, name], (errFailure, resultFailure) => {
+                if (errFailure) {
+                    console.log(errFailure);
+                    res.status(500).send("Error accessing printjob data");
+                    connection.release();
+                    return;
+                }
+                res.send({ count : resultFailure });
+                connection.release();
+            });
+        });
+    });
+});
+
 app.post('/api/insert', (req, res) => {
     const b = req.body;
     const dateTime = new Date(b.timeStarted);

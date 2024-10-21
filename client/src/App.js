@@ -464,19 +464,20 @@ function App() {
       } else if (name.length === 0) {
         console.log("startPrintClick: err: no name");
         showErrForDuration("No Name! Print not started.", popupTime);
-      } else if (email.length === 0) {
+      } else if ((email.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no email");
         showErrForDuration("No Email! Print not started.", popupTime);
       } else if ((supervisor.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no supervisor");
         showErrForDuration("No Supervisor! Print not started.", popupTime);
-      } else if (partNames.length === 0) {
+      } else if ((partNames.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no partNames");
         showErrForDuration("No Part Names! Print not started.", popupTime);
-      } else if (files.length === 0) {
-        console.log("startPrintClick: err: no files");
-        showErrForDuration("No Files! Print not started.", popupTime);
-      } else if ((filamentUsage === 0) || (filamentUsage === "")) {
+       }// else if (files.length === 0) {
+      //   console.log("startPrintClick: err: no files");
+      //   showErrForDuration("No Files! Print not started.", popupTime);
+      // }
+       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
         showErrForDuration("No Filament Usage! Print not started.", popupTime);
       } else if (filamentUsage > 1000) {
@@ -556,6 +557,21 @@ function App() {
     showMsgForDuration(`Print job successfully started!`, popupTime);
   };
 
+  const sendMail = (subject, text) => {
+    Axios.post(`${serverURL}/api/send-email`, {
+      to: curJob.email,
+      subject: subject,
+      text: text
+    }).then(() => {
+      showMsgForDuration('Email Sent Successfully', popupTime);
+      console.log('Email sent successfully');
+    }).catch((error) => {
+      showErrForDuration('Error Sending Email', popupTime);
+      console.error('Error sending email:', error.response ? error.response.data : error.message);
+    });
+  }
+
+
   const handlePrintDoneClick = (statusArg, callback) => {
     try {
       console.log("print done was clicked... setting printer status to available");
@@ -584,29 +600,40 @@ function App() {
             console.log(updatedPrinterList)
 
             //Email the user and set popup message
-            if (false) {//sendEmail) {
+            if (sendEmail) {
               console.log('sending email...')
               let success = statusArg === 'completed'
+
+              let text = success ? "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
+                "] that started at " + formatDate(curJob.timeStarted, true) + " has been completed. It has been dropped off at the " +
+                "1st floor of Lambertus Hall room 1234 in the 3DPC drop-box.\n\n\nThank you, \n Purdue 3D Printing Club " 
+                :
+                "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
+                "] that started at " + formatDate(curJob.timeStarted, true) + " has not been completed."+
+                " The print has failed multiple times and you will need to come back "+
+                "to the lab (at LMBS1234) to try again. \n\n\nThank you, \n Purdue 3D Printing Club"
+
               try {
-                Axios.post(`${serverURL}/api/send-email`, {
-                  to: curJob.email,
-                  subject: "3DPC: Print " + (success ? 'Completed' : 'Failed'),
-                  text: success ? "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
-                    "] that started at " + formatDate(curJob.timeStarted, true) + " has been completed. It has been dropped off at the " +
-                    "1st floor of Lambertus Hall room 1234 in the 3DPC drop-box.\n\n\nThank you, 3DPC Supervisor"
-                    :
-                    "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
-                    "] that started at " + formatDate(curJob.timeStarted, true) + " has not been completed."+
-                    " If this has happened for the third time, this print will be discarded and you will need"+
-                    " to come back to the lab (LMBS1234) to try again. Otherwise, a supervisor will restart"+
-                    " the print for you.\n\n\nThank you, 3DPC Supervisor"
-                }).then(() => {
-                  showMsgForDuration('Email Sent Successfully', popupTime);
-                  console.log('Email sent successfully');
-                }).catch((error) => {
-                  showErrForDuration('Error Sending Email', popupTime);
-                  console.error('Error sending email:', error.response ? error.response.data : error.message);
-                });
+               
+                if(success) {
+                 sendMail("3DPC: Print Completed", text)
+                } else {
+                  // Pull the count of prints with the same part names that failed
+                  try {
+                    Axios.get(`${serverURL}/api/getFailureCount?parts=${curJob.partNames}&name=${curJob.name}`).then((response) => {
+                      let failureCount = response.data.count[0].cnt
+                      console.log('failure count: ' + failureCount)
+                      if (failureCount >= 2) {
+                        sendMail("3DPC: Print Failed", text)
+                      } else {
+                        showErrForDuration(`Email not sent. Failures: ${failureCount}`, popupTime)
+                      }
+                    });
+                  } catch (error) {
+                    console.error("Error fetching failure count: ", error);
+                  }
+                }
+                
 
               } catch (e) {
                 showErrForDuration('Error Sending Email', popupTime);
@@ -731,6 +758,17 @@ function App() {
     if (file) {
       setfiles(file);
       console.log("set file to: " + file)
+    }
+  };
+
+  const handlePartsUpload = (e) => {
+    let filesList = Array.from(e.target.files).map((file) => {
+      return file.name.substring(0, file.name.lastIndexOf('.')) || file;
+    })
+    const file = filesList.join(', ');
+    if (file) {
+      setpartnames(file);
+      console.log("set partnames to: " + file)
     }
   };
 
@@ -953,17 +991,21 @@ function App() {
 
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
               <div className='printForm'>
-                <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Autofill From Latest Submission...</button>
+                <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Autofill From Latest Print Form Submission...</button>
                 <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                <div> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                <div className={`supervisor-input ${supervisorPrint ? 'disabled' : ''}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                <div> Part Names:&nbsp; <input placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                <div> Files:&nbsp;&nbsp;
+                <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Parts:&nbsp; 
+                <input type="file" multiple onChange={handlePartsUpload} style={{ display: 'none' }} id="parts-upload" />
+                <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('parts-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
+                <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                
+                <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Files:&nbsp;&nbsp;
                   <input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
-                  <button tabIndex="-1" className="file-upload" onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                  <input placeholder="GDrive Links Preferred (From Form)" value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
+                  <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
+                  <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="(Optional) Google Drive links" value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
                 </div>
-                <div> Filament Usage: <input value={filamentUsage} placeholder="123" type="text" onChange={handleFilamentUsage} style={{ width: '40px', 'fontSize': 'large' }}></input> g</div>
+                <div> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> g</div>
                 <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
                   <br />
                   <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea></div>
