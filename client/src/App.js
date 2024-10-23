@@ -457,7 +457,6 @@ function App() {
 
   const handleStartPrintClick = () => {
     if (selectedPrinter !== null) {
-
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available') {
         showErrForDuration("This printer is not available!", popupTime);
@@ -614,7 +613,6 @@ function App() {
                 "to the lab (at LMBS1234) to try again. \n\n\nThank you, \n Purdue 3D Printing Club"
 
               try {
-               
                 if(success) {
                  sendMail("3DPC: Print Completed", text)
                 } else {
@@ -623,10 +621,10 @@ function App() {
                     Axios.get(`${serverURL}/api/getFailureCount?parts=${curJob.partNames}&name=${curJob.name}`).then((response) => {
                       let failureCount = response.data.count[0].cnt
                       console.log('failure count: ' + failureCount)
-                      if (failureCount >= 2) {
-                        sendMail("3DPC: Print Failed", text)
+                      if (failureCount >= 3) {
+                        sendMail("3DPC: Print Failed", text);
                       } else {
-                        showErrForDuration(`Email not sent. Failures: ${failureCount}`, popupTime)
+                        showErrForDuration(`Email not sent. Failures: ${failureCount}`, popupTime);
                       }
                     });
                   } catch (error) {
@@ -634,7 +632,6 @@ function App() {
                   }
                 }
                 
-
               } catch (e) {
                 showErrForDuration('Error Sending Email', popupTime);
                 console.log('Error sending email:', e);
