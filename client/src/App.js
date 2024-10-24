@@ -6,6 +6,8 @@ import Settings from './Settings';
 import { Pie } from 'react-chartjs-2';
 import Chart from 'chart.js/auto';
 import { ReactComponent as ExitIcon } from './images/exit.svg';
+import CryptoJS from 'crypto-js';
+
 
 const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
 
@@ -30,7 +32,10 @@ function App() {
   const [selectedPrinter, selectPrinter] = useState(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
-
+  const [adminPswd, setAdminPswd] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [feedbackSubject, setFeedbackSubject] = useState('');
+  const [feedbackText, setFeedbackText] = useState('');
 
   const [printerList, setPrinterList] = useState([]);
 
@@ -55,6 +60,20 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   const popupTime = 8000;
+
+
+  const handleFeedbackSubjectChange = (e) => {
+    const newFeedbackSubject = e.target.value;
+    console.log('changed feedbackSubject to: ' + newFeedbackSubject);
+    setFeedbackSubject(newFeedbackSubject);
+  }
+
+  
+  const handleFeedbackTextChange = (e) => {
+    const newFeedbackText = e.target.value;
+    console.log('changed feedbackText to: ' + newFeedbackText);
+    setFeedbackText(newFeedbackText);
+  }
 
   const clearFields = () => {
     setname('');
@@ -333,6 +352,11 @@ function App() {
     setSendEmail(!sendEmail);
   }
 
+  const handleIsAdminChange = (state) => {
+    console.log('changed isAdmin to ' + state);
+    setIsAdmin(state);
+  }
+
   const handleSupervisorPrintChange = () => {
     console.log('changed supervisorPrint to ' + !supervisorPrint);
     setSupervisorPrint(!supervisorPrint);
@@ -366,6 +390,20 @@ function App() {
       return ("")
     }
   }
+  const checkPswd = (given, actual) => {
+    const hash = CryptoJS.SHA256(given).toString();
+    console.log('given pswd: ' + hash)
+    console.log('actual pswd: ' + actual)
+    if (hash === actual) {
+      showMsgForDuration("Logged in as Admin!", popupTime);
+      handleIsAdminChange(true)
+      console.log('logged in as admin')
+    } else {
+      showErrForDuration("Password  Incorrect.", popupTime);
+      console.log('incorrect admin password')
+    }
+    setAdminPswd('')
+  }
 
   const handleKeyPress = (e) => {
     const isInputFocused =
@@ -373,18 +411,45 @@ function App() {
       e.target.tagName === 'TEXTAREA';
 
     if (!isInputFocused) {
-      switch (e.key) {
-        case 'Enter':
-          handleStartPrintClick();
-          break;
-        case 'ArrowLeft':
-          movePrinter(-1);
-          break;
-        case 'ArrowRight':
-          movePrinter(1);
-          break;
-        default:
+      if (!menuOpen) {
+        switch (e.key) {
+          case 'Enter':
+            handleStartPrintClick();
+            break;
+          case 'Backspace':
+            selectPrinter(null)
+            break;
+          case 'ArrowLeft':
+            movePrinter(-1);
+            break;
+          case 'ArrowRight':
+            movePrinter(1);
+            break;
+          default:
+        }
+      } else {
+        if (e.key === 'Backspace') {
+          setMenuOpen(false)
+        }
       }
+    } else if (menuOpen && e.key === 'Enter') {
+      if (e.target.id === "adminInput") {
+        checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD)
+      } else if (e.target.id === "subjectInput" || e.target.id === "feedbackInput") {
+        handleFeedbackClick();
+      }
+    }
+  }
+
+  const handleFeedbackClick = () => {
+    if (feedbackSubject.length > 0) {
+      showErrForDuration("No Feedback Subject! Not sent.",popupTime)
+    } else if (feedbackText.length > 0) {
+      showErrForDuration("No Feedback Text! Not sent.",popupTime)
+    }else {
+      sendMail('3DPC PrintManager Feedback - ' + feedbackSubject, feedbackText, "thomp907@purdue.edu")
+      setFeedbackSubject('')
+      setFeedbackText('')
     }
   }
 
@@ -452,7 +517,6 @@ function App() {
     handlePrintDoneClick("failed", () => {
       handlePrinterStatusChange(statusArg);
     });
-
   };
 
   const handleStartPrintClick = () => {
@@ -472,11 +536,11 @@ function App() {
       } else if ((partNames.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no partNames");
         showErrForDuration("No Part Names! Print not started.", popupTime);
-       }// else if (files.length === 0) {
+      }// else if (files.length === 0) {
       //   console.log("startPrintClick: err: no files");
       //   showErrForDuration("No Files! Print not started.", popupTime);
       // }
-       else if ((filamentUsage === 0) || (filamentUsage === "")) {
+      else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
         showErrForDuration("No Filament Usage! Print not started.", popupTime);
       } else if (filamentUsage > 1000) {
@@ -556,9 +620,9 @@ function App() {
     showMsgForDuration(`Print job successfully started!`, popupTime);
   };
 
-  const sendMail = (subject, text) => {
+  const sendMail = (subject, text, target=curJob.email,) => {
     Axios.post(`${serverURL}/api/send-email`, {
-      to: curJob.email,
+      to: target,
       subject: subject,
       text: text
     }).then(() => {
@@ -605,16 +669,16 @@ function App() {
 
               let text = success ? "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
                 "] that started at " + formatDate(curJob.timeStarted, true) + " has been completed. It has been dropped off at the " +
-                "1st floor of Lambertus Hall room 1234 in the 3DPC drop-box.\n\n\nThank you, \n Purdue 3D Printing Club " 
+                "1st floor of Lambertus Hall room 1234 in the 3DPC drop-box.\n\n\nThank you, \n Purdue 3D Printing Club "
                 :
                 "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
-                "] that started at " + formatDate(curJob.timeStarted, true) + " has not been completed."+
-                " The print has failed multiple times and you will need to come back "+
+                "] that started at " + formatDate(curJob.timeStarted, true) + " has not been completed." +
+                " The print has failed multiple times and you will need to come back " +
                 "to the lab (at LMBS1234) to try again. \n\n\nThank you, \n Purdue 3D Printing Club"
 
               try {
-                if(success) {
-                 sendMail("3DPC: Print Completed", text)
+                if (success) {
+                  sendMail("3DPC: Print Completed", text)
                 } else {
                   // Pull the count of prints with the same part names that failed
                   try {
@@ -631,7 +695,7 @@ function App() {
                     console.error("Error fetching failure count: ", error);
                   }
                 }
-                
+
               } catch (e) {
                 showErrForDuration('Error Sending Email', popupTime);
                 console.log('Error sending email:', e);
@@ -643,6 +707,10 @@ function App() {
 
             selectedPrinter.status = 'available'
             setCurJob(null)
+
+            if (typeof callback === 'function') {
+              callback();
+            }
 
             console.log("Print finished, done updating the database.");
 
@@ -740,6 +808,12 @@ function App() {
     setfiles(files);
     console.log("set files to " + files);
   };
+
+  const handlePswdChange = (e) => {
+    const pswd = e.target.value;
+    console.log('changed adminPswd to ' + pswd);
+    setAdminPswd(pswd);
+  }
 
   const handlenotes = (e) => {
     const notes = e.target.value;
@@ -992,11 +1066,11 @@ function App() {
                 <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Parts:&nbsp; 
-                <input type="file" multiple onChange={handlePartsUpload} style={{ display: 'none' }} id="parts-upload" />
-                <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('parts-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                
+                <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Parts:&nbsp;
+                  <input type="file" multiple onChange={handlePartsUpload} style={{ display: 'none' }} id="parts-upload" />
+                  <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('parts-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
+                  <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+
                 <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Files:&nbsp;&nbsp;
                   <input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
                   <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
@@ -1106,19 +1180,21 @@ function App() {
 
         </div>
         {menuOpen ? (
-          <div className='menuBG active' style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
+          <div className='menuBG active' style={{ left: `${sidebarWidth + 2}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
             {
-              <Settings menuOpen={menuOpen} selectedPrinter={selectedPrinter}
-              handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
-              handlefiles={handlefiles} files={files} handleStartPrintClick={handleStartPrintClick} sidebarWidth={sidebarWidth}/>
+              <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
+                isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText} 
+                handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
+                handleFeedbackClick={handleFeedbackClick}/>
             }
           </div>
         ) :
           (
-            <div className='menuBG hidden' style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
-              <Settings menuOpen={menuOpen} selectedPrinter={selectedPrinter}
-              handleFilamentUsage={handleFilamentUsage} filamentUsage={filamentUsage}
-              handlefiles={handlefiles} files={files} handleStartPrintClick={handleStartPrintClick} sidebarWidth={sidebarWidth}/>
+            <div className='menuBG hidden' style={{ left: `${sidebarWidth + 2}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
+              <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
+                isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText} 
+                handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
+                handleFeedbackClick={handleFeedbackClick}/>
             </div>
           )}
         {showErr && <div className="err-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}

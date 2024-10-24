@@ -249,7 +249,6 @@ html::-webkit-scrollbar {
   max-height: 70vh;
   margin-bottom: 30px;
   overflow-x: auto;
-
 }
 
 .print-history {
@@ -291,7 +290,6 @@ html::-webkit-scrollbar {
 
 .history-wrapper td {
   overflow: hidden;
-
 }
 
 .chart-wrapper {
