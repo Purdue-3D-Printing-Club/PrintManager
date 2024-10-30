@@ -37,7 +37,7 @@ function App() {
   const [feedbackText, setFeedbackText] = useState('');
 
   const [printerList, setPrinterList] = useState([]);
-  const [printerNotes, setPrinterNotes] = useState([]);
+  const [printerNotes, setPrinterNotes] = useState(null);
 
   const [message, setMessage] = useState('');
   const [showErr, setShowErr] = useState(false);
@@ -45,7 +45,7 @@ function App() {
   const [showWarn, setShowWarn] = useState(false);
 
   //Printer menu data
-  const [curJob, setCurJob] = useState(null)
+  const [curJob, setCurJob] = useState(null);
   const [historyList, setHistoryList] = useState([]);
 
   //summary page data
@@ -61,12 +61,27 @@ function App() {
 
   const popupTime = 8000;
 
+  const handlePrinterNotes = (e) => {
+    const newPrinterNotes = e.target.value;
+    setPrinterNotes(newPrinterNotes);
+    console.log('set printerNotes to ' + newPrinterNotes);
+  }
+
+  const handleEditPrinterNotesClick = () => {
+    if (selectedPrinter && selectedPrinter.notes) {
+      setPrinterNotes(selectedPrinter.notes)
+      console.log('editing printer notes: ' + selectedPrinter.notes );
+    } else {
+      setPrinterNotes('')
+      console.log('editing printer notes')
+    }
+  }
+
   const handleFeedbackSubjectChange = (e) => {
     const newFeedbackSubject = e.target.value;
     console.log('changed feedbackSubject to: ' + newFeedbackSubject);
     setFeedbackSubject(newFeedbackSubject);
   }
-
 
   const handleFeedbackTextChange = (e) => {
     const newFeedbackText = e.target.value;
@@ -116,6 +131,7 @@ function App() {
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
+    setPrinterNotes(null)
     const generateDateRange = (startDate, endDate) => {
       const dateArray = [];
       let currentDate = new Date(startDate);
@@ -638,29 +654,26 @@ function App() {
     });
   }
 
-const updatePrinterNotes = () => {
-  //set the printJob status to statusArg
-  Axios.put(`${serverURL}/api/update`, {
-    table: "printer",
-    column: "notes",
-    id: selectedPrinter.printerName,
-    val: printerNotes
-  }).then(() => {
-    //remove currentJob
-    console.log("removing printer's currentJob...");
-    updateTable("printer", "currentJob", selectedPrinter.printerName, "", () => {
-
+  const updatePrinterNotes = () => {
+    //set the printJob status to statusArg
+    Axios.put(`${serverURL}/api/update`, {
+      table: "printer",
+      column: "notes",
+      id: selectedPrinter.printerName,
+      val: printerNotes
+    }).then(() => {
       //apply the changes locally
       const updatedPrinterList = printerList.map(printer => {
         if (printer.printerName === selectedPrinter.printerName) {
-          return { ...printer, status: "available", currentJob: "" };
+          return { ...printer, notes: printerNotes};
         }
         return printer;
       });
       setPrinterList(updatedPrinterList);
+      selectedPrinter.notes = printerNotes;
+      setPrinterNotes(null);
     })
-  })
-}
+  }
 
 
   const handlePrintDoneClick = (statusArg, callback) => {
@@ -1155,7 +1168,7 @@ const updatePrinterNotes = () => {
               </div>
 
             </div>}
-            
+
             {selectedPrinter && (selectedPrinter.status === "admin") && isAdmin && <div>
               <div className='printForm'>
                 <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Autofill From Latest Print Form Submission...</button>
@@ -1227,12 +1240,22 @@ const updatePrinterNotes = () => {
               <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
               <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
             </div>}
-            
+
             {/* End printer status pages */}
 
-            {selectedPrinter && isAdmin && <div className='notes-msg'>
-              {selectedPrinter.notes}
-              
+            {selectedPrinter && isAdmin && (printerNotes===null) && <div>
+              <div className='notes-msg'>
+                <strong>Printer Status Notes</strong><br /> {selectedPrinter.notes ? selectedPrinter.notes : "This printer has no notes."}
+              </div>
+              <button onClick={() => { handleEditPrinterNotesClick() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Edit Notes</button>
+            </div>}
+
+            {selectedPrinter && isAdmin && printerNotes!==null && <div>
+              <div className='notes-msg'>
+              <strong>Printer Status Notes</strong><br/>
+                <textarea value={printerNotes} type="text" onChange={handlePrinterNotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea>
+              </div>
+              <button onClick={() => { updatePrinterNotes() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Save Notes</button>
             </div>}
 
             <div style={{ height: "50px" }}></div>
@@ -1285,7 +1308,7 @@ const updatePrinterNotes = () => {
             </div>
           </div>}
           <div className="header" style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
-            <h1>3DPC - Print Manager</h1>
+            <h1>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
           </div>
 
         </div>
