@@ -1,9 +1,8 @@
 import React from 'react';
 import './Sidebar.css';
 
-const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width, getStatusColor }) => {
-
-
+const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width,
+     getStatusColor, printerSort, handlePrinterSort}) => {
     return (
         <div className="sidebar" style={{ width: `${width}px` }}>
             <div className="mask" style={{ width: `${width}px` }}>
@@ -14,8 +13,17 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
             </div>
             <div className="hdr" style={{ width: `${width}px` }}>
                 Printer List
+                <div style={{fontSize:'medium'}}>
+                Sort:
+                <select id="dropdown" value={printerSort} onChange={handlePrinterSort}>
+                    <option value="Availability">Availability</option>
+                    <option value="Printer Name">Printer Name</option>
+                    <option value="Printer Model">Printer Model</option>
+                </select>
+                </div>
+                
             </div>
-            <div style={{ height: '115px' }}></div>
+            <div style={{ height: '135px' }}></div>
             <div className='lowerBar'>
                 <div className={'sidePrinter'}
                     onClick={() => selectPrinter(null)}

@@ -35,19 +35,20 @@
 
 .mask {
     position: fixed;
-    height: 80px;
+    height: 110px;
     background-color: #d2e0ff;
 }
 
 .hdr {
     position: fixed;
     top: 70px;
-    height: 40px;
+    height: 60px;
     background-color: silver;
     font-size: 30px;
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-direction: column;
     outline: 2px solid rgb(117, 117, 117);
     overflow: hidden;
     white-space: nowrap;

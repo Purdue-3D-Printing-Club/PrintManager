@@ -196,7 +196,7 @@ html::-webkit-scrollbar {
 
 #resizer {
   position: fixed;
-  top: 110px;
+  top: 130px;
   width: 4px;
   height: 100vh;
   background: black;

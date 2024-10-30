@@ -14,7 +14,7 @@ const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
 function App() {
   const serverURL = isLocal ? "http://localhost:3001" : "https://printmanager-server.onrender.com";
 
-  const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width
+  const [sidebarWidth, setSidebarWidth] = useState(225); // Initial sidebar width
   const [isResizing, setIsResizing] = useState(false);
 
   const [filamentUsage, setFilamentUsage] = useState('');
@@ -38,6 +38,7 @@ function App() {
 
   const [printerList, setPrinterList] = useState([]);
   const [printerNotes, setPrinterNotes] = useState(null);
+  const [printerSort, setPrinterSort] = useState('availability');
 
   const [message, setMessage] = useState('');
   const [showErr, setShowErr] = useState(false);
@@ -60,6 +61,12 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   const popupTime = 8000;
+
+  const handlePrinterSort = (e) => {
+    const newSort = e.target.value;
+    setPrinterSort(newSort);
+    console.log('now sorting printers by '+newSort);
+  }
 
   const handlePrinterNotes = (e) => {
     const newPrinterNotes = e.target.value;
@@ -948,7 +955,8 @@ function App() {
   return (
     <div className="App">
       <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
-        handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor} />
+        handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}
+        printerSort={printerSort} handlePrinterSort={handlePrinterSort}/>
 
       <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarWidth - 1}px` }}></div>
 
@@ -1327,7 +1335,7 @@ function App() {
               <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
+                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}/>
             </div>
           )}
         {showErr && <div className="err-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}
