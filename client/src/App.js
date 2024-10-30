@@ -28,7 +28,6 @@ function App() {
   const [supervisorPrint, setSupervisorPrint] = useState(false);
   const [personalFilament, setPersonalFilament] = useState(false);
 
-
   const [selectedPrinter, selectPrinter] = useState(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,6 +37,7 @@ function App() {
   const [feedbackText, setFeedbackText] = useState('');
 
   const [printerList, setPrinterList] = useState([]);
+  const [printerNotes, setPrinterNotes] = useState([]);
 
   const [message, setMessage] = useState('');
   const [showErr, setShowErr] = useState(false);
@@ -61,14 +61,13 @@ function App() {
 
   const popupTime = 8000;
 
-
   const handleFeedbackSubjectChange = (e) => {
     const newFeedbackSubject = e.target.value;
     console.log('changed feedbackSubject to: ' + newFeedbackSubject);
     setFeedbackSubject(newFeedbackSubject);
   }
 
-  
+
   const handleFeedbackTextChange = (e) => {
     const newFeedbackText = e.target.value;
     console.log('changed feedbackText to: ' + newFeedbackText);
@@ -369,10 +368,11 @@ function App() {
 
   function getStatusColor(printerStatus) {
     switch (printerStatus) {
-      case "available": return "#1ecb60";
-      case "busy": return "rgb(225, 225, 40)";
-      case "broken": return "rgb(246, 97, 97)";
-      case "testing": return "rgb(255,255,255)"
+      case "available": return "rgb(80, 210, 100)";
+      case "busy": return "rgb(225, 225, 60)";
+      case "broken": return "rgb(255, 120, 120)";
+      case "testing": return "rgb(255,255,255)";
+      case "admin": return "rgb(100, 180, 100)";
       default: return "silver";
     }
   }
@@ -386,10 +386,15 @@ function App() {
       return ("This printer is broken.. (0_0)")
     } else if (selectedPrinter.status === 'testing') {
       return ("This printer is currently in testing, and is not available to print on.")
+    } else if ((selectedPrinter.status === 'admin') && !isAdmin) {
+      return ("This printer is only available for admins. Please contact an officer if you would like to use this printer.")
+    } else if ((selectedPrinter.status === 'admin') && isAdmin) {
+      return ("This printer is available for you to print on!")
     } else {
       return ("")
     }
   }
+
   const checkPswd = (given, actual) => {
     const hash = CryptoJS.SHA256(given).toString();
     console.log('given pswd: ' + hash)
@@ -397,10 +402,8 @@ function App() {
     if (hash === actual) {
       showMsgForDuration("Logged in as Admin!", popupTime);
       handleIsAdminChange(true)
-      console.log('logged in as admin')
     } else {
       showErrForDuration("Password  Incorrect.", popupTime);
-      console.log('incorrect admin password')
     }
     setAdminPswd('')
   }
@@ -442,11 +445,11 @@ function App() {
   }
 
   const handleFeedbackClick = () => {
-    if (feedbackSubject.length > 0) {
-      showErrForDuration("No Feedback Subject! Not sent.",popupTime)
-    } else if (feedbackText.length > 0) {
-      showErrForDuration("No Feedback Text! Not sent.",popupTime)
-    }else {
+    if (feedbackSubject.length <= 0) {
+      showErrForDuration("No Feedback Subject! Not sent.", popupTime)
+    } else if (feedbackText.length <= 0) {
+      showErrForDuration("No Feedback Text! Not sent.", popupTime)
+    } else {
       sendMail('3DPC PrintManager Feedback - ' + feedbackSubject, feedbackText, "thomp907@purdue.edu")
       setFeedbackSubject('')
       setFeedbackText('')
@@ -522,7 +525,9 @@ function App() {
   const handleStartPrintClick = () => {
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
-      if (selectedPrinter.status !== 'available') {
+      if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin') {
+        showErrForDuration("This printer is not available!", popupTime);
+      } else if (selectedPrinter.status === 'admin' && !isAdmin) {
         showErrForDuration("This printer is not available!", popupTime);
       } else if (name.length === 0) {
         console.log("startPrintClick: err: no name");
@@ -620,19 +625,42 @@ function App() {
     showMsgForDuration(`Print job successfully started!`, popupTime);
   };
 
-  const sendMail = (subject, text, target=curJob.email,) => {
+  const sendMail = (subject, text, target = curJob.email,) => {
     Axios.post(`${serverURL}/api/send-email`, {
       to: target,
       subject: subject,
       text: text
     }).then(() => {
       showMsgForDuration('Email Sent Successfully', popupTime);
-      console.log('Email sent successfully');
     }).catch((error) => {
       showErrForDuration('Error Sending Email', popupTime);
       console.error('Error sending email:', error.response ? error.response.data : error.message);
     });
   }
+
+const updatePrinterNotes = () => {
+  //set the printJob status to statusArg
+  Axios.put(`${serverURL}/api/update`, {
+    table: "printer",
+    column: "notes",
+    id: selectedPrinter.printerName,
+    val: printerNotes
+  }).then(() => {
+    //remove currentJob
+    console.log("removing printer's currentJob...");
+    updateTable("printer", "currentJob", selectedPrinter.printerName, "", () => {
+
+      //apply the changes locally
+      const updatedPrinterList = printerList.map(printer => {
+        if (printer.printerName === selectedPrinter.printerName) {
+          return { ...printer, status: "available", currentJob: "" };
+        }
+        return printer;
+      });
+      setPrinterList(updatedPrinterList);
+    })
+  })
+}
 
 
   const handlePrintDoneClick = (statusArg, callback) => {
@@ -1040,12 +1068,17 @@ function App() {
               </div>
             }
 
+            {/* Printer status pages: busy, available, admin, broken, and testing */}
+
             {(selectedPrinter.status === "busy") && <div>
               <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
               <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
-              <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
-              <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
               <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Cancel Print</button>
+              {isAdmin && <div>
+                <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
+                <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
+                <button onClick={() => { printerChangeWhileBusy("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
+              </div>}
               <br />
               {
                 curJob && curJob.files.split(',').map((link, index) => {
@@ -1061,6 +1094,69 @@ function App() {
             </div>}
 
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
+              <div>
+                <div className='printForm'>
+                  <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Autofill From Latest Print Form Submission...</button>
+                  <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                  <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Parts:&nbsp;
+                    <input type="file" multiple onChange={handlePartsUpload} style={{ display: 'none' }} id="parts-upload" />
+                    <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('parts-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
+                    <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+
+                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Files:&nbsp;&nbsp;
+                    <input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
+                    <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
+                    <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="(Optional) Google Drive links" value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
+                  </div>
+                  <div> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> g</div>
+                  <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
+                    <br />
+                    <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea></div>
+                </div>
+
+                <br />
+                <button onClick={() => { handleStartPrintClick() }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Start Print</button>
+                <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
+                {isAdmin && <div style={{ display: 'block' }}>
+                  <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
+                  <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
+                  <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
+                </div>}
+
+                <br />
+                {/* Checkbox to toggle supervisor print */}
+                <label
+                  className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
+                  <input type="checkbox" checked={supervisorPrint} onChange={handleSupervisorPrintChange} />
+                  <span className="custom-checkbox"></span>
+                  <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
+                </label>
+                {/* Checkbox to toggle personal filament */}
+                <label
+                  className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
+                  <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
+                  <span className="custom-checkbox"></span>
+                  <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
+                </label>
+                <br />
+                {
+                  files && files.split(',').map((link, index) => {
+                    if (link.trim().startsWith('https://')) {
+                      return (<button className='printer-btn' key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
+                        Download File {index + 1}
+                      </button>)
+                    } else {
+                      return ('')
+                    }
+                  })
+                }
+              </div>
+
+            </div>}
+            
+            {selectedPrinter && (selectedPrinter.status === "admin") && isAdmin && <div>
               <div className='printForm'>
                 <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Autofill From Latest Print Form Submission...</button>
                 <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
@@ -1081,11 +1177,16 @@ function App() {
                   <br />
                   <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea></div>
               </div>
+
               <br />
               <button onClick={() => { handleStartPrintClick() }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Start Print</button>
-              <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
-              <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
               <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
+              {isAdmin && <div style={{ display: 'block' }}>
+                <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
+                <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
+                <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Available</button>
+              </div>}
+
               <br />
               {/* Checkbox to toggle supervisor print */}
               <label
@@ -1115,14 +1216,23 @@ function App() {
               }
             </div>}
 
-            {selectedPrinter && (selectedPrinter.status === "broken") && <div>
+            {selectedPrinter && (selectedPrinter.status === "broken") && isAdmin && <div>
               <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Available</button>
               <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
+              <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
             </div>}
 
-            {selectedPrinter && (selectedPrinter.status === "testing") && <div>
+            {selectedPrinter && (selectedPrinter.status === "testing") && isAdmin && <div>
               <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Available</button>
               <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
+              <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
+            </div>}
+            
+            {/* End printer status pages */}
+
+            {selectedPrinter && isAdmin && <div className='notes-msg'>
+              {selectedPrinter.notes}
+              
             </div>}
 
             <div style={{ height: "50px" }}></div>
@@ -1183,18 +1293,18 @@ function App() {
           <div className='menuBG active' style={{ left: `${sidebarWidth + 2}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
             {
               <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
-                isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText} 
+                isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick}/>
+                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
             }
           </div>
         ) :
           (
             <div className='menuBG hidden' style={{ left: `${sidebarWidth + 2}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
               <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
-                isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText} 
+                isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick}/>
+                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
             </div>
           )}
         {showErr && <div className="err-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}
