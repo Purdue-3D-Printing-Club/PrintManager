@@ -38,7 +38,7 @@ function App() {
 
   const [printerList, setPrinterList] = useState([]);
   const [printerNotes, setPrinterNotes] = useState(null);
-  const [printerSort, setPrinterSort] = useState('availability');
+  const [printerSort, setPrinterSort] = useState('Availability');
 
   const [message, setMessage] = useState('');
   const [showErr, setShowErr] = useState(false);
@@ -62,10 +62,12 @@ function App() {
 
   const popupTime = 8000;
 
+
+
   const handlePrinterSort = (e) => {
     const newSort = e.target.value;
     setPrinterSort(newSort);
-    console.log('now sorting printers by '+newSort);
+    console.log('now sorting printers by ' + newSort);
   }
 
   const handlePrinterNotes = (e) => {
@@ -77,7 +79,7 @@ function App() {
   const handleEditPrinterNotesClick = () => {
     if (selectedPrinter && selectedPrinter.notes) {
       setPrinterNotes(selectedPrinter.notes)
-      console.log('editing printer notes: ' + selectedPrinter.notes );
+      console.log('editing printer notes: ' + selectedPrinter.notes);
     } else {
       setPrinterNotes('')
       console.log('editing printer notes')
@@ -119,22 +121,46 @@ function App() {
     });
   }
 
+  
+  const sortPrinterList = (list, by = 'Availability') => {
+    let sortedPrinters = []
+    if (by === 'Availability') {
+      const availabilityOrder = ['available', 'admin', 'busy', 'testing', 'broken'];
+      sortedPrinters = list.sort((a, b) => {
+        return availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status);
+      });
+    }if (by === 'Printer Name') {
+      const availabilityOrder = ['available', 'admin', 'busy', 'testing', 'broken'];
+      sortedPrinters = list.sort((a, b) => {
+        return availabilityOrder.indexOf(a.name) - availabilityOrder.indexOf(b.name);
+      });
+    }if (by === 'Printer Model') {
+      const availabilityOrder = ['available', 'admin', 'busy', 'testing', 'broken'];
+      sortedPrinters = list.sort((a, b) => {
+        return availabilityOrder.indexOf(a.model) - availabilityOrder.indexOf(b.model);
+      });
+    }
+    
+    return(sortedPrinters)
+  }
 
   //fill data arrays on the initial render
   useEffect(() => {
     try {
       Axios.get(`${serverURL}/api/get`).then((response) => {
         console.log(response);
-        console.log("setting printers to data: ", response.data.printers);
-
-        setPrinterList(response.data.printers);
-
+        
+        const sorted = sortPrinterList(response.data.printers, printerSort)
+        setPrinterList(sorted);
+        console.log("setting printers to data: ", sorted);
       });
     } catch (error) {
       console.error("Error fetching printer data: ", error);
     }
 
-  }, [serverURL]);
+  }, [serverURL, printerSort, printerList]);
+
+
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
@@ -672,7 +698,7 @@ function App() {
       //apply the changes locally
       const updatedPrinterList = printerList.map(printer => {
         if (printer.printerName === selectedPrinter.printerName) {
-          return { ...printer, notes: printerNotes};
+          return { ...printer, notes: printerNotes };
         }
         return printer;
       });
@@ -956,7 +982,7 @@ function App() {
     <div className="App">
       <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
         handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}
-        printerSort={printerSort} handlePrinterSort={handlePrinterSort}/>
+        printerSort={printerSort} handlePrinterSort={handlePrinterSort} />
 
       <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarWidth - 1}px` }}></div>
 
@@ -1251,16 +1277,16 @@ function App() {
 
             {/* End printer status pages */}
 
-            {selectedPrinter && isAdmin && (printerNotes===null) && <div>
+            {selectedPrinter && isAdmin && (printerNotes === null) && <div>
               <div className='notes-msg'>
                 <strong>Printer Status Notes</strong><br /> {selectedPrinter.notes ? selectedPrinter.notes : "This printer has no notes."}
               </div>
               <button onClick={() => { handleEditPrinterNotesClick() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Edit Notes</button>
             </div>}
 
-            {selectedPrinter && isAdmin && printerNotes!==null && <div>
+            {selectedPrinter && isAdmin && printerNotes !== null && <div>
               <div className='notes-msg'>
-              <strong>Printer Status Notes</strong><br/>
+                <strong>Printer Status Notes</strong><br />
                 <textarea value={printerNotes} type="text" onChange={handlePrinterNotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea>
               </div>
               <button onClick={() => { updatePrinterNotes() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Save Notes</button>
@@ -1335,7 +1361,7 @@ function App() {
               <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}/>
+                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
             </div>
           )}
         {showErr && <div className="err-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}
