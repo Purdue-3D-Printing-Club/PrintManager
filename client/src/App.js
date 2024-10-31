@@ -121,7 +121,7 @@ function App() {
     });
   }
 
-  
+
   const sortPrinterList = (list, by = 'Availability') => {
     let sortedPrinters = []
     if (by === 'Availability') {
@@ -129,19 +129,17 @@ function App() {
       sortedPrinters = list.sort((a, b) => {
         return availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status);
       });
-    }if (by === 'Printer Name') {
-      const availabilityOrder = ['available', 'admin', 'busy', 'testing', 'broken'];
+    } if (by === 'Printer Name') {
       sortedPrinters = list.sort((a, b) => {
-        return availabilityOrder.indexOf(a.name) - availabilityOrder.indexOf(b.name);
+        return a.printerName.localeCompare(b.printerName);
       });
-    }if (by === 'Printer Model') {
-      const availabilityOrder = ['available', 'admin', 'busy', 'testing', 'broken'];
+    } if (by === 'Printer Model') {
       sortedPrinters = list.sort((a, b) => {
-        return availabilityOrder.indexOf(a.model) - availabilityOrder.indexOf(b.model);
+        return a.model.localeCompare(b.model);
       });
     }
-    
-    return(sortedPrinters)
+
+    return (sortedPrinters)
   }
 
   //fill data arrays on the initial render
@@ -149,7 +147,7 @@ function App() {
     try {
       Axios.get(`${serverURL}/api/get`).then((response) => {
         console.log(response);
-        
+
         const sorted = sortPrinterList(response.data.printers, printerSort)
         setPrinterList(sorted);
         console.log("setting printers to data: ", sorted);
@@ -693,7 +691,7 @@ function App() {
       table: "printer",
       column: "notes",
       id: selectedPrinter.printerName,
-      val: truncateString(printerNotes,512)
+      val: truncateString(printerNotes, 512)
     }).then(() => {
       //apply the changes locally
       const updatedPrinterList = printerList.map(printer => {
@@ -703,7 +701,7 @@ function App() {
         return printer;
       });
       setPrinterList(updatedPrinterList);
-      selectedPrinter.notes = truncateString(printerNotes,512);
+      selectedPrinter.notes = truncateString(printerNotes, 512);
       setPrinterNotes(null);
     })
   }
