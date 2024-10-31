@@ -15,7 +15,7 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
                 Printer List
                 <div style={{fontSize:'medium'}}>
                 Sort:
-                <select id="dropdown" value={printerSort} onChange={handlePrinterSort}>
+                <select id="printerSort" value={printerSort} onChange={handlePrinterSort}>
                     <option value="Availability">Availability</option>
                     <option value="Printer Name">Printer Name</option>
                     <option value="Printer Model">Printer Model</option>

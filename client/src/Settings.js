@@ -15,7 +15,7 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
         <div className='settings-wrapper'>
           {!isAdmin ? <div>
             <div style={{ fontSize: 'x-large', marginBottom: '5px' }}>Admin Login</div>
-            <input id="adminInput" type="text" placeholder=" Enter Admin Password..." value={adminPswd} onChange={handlePswdChange} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
+            <input id="adminInput" type="text" autoComplete='off' placeholder=" Enter Admin Password..." value={adminPswd} onChange={handlePswdChange} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
             <button onClick={() => { checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Login</button>
           </div>
             :          

@@ -90,7 +90,7 @@ html::-webkit-scrollbar {
 .success-msg,
 .warning-msg {
   position: fixed;
-  top: 16%;
+  top: 2%;
   right: 0%;
 
   border-radius: 20px;
@@ -192,6 +192,8 @@ html::-webkit-scrollbar {
   background-color:white;
   width:80%;
   margin-left:10%;
+  word-wrap:break-word;
+  overflow-wrap: break-word;
 }
 
 #resizer {

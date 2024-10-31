@@ -127,7 +127,11 @@ function App() {
     if (by === 'Availability') {
       const availabilityOrder = ['available', 'admin', 'busy', 'testing', 'broken'];
       sortedPrinters = list.sort((a, b) => {
-        return availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status);
+        const diff = availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status);
+        if (diff === 0) {
+          return a.printerName.localeCompare(b.printerName);
+        }
+        return diff;
       });
     } if (by === 'Printer Name') {
       sortedPrinters = list.sort((a, b) => {
@@ -327,7 +331,6 @@ function App() {
           } catch (error) {
             console.error("Error getting daily stats: ", error);
           }
-
           setLoadingSummary(false);
         });
 
@@ -461,6 +464,7 @@ function App() {
       e.target.tagName === 'TEXTAREA';
 
     if (!isInputFocused) {
+      const dropdown = document.getElementById('printerSort')
       if (!menuOpen) {
         switch (e.key) {
           case 'Enter':
@@ -470,9 +474,11 @@ function App() {
             selectPrinter(null)
             break;
           case 'ArrowLeft':
+            e.preventDefault();
             movePrinter(-1);
             break;
           case 'ArrowRight':
+            e.preventDefault();
             movePrinter(1);
             break;
           default:
@@ -556,10 +562,8 @@ function App() {
         }
         return printer;
       });
-      setPrinterList(updatedPrinterList);
+      setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
       selectedPrinter.status = statusArg;
-      //  let selectedBtn = Array.from(document.getElementsByClassName('sidePrinter')).filter(node => node.innerHTML.startsWith(selectedPrinter.printerName))[0]
-      //  selectedBtn.click()
     });
   };
 
@@ -645,7 +649,7 @@ function App() {
                       }
                       return printer;
                     });
-                    setPrinterList(updatedPrinterList);
+                    setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
                   });
                 }
               });
@@ -673,16 +677,21 @@ function App() {
   };
 
   const sendMail = (subject, text, target = curJob.email,) => {
-    Axios.post(`${serverURL}/api/send-email`, {
-      to: target,
-      subject: subject,
-      text: text
-    }).then(() => {
-      showMsgForDuration('Email Sent Successfully', popupTime);
-    }).catch((error) => {
-      showErrForDuration('Error Sending Email', popupTime);
-      console.error('Error sending email:', error.response ? error.response.data : error.message);
-    });
+    if (target.length === 0) {
+      showErrForDuration('Email not sent: No target', popupTime);
+    } else {
+      Axios.post(`${serverURL}/api/send-email`, {
+        to: target,
+        subject: subject,
+        text: text
+      }).then(() => {
+        showMsgForDuration('Email Sent Successfully', popupTime);
+      }).catch((error) => {
+        showErrForDuration('Error Sending Email', popupTime);
+        console.error('Error sending email:', error.response ? error.response.data : error.message);
+      });
+
+    }
   }
 
   const updatePrinterNotes = () => {
@@ -731,7 +740,7 @@ function App() {
               }
               return printer;
             });
-            setPrinterList(updatedPrinterList);
+            setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
             console.log(updatedPrinterList)
 
             //Email the user and set popup message
