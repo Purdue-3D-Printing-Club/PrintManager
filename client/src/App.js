@@ -156,7 +156,7 @@ function App() {
       console.error("Error fetching printer data: ", error);
     }
 
-  }, [serverURL, printerSort, printerList]);
+  }, [serverURL, printerSort, selectedPrinter]);
 
 
 
