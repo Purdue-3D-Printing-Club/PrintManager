@@ -693,17 +693,17 @@ function App() {
       table: "printer",
       column: "notes",
       id: selectedPrinter.printerName,
-      val: printerNotes
+      val: truncateString(printerNotes,512)
     }).then(() => {
       //apply the changes locally
       const updatedPrinterList = printerList.map(printer => {
         if (printer.printerName === selectedPrinter.printerName) {
-          return { ...printer, notes: printerNotes };
+          return { ...printer, notes: truncateString(printerNotes) };
         }
         return printer;
       });
       setPrinterList(updatedPrinterList);
-      selectedPrinter.notes = printerNotes;
+      selectedPrinter.notes = truncateString(printerNotes,512);
       setPrinterNotes(null);
     })
   }
