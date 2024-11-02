@@ -375,7 +375,7 @@ app.get('/api/getFailureCount', (req, res) => {
                     connection.release();
                     return;
                 }
-                res.send({ count : resultFailure });
+                res.send({ count: resultFailure });
                 connection.release();
             });
         });
@@ -385,8 +385,8 @@ app.get('/api/getFailureCount', (req, res) => {
 app.post('/api/insert', (req, res) => {
     const b = req.body;
     const dateTime = new Date(b.timeStarted);
-    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted, status, name, supervisorName, "+
-    "notes, partNames, email, personalFilament) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted, status, name, supervisorName, " +
+        "notes, partNames, email, personalFilament) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -396,7 +396,7 @@ app.post('/api/insert', (req, res) => {
         }
         connection.beginTransaction(function (err) {
             connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
-                 b.notes, b.partNames, b.email,b.personalFilament], (err, result) => {
+            b.notes, b.partNames, b.email, b.personalFilament], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error inserting printer");
@@ -434,6 +434,32 @@ app.delete('/api/cancelPrint/:printerName', (req, res) => {
     });
 });
 
+
+app.delete('/api/deleteJob/:jobID', (req, res) => {
+    const jobID = req.params.jobID;
+    const sqlDelete = 'DELETE FROM printJob WHERE jobID=?';
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+        connection.beginTransaction(function (err) {
+            connection.query(sqlDelete, jobID, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error deleting printJob");
+                    connection.release();
+                    return;
+                }
+                res.send(result);
+                connection.release();
+            });
+        });
+    });
+});
+
+
 app.put('/api/update', (req, res) => {
     const { table, column, val, id } = req.body;
     let sqlUpdate;
@@ -444,9 +470,6 @@ app.put('/api/update', (req, res) => {
         case "printjob":
             sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE printerName = ? AND status = "active"`;
             break;
-        /*case "filament":
-            sqlUpdate = `UPDATE filament SET ${column} = ? WHERE filamentID = ?`;
-            break; */
         default:
             return res.status(400).send("Invalid table");
     }
@@ -458,6 +481,32 @@ app.put('/api/update', (req, res) => {
         }
         connection.beginTransaction(function (err) {
             connection.query(sqlUpdate, [val, id], (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error updating database");
+                    connection.release();
+                    return;
+                }
+
+                res.send(result);
+                connection.release();
+            });
+        });
+    });
+});
+
+app.put('/api/updateJob', (req, res) => {
+    const {  email, files, jobID, name, partNames, personalFilament, status, supervisorName, usage_g, notes } = req.body;
+    let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, name = ?, partNames = ?, personalFilament = ?, status = ?, supervisorName = ?, usage_g = ?, notes=? WHERE jobID = ?`;
+    
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+        connection.beginTransaction(function (err) {
+            connection.query(sqlUpdate, [email, files, name, partNames, personalFilament, status, supervisorName, usage_g, notes, jobID], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error updating database");

@@ -48,6 +48,19 @@ function App() {
   //Printer menu data
   const [curJob, setCurJob] = useState(null);
   const [historyList, setHistoryList] = useState([]);
+  const [editingJob, setEditingJob] = useState({
+    email: '',
+    files: '',
+    jobID: -1,
+    name: '',
+    partNames: '',
+    personalFilament: 0,
+    status: '',
+    supervisorName: '',
+    usage_g: 0,
+    notes: ''
+  })
+
 
   //summary page data
   const [printerNames, setPrinterNames] = useState([]);
@@ -62,7 +75,102 @@ function App() {
 
   const popupTime = 8000;
 
+  const handleJobEdit = (e, field) => {
+    const newVal = e.target.value
+    setEditingJob({ ...editingJob, [field]: newVal });
+    console.log("Edited job " + field + " to " + newVal);
+  }
 
+  const refreshHistory = () => {
+    Axios.get(`${serverURL}/api/getHistory?printerName=${selectedPrinter.printerName}`).then((response) => {
+      const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
+      setHistoryList(newHistory);
+      console.log('Got history list:')
+      console.log(newHistory);
+    });
+  }
+
+  const saveJob = () => {
+    try {
+      Axios.put(`${serverURL}/api/updateJob`, editingJob).then(() => {
+        const newEditingJob = { ...editingJob, jobID: -1 }
+        setEditingJob(newEditingJob);
+        refreshHistory();
+        console.log('Saved job in history table');
+      });
+    } catch (error) {
+      console.error("Error updating printer: ", error);
+    }
+  }
+
+  const handleEditClick = (job) => {
+    const editingJobFilt = {
+      jobID: editingJob.jobID,
+      files: truncateString(editingJob.files, 512),
+      usage_g: Math.round(parseFloat(editingJob.usage_g)) > 2147483647 ? 2147483647 : Math.round(parseFloat(editingJob.usage_g)),
+      status: editingJob.status,
+      name: truncateString(editingJob.name, 64),
+      supervisor: truncateString(editingJob.supervisorName, 64),
+      partNames: truncateString(editingJob.partNames, 256),
+      email: truncateString(editingJob.email, 64),
+      personalFilament: editingJob.personalFilament,
+      notes: truncateString(editingJob.notes, 256)
+    }
+    
+    if (editingJobFilt.jobID === job.jobID) {
+      if (editingJobFilt.status !== job.status) {
+        // if the job was made active again, set printer status to busy
+        if (editingJobFilt.status === 'active') {
+          handlePrinterStatusChange(selectedPrinter.status === 'admin' ? 'admin-busy' : 'busy');
+          setCurJob(editingJobFilt);
+          selectedPrinter.currentJob = editingJobFilt.jobID;
+
+          //set all other active jobs to completed, then update this job to be active
+          Axios.put(`${serverURL}/api/update`, {
+            table: "printjob",
+            column: "status",
+            id: selectedPrinter.printerName,
+            val: 'completed'
+          }).then(() => {
+            updateTable("printer", "currentJob", selectedPrinter.printerName, editingJobFilt.jobID, () => {
+              saveJob();
+            });
+          });
+        }
+        // if the job status was changed from active, set the printer status to available or admin
+        else if (job.status === 'active') {
+          handlePrinterStatusChange('available');
+          saveJob();
+        } else {
+          saveJob();
+        }
+      } else {
+        saveJob();
+      }
+    } else {
+      setEditingJob(job);
+      console.log('Editing job: ' + job.jobID);
+    }
+  }
+
+  const handleDeleteJob = (jobID) => {
+    if (curJob && jobID === curJob.jobID) {
+      cancelPrint()
+      return (null);
+    }
+
+    fetch(`${serverURL}/api/deleteJob/${jobID}`, { method: 'DELETE', }).then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    }).then(data => {
+      refreshHistory();
+      console.log('Deleted job with id ' + jobID);
+    }).catch(error => {
+      console.error('Error:', error);
+    });
+  }
 
   const handlePrinterSort = (e) => {
     const newSort = e.target.value;
@@ -115,17 +223,16 @@ function App() {
       }
       return response.json();
     }).then(data => {
-      handlePrinterStatusChange('available')
+      handlePrinterStatusChange(selectedPrinter.status === 'admin-busy' ? 'admin' : 'available')
     }).catch(error => {
       console.error('Error:', error);
     });
   }
 
-
   const sortPrinterList = (list, by = 'Availability') => {
     let sortedPrinters = []
     if (by === 'Availability') {
-      const availabilityOrder = ['available', 'admin', 'busy', 'testing', 'broken'];
+      const availabilityOrder = ['available', 'admin', 'busy', 'admin-busy', 'testing', 'broken'];
       sortedPrinters = list.sort((a, b) => {
         const diff = availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status);
         if (diff === 0) {
@@ -180,10 +287,9 @@ function App() {
     };
 
     console.log('updating printer screen')
-    console.log(selectedPrinter)
+    console.log('selectedPrinter: ' + selectedPrinter)
     //Update the data that is shown
     if (selectedPrinter !== null && selectedPrinter !== undefined) {
-      console.log('selectedPrinter exists')
       //get data from the database
       try {
         if (selectedPrinter.currentJob !== "" && selectedPrinter.currentJob !== null) {
@@ -192,14 +298,18 @@ function App() {
             console.log('got current job');
             console.log(response.data.res);
             setCurJob(response.data.res[0]);
+            console.log("set curJob to:")
+            console.log(response.data.res[0])
           });
         } else {
           setCurJob(null)
         }
         Axios.get(`${serverURL}/api/getHistory?printerName=${selectedPrinter.printerName}`).then((response) => {
-          setHistoryList(response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted)));
+          const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
+          setHistoryList(newHistory);
+          console.log('Got history list:')
+          console.log(newHistory);
         });
-
       } catch (error) {
         console.error("Error fetching printer data: ", error);
       }
@@ -419,17 +529,18 @@ function App() {
   function getStatusColor(printerStatus) {
     switch (printerStatus) {
       case "available": return "rgb(80, 210, 100)";
-      case "busy": return "rgb(225, 225, 60)";
-      case "broken": return "rgb(255, 120, 120)";
+      case "busy": return "rgb(235, 235, 60)";
+      case "broken": return "rgb(255, 100, 100)";
       case "testing": return "rgb(255,255,255)";
       case "admin": return "rgb(100, 180, 100)";
+      case "admin-busy": return "rgb(220, 200, 70)";
       default: return "silver";
     }
   }
 
   const getStatMsg = () => {
-    if (selectedPrinter.status === 'busy' && curJob) {
-      return ("This printer is busy printing: " + truncateString(curJob.partNames, 80))
+    if (((selectedPrinter.status === 'busy') || (selectedPrinter.status === 'admin-busy')) && curJob) {
+      return ("This printer is busy printing: " + ((!curJob.partNames) ? 'No parts specified.': truncateString(curJob.partNames, 80)))
     } else if (selectedPrinter.status === 'available') {
       return ("This printer is available!")
     } else if (selectedPrinter.status === 'broken') {
@@ -464,11 +575,12 @@ function App() {
       e.target.tagName === 'TEXTAREA';
 
     if (!isInputFocused) {
-      const dropdown = document.getElementById('printerSort')
       if (!menuOpen) {
         switch (e.key) {
           case 'Enter':
-            handleStartPrintClick();
+            if (editingJob.jobID === -1) {
+              handleStartPrintClick();
+            }
             break;
           case 'Backspace':
             selectPrinter(null)
@@ -488,12 +600,21 @@ function App() {
           setMenuOpen(false)
         }
       }
+      if (e.key === 's') {
+        handleOpenMenu();
+      } else if (e.key === 'c') {
+        setShowWarn(false);
+        setShowErr(false);
+        setShowMsg(false);
+      }
     } else if (menuOpen && e.key === 'Enter') {
       if (e.target.id === "adminInput") {
         checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD)
       } else if (e.target.id === "subjectInput" || e.target.id === "feedbackInput") {
         handleFeedbackClick();
       }
+    } else if (!menuOpen && editingJob.jobID !== -1 && e.key === 'Enter') {
+      handleEditClick(editingJob);
     }
   }
 
@@ -637,13 +758,14 @@ function App() {
               console.log("CurrentJob data: ");
               console.log(response.data);
               //update the printer status of the printer that was given the job
-              updateTable("printer", "status", selectedPrinter.printerName, "busy", () => {
+              updateTable("printer", "status", selectedPrinter.printerName, selectedPrinter.status === 'admin' ? "admin-busy" : "busy", () => {
                 //update the currentJob of the printer that was used for the printJob
                 if (response.data.currentJob[0]) {
                   updateTable("printer", "currentJob", selectedPrinter.printerName, response.data.currentJob[0].jobID, () => {
                     const updatedPrinterList = printerList.map(printer => {
                       if (printer.printerName === selectedPrinter.printerName) {
-                        let newPrinter = { ...printer, status: "busy", currentJob: response.data.currentJob[0].jobID }
+                        let newPrinter = { ...printer, status: selectedPrinter.status === 'admin' ? 'admin-busy' : "busy",
+                           currentJob: response.data.currentJob[0].jobID }
                         selectPrinter(newPrinter)
                         return newPrinter;
                       }
@@ -720,7 +842,7 @@ function App() {
     try {
       console.log("print done was clicked... setting printer status to available");
       //set status to available
-      updateTable("printer", "status", selectedPrinter.printerName, "available", () => {
+      updateTable("printer", "status", selectedPrinter.printerName, selectedPrinter.status==='admin-busy'?'admin':"available", () => {
 
         //set the printJob status to statusArg
         Axios.put(`${serverURL}/api/update`, {
@@ -736,7 +858,7 @@ function App() {
             //apply the changes locally
             const updatedPrinterList = printerList.map(printer => {
               if (printer.printerName === selectedPrinter.printerName) {
-                return { ...printer, status: "available", currentJob: "" };
+                return { ...printer, status: selectedPrinter.status==='admin-busy' ? 'admin' : "available", currentJob: "" };
               }
               return printer;
             });
@@ -786,7 +908,7 @@ function App() {
               showErrForDuration('No Email Sent. (Disabled)', popupTime);
             }
 
-            selectedPrinter.status = 'available'
+            selectedPrinter.status = selectedPrinter.status === 'admin-busy' ? 'admin' : 'available';
             setCurJob(null)
 
             if (typeof callback === 'function') {
@@ -1099,7 +1221,7 @@ function App() {
             }</div>
             <br />
             {
-              (curJob && selectedPrinter.status === 'busy') &&
+              (curJob && (selectedPrinter.status === 'busy' || selectedPrinter.status === 'admin-busy')) &&
               <div>
                 <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left' }}>
                   &nbsp;Name: {curJob.name}
@@ -1122,16 +1244,16 @@ function App() {
               </div>
             }
 
-            {/* Printer status pages: busy, available, admin, broken, and testing */}
+            {/* Printer status pages: busy, available, admin, admin-busy, broken, and testing */}
 
-            {(selectedPrinter.status === "busy") && <div>
+            {((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && <div>
               <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
               <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
               <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Cancel Print</button>
               {isAdmin && <div>
                 <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
                 <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
-                <button onClick={() => { printerChangeWhileBusy("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
+                {selectedPrinter.status === 'busy' && <button onClick={() => { printerChangeWhileBusy("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>}
               </div>}
               <br />
               {
@@ -1286,7 +1408,7 @@ function App() {
 
             {selectedPrinter && isAdmin && (printerNotes === null) && <div>
               <div className='notes-msg'>
-                <strong>Printer Status Notes</strong><br /> {selectedPrinter.notes ? selectedPrinter.notes : "This printer has no notes."}
+                <strong>-- Printer Status Notes --</strong><br /> {selectedPrinter.notes ? selectedPrinter.notes : "This printer has no notes."}
               </div>
               <button onClick={() => { handleEditPrinterNotesClick() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Edit Notes</button>
             </div>}
@@ -1294,7 +1416,7 @@ function App() {
             {selectedPrinter && isAdmin && printerNotes !== null && <div>
               <div className='notes-msg'>
                 <strong>Printer Status Notes</strong><br />
-                <textarea value={printerNotes} type="text" onChange={handlePrinterNotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea>
+                <textarea value={printerNotes} type="text" onChange={handlePrinterNotes} style={{ width: '400px', height: '60px', fontSize: 'large', maxWidth: '95%', maxHeight: '200px' }}></textarea>
               </div>
               <button onClick={() => { updatePrinterNotes() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Save Notes</button>
             </div>}
@@ -1305,13 +1427,17 @@ function App() {
               <table className='history-wrapper'>
                 <thead>
                   <tr>
+                    {isAdmin && <th>Delete</th>}
+                    {isAdmin && <th>Edit</th>}
                     <th>Time Started</th>
                     <th>Status</th>
                     <th>Parts</th>
                     <th>Name</th>
                     <th>Email</th>
                     <th>Supervisor</th>
+                    <th>Filament</th>
                     <th>Used (g)</th>
+                    <th>Notes</th>
                     <th>Files</th>
                   </tr>
                 </thead>
@@ -1325,14 +1451,46 @@ function App() {
                     }
 
                     return <tr style={{ backgroundColor: color }} key={job.jobID}>
+                      {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
+                      {isAdmin && <td> <button onClick={() => handleEditClick(job)} className='history-btn'>
+                        {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
+                      </button></td>}
                       <td>{formatDate(job.timeStarted, true)}</td>
-                      <td>{job.status}</td>
-                      <td>{truncateString(job.partNames, 40)}</td>
-                      <td>{truncateString(job.name, 20)}</td>
-                      <td>{truncateString(job.email, 30)}</td>
-                      <td>{truncateString(job.supervisorName, 20)}</td>
-                      <td>{job.usage_g}</td>
-                      <td>{truncateString(job.files, 256)}</td>
+                      {(isAdmin && (editingJob.jobID === job.jobID)) ?
+                        <>
+                          <td>
+                            <select id="jobStatus" style={{ width: "100%" }} value={editingJob.status} onChange={(e) => handleJobEdit(e, "status")}>
+                              <option value="active">active</option>
+                              <option value="completed">completed</option>
+                              <option value="failed">failed</option>
+                            </select>
+                          </td>
+                          <td><input type="text" className="history-edit" value={editingJob.partNames} onChange={(e) => handleJobEdit(e, "partNames")}></input></td>
+                          <td><input type="text" className="history-edit" value={editingJob.name} onChange={(e) => handleJobEdit(e, "name")}></input></td>
+                          <td><input type="text" className="history-edit" value={editingJob.email} onChange={(e) => handleJobEdit(e, "email")}></input></td>
+                          <td><input type="text" className="history-edit" value={editingJob.supervisorName} onChange={(e) => handleJobEdit(e, "supervisorName")}></input></td>
+                          <td>
+                            <select id="personalFilament" style={{ width: "100%" }} value={editingJob.personalFilament} onChange={(e) => handleJobEdit(e, "personalFilament")}>
+                              <option value="0">club</option>
+                              <option value="1">personal</option>
+                            </select>
+                          </td>
+                          <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
+                          <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
+                          <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
+                        </>
+                        :
+                        <>
+                          <td>{job.status}</td>
+                          <td>{truncateString(job.partNames, 40)}</td>
+                          <td>{truncateString(job.name, 20)}</td>
+                          <td>{truncateString(job.email, 30)}</td>
+                          <td>{truncateString(job.supervisorName, 20)}</td>
+                          <td>{job.personalFilament ? 'personal' : 'club'}</td>
+                          <td>{job.usage_g}</td>
+                          <td>{truncateString(job.notes, 256)}</td>
+                          <td>{truncateString(job.files, 256)}</td>
+                        </>}
                     </tr>
                   })}
                 </tbody>

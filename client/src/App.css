@@ -83,8 +83,9 @@ html::-webkit-scrollbar {
   outline: 2px solid black;
   display: inline-flex;
   justify-content: center;
-
 }
+
+
 
 .err-msg,
 .success-msg,
@@ -186,7 +187,7 @@ html::-webkit-scrollbar {
 .notes-msg{
   font-size: large;
   border-radius: 5px;
-  padding: 5px;
+  padding: 10px 20px 10px 20px;
   outline: 2px solid black;
   margin-top:20px;
   background-color:white;
@@ -194,6 +195,13 @@ html::-webkit-scrollbar {
   margin-left:10%;
   word-wrap:break-word;
   overflow-wrap: break-word;
+}
+
+.history-edit{
+  width:calc(100% - 8px);
+  font-size: large;
+  margin:0px;
+  padding:0px;
 }
 
 #resizer {
@@ -244,6 +252,14 @@ html::-webkit-scrollbar {
   opacity: 80%;
 }
 
+.history-btn {
+  display:flex;
+  justify-content: center;
+  align-items: center;
+  width:80%;
+  margin-left:10%;
+  cursor:pointer;
+}
 
 .printer-btn:hover,
 .menu-btn:hover,
