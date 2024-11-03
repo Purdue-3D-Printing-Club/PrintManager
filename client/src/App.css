@@ -68,7 +68,7 @@ html::-webkit-scrollbar {
   pointer-events: none;
 }
 
-.menuBG.active {
+.menuBG.visible {
   opacity: 1;
 }
 
@@ -195,6 +195,36 @@ html::-webkit-scrollbar {
   margin-left:10%;
   word-wrap:break-word;
   overflow-wrap: break-word;
+}
+select, 
+option {
+  cursor: pointer;
+}
+
+.history-row {
+  transition: background-color 0.2s ease;
+}
+.history-row:hover{
+  border: 1.5px solid black;
+
+}
+.active {
+  background-color: rgb(255,255,240);
+}
+.active:hover{
+  background-color: rgb(255,255,245);
+}
+.completed{
+  background-color: rgb(250,250,250);
+}
+.completed:hover{
+  background-color: rgb(255,255,255);
+}
+.failed{
+  background-color: rgb(255,245,245);
+}
+.failed:hover{
+  background-color: rgb(255,250,250);
 }
 
 .history-edit{

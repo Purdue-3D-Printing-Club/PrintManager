@@ -1443,14 +1443,8 @@ function App() {
                 </thead>
                 <tbody>
                   {historyList.map((job) => {
-                    let color = "rgb(245,245,245)";
-                    if (job.status === "active") {
-                      color = "white";
-                    } if (job.status === "failed") {
-                      color = "rgb(255,240,240)";
-                    }
-
-                    return <tr style={{ backgroundColor: color }} key={job.jobID}>
+                    
+                    return <tr className={`${job.status} history-row`} key={job.jobID}>
                       {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
                       {isAdmin && <td> <button onClick={() => handleEditClick(job)} className='history-btn'>
                         {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
@@ -1512,7 +1506,7 @@ function App() {
 
         </div>
         {menuOpen ? (
-          <div className='menuBG active' style={{ left: `${sidebarWidth + 2}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
+          <div className='menuBG visible' style={{ left: `${sidebarWidth + 2}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
             {
               <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
