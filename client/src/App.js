@@ -40,10 +40,9 @@ function App() {
   const [printerNotes, setPrinterNotes] = useState(null);
   const [printerSort, setPrinterSort] = useState('Availability');
 
-  const [message, setMessage] = useState('');
-  const [showErr, setShowErr] = useState(false);
-  const [showMsg, setShowMsg] = useState(false);
-  const [showWarn, setShowWarn] = useState(false);
+  //const [message, setMessage] = useState('');
+  //const [messageType, setMessageType] = useState(null);
+  const [messageQueue, setMessageQueue] = useState([]);
 
   //Printer menu data
   const [curJob, setCurJob] = useState(null);
@@ -75,182 +74,14 @@ function App() {
 
   const popupTime = 8000;
 
-  const handleJobEdit = (e, field) => {
-    const newVal = e.target.value
-    setEditingJob({ ...editingJob, [field]: newVal });
-    console.log("Edited job " + field + " to " + newVal);
-  }
-
-  const refreshHistory = () => {
-    Axios.get(`${serverURL}/api/getHistory?printerName=${selectedPrinter.printerName}`).then((response) => {
-      const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
-      setHistoryList(newHistory);
-      console.log('Got history list:')
-      console.log(newHistory);
-    });
-  }
-
-  const saveJob = () => {
-    try {
-      Axios.put(`${serverURL}/api/updateJob`, editingJob).then(() => {
-        const newEditingJob = { ...editingJob, jobID: -1 }
-        setEditingJob(newEditingJob);
-        refreshHistory();
-        console.log('Saved job in history table');
-      });
-    } catch (error) {
-      console.error("Error updating printer: ", error);
-    }
-  }
-
-  const handleEditClick = (job) => {
-    const editingJobFilt = {
-      jobID: editingJob.jobID,
-      files: truncateString(editingJob.files, 512),
-      usage_g: Math.round(parseFloat(editingJob.usage_g)) > 2147483647 ? 2147483647 : Math.round(parseFloat(editingJob.usage_g)),
-      status: editingJob.status,
-      name: truncateString(editingJob.name, 64),
-      supervisor: truncateString(editingJob.supervisorName, 64),
-      partNames: truncateString(editingJob.partNames, 256),
-      email: truncateString(editingJob.email, 64),
-      personalFilament: editingJob.personalFilament,
-      notes: truncateString(editingJob.notes, 256)
-    }
-    
-    if (editingJobFilt.jobID === job.jobID) {
-      if (editingJobFilt.status !== job.status) {
-        // if the job was made active again, set printer status to busy
-        if (editingJobFilt.status === 'active') {
-          handlePrinterStatusChange(selectedPrinter.status === 'admin' ? 'admin-busy' : 'busy');
-          setCurJob(editingJobFilt);
-          selectedPrinter.currentJob = editingJobFilt.jobID;
-
-          //set all other active jobs to completed, then update this job to be active
-          Axios.put(`${serverURL}/api/update`, {
-            table: "printjob",
-            column: "status",
-            id: selectedPrinter.printerName,
-            val: 'completed'
-          }).then(() => {
-            updateTable("printer", "currentJob", selectedPrinter.printerName, editingJobFilt.jobID, () => {
-              saveJob();
-            });
-          });
-        }
-        // if the job status was changed from active, set the printer status to available or admin
-        else if (job.status === 'active') {
-          handlePrinterStatusChange('available');
-          saveJob();
-        } else {
-          saveJob();
-        }
-      } else {
-        saveJob();
+  const getWarningsBeforeIndex = (index) => {
+    let warnCount = 0;
+    for (let i = 0; i < index; i++) {
+      if (messageQueue[i].type === 'warn') {
+        warnCount++;
       }
-    } else {
-      setEditingJob(job);
-      console.log('Editing job: ' + job.jobID);
     }
-  }
-
-  const handleDeleteJob = (jobID) => {
-    if (curJob && jobID === curJob.jobID) {
-      cancelPrint()
-      return (null);
-    }
-
-    fetch(`${serverURL}/api/deleteJob/${jobID}`, { method: 'DELETE', }).then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    }).then(data => {
-      refreshHistory();
-      console.log('Deleted job with id ' + jobID);
-    }).catch(error => {
-      console.error('Error:', error);
-    });
-  }
-
-  const handlePrinterSort = (e) => {
-    const newSort = e.target.value;
-    setPrinterSort(newSort);
-    console.log('now sorting printers by ' + newSort);
-  }
-
-  const handlePrinterNotes = (e) => {
-    const newPrinterNotes = e.target.value;
-    setPrinterNotes(newPrinterNotes);
-    console.log('set printerNotes to ' + newPrinterNotes);
-  }
-
-  const handleEditPrinterNotesClick = () => {
-    if (selectedPrinter && selectedPrinter.notes) {
-      setPrinterNotes(selectedPrinter.notes)
-      console.log('editing printer notes: ' + selectedPrinter.notes);
-    } else {
-      setPrinterNotes('')
-      console.log('editing printer notes')
-    }
-  }
-
-  const handleFeedbackSubjectChange = (e) => {
-    const newFeedbackSubject = e.target.value;
-    console.log('changed feedbackSubject to: ' + newFeedbackSubject);
-    setFeedbackSubject(newFeedbackSubject);
-  }
-
-  const handleFeedbackTextChange = (e) => {
-    const newFeedbackText = e.target.value;
-    console.log('changed feedbackText to: ' + newFeedbackText);
-    setFeedbackText(newFeedbackText);
-  }
-
-  const clearFields = () => {
-    setname('');
-    setFilamentUsage('');
-    setemail('');
-    setsupervisor('');
-    setfiles('');
-    setnotes('');
-    setpartnames('');
-  }
-
-  const cancelPrint = () => {
-    fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}`, { method: 'DELETE', }).then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    }).then(data => {
-      handlePrinterStatusChange(selectedPrinter.status === 'admin-busy' ? 'admin' : 'available')
-    }).catch(error => {
-      console.error('Error:', error);
-    });
-  }
-
-  const sortPrinterList = (list, by = 'Availability') => {
-    let sortedPrinters = []
-    if (by === 'Availability') {
-      const availabilityOrder = ['available', 'admin', 'busy', 'admin-busy', 'testing', 'broken'];
-      sortedPrinters = list.sort((a, b) => {
-        const diff = availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status);
-        if (diff === 0) {
-          return a.printerName.localeCompare(b.printerName);
-        }
-        return diff;
-      });
-    } if (by === 'Printer Name') {
-      sortedPrinters = list.sort((a, b) => {
-        return a.printerName.localeCompare(b.printerName);
-      });
-    } if (by === 'Printer Model') {
-      sortedPrinters = list.sort((a, b) => {
-        return a.model.localeCompare(b.model);
-      });
-    }
-
-    return (sortedPrinters)
+    return (warnCount);
   }
 
   //fill data arrays on the initial render
@@ -479,6 +310,190 @@ function App() {
   })
 
 
+  const handleJobEdit = (e, field) => {
+    const newVal = e.target.value
+    setEditingJob({ ...editingJob, [field]: newVal });
+    console.log("Edited job " + field + " to " + newVal);
+  }
+
+  const refreshHistory = () => {
+    Axios.get(`${serverURL}/api/getHistory?printerName=${selectedPrinter.printerName}`).then((response) => {
+      const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
+      setHistoryList(newHistory);
+      console.log('Got history list:')
+      console.log(newHistory);
+    });
+  }
+
+  const saveJob = () => {
+    try {
+      Axios.put(`${serverURL}/api/updateJob`, editingJob).then(() => {
+        const newEditingJob = { ...editingJob, jobID: -1 }
+        setEditingJob(newEditingJob);
+        refreshHistory();
+        console.log('Saved job in history table');
+      });
+    } catch (error) {
+      console.error("Error updating printer: ", error);
+    }
+  }
+
+  const handleEditClick = (job) => {
+    const editingJobFilt = {
+      jobID: editingJob.jobID,
+      files: truncateString(editingJob.files, 512),
+      usage_g: Math.round(parseFloat(editingJob.usage_g)) > 2147483647 ? 2147483647 : Math.round(parseFloat(editingJob.usage_g)),
+      status: editingJob.status,
+      name: truncateString(editingJob.name, 64),
+      supervisor: truncateString(editingJob.supervisorName, 64),
+      partNames: truncateString(editingJob.partNames, 256),
+      email: truncateString(editingJob.email, 64),
+      personalFilament: editingJob.personalFilament,
+      notes: truncateString(editingJob.notes, 256)
+    }
+
+    if (editingJobFilt.jobID === job.jobID) {
+      if (editingJobFilt.status !== job.status) {
+        // if the job was made active again, set printer status to busy
+        if (editingJobFilt.status === 'active') {
+          handlePrinterStatusChange(selectedPrinter.status === 'admin' ? 'admin-busy' : 'busy');
+          setCurJob(editingJobFilt);
+          selectedPrinter.currentJob = editingJobFilt.jobID;
+
+          //set all other active jobs to completed, then update this job to be active
+          Axios.put(`${serverURL}/api/update`, {
+            table: "printjob",
+            column: "status",
+            id: selectedPrinter.printerName,
+            val: 'completed'
+          }).then(() => {
+            updateTable("printer", "currentJob", selectedPrinter.printerName, editingJobFilt.jobID, () => {
+              saveJob();
+            });
+          });
+        }
+        // if the job status was changed from active, set the printer status to available or admin and reset currentJob
+        else if (job.status === 'active') {
+          updateTable("printer", "currentJob", selectedPrinter.printerName, '', ()=>{
+            handlePrinterStatusChange(selectedPrinter.status === 'admin-busy' ? 'admin' : 'available');
+            saveJob();
+          })
+          selectedPrinter.currentJob = ''
+        } else {
+          saveJob();
+        }
+      } else {
+        saveJob();
+      }
+    } else {
+      setEditingJob(job);
+      console.log('Editing job: ' + job.jobID);
+    }
+  }
+
+  const handleDeleteJob = (jobID) => {
+    if (curJob && jobID === curJob.jobID) {
+      cancelPrint()
+      return (null);
+    }
+
+    fetch(`${serverURL}/api/deleteJob/${jobID}`, { method: 'DELETE', }).then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    }).then(data => {
+      refreshHistory();
+      console.log('Deleted job with id ' + jobID);
+    }).catch(error => {
+      console.error('Error:', error);
+    });
+  }
+
+  const handlePrinterSort = (e) => {
+    const newSort = e.target.value;
+    setPrinterSort(newSort);
+    console.log('now sorting printers by ' + newSort);
+  }
+
+  const handlePrinterNotes = (e) => {
+    const newPrinterNotes = e.target.value;
+    setPrinterNotes(newPrinterNotes);
+    console.log('set printerNotes to ' + newPrinterNotes);
+  }
+
+  const handleEditPrinterNotesClick = () => {
+    if (selectedPrinter && selectedPrinter.notes) {
+      setPrinterNotes(selectedPrinter.notes)
+      console.log('editing printer notes: ' + selectedPrinter.notes);
+    } else {
+      setPrinterNotes('')
+      console.log('editing printer notes')
+    }
+  }
+
+  const handleFeedbackSubjectChange = (e) => {
+    const newFeedbackSubject = e.target.value;
+    console.log('changed feedbackSubject to: ' + newFeedbackSubject);
+    setFeedbackSubject(newFeedbackSubject);
+  }
+
+  const handleFeedbackTextChange = (e) => {
+    const newFeedbackText = e.target.value;
+    console.log('changed feedbackText to: ' + newFeedbackText);
+    setFeedbackText(newFeedbackText);
+  }
+
+  const clearFields = () => {
+    setname('');
+    setFilamentUsage('');
+    setemail('');
+    setsupervisor('');
+    setfiles('');
+    setnotes('');
+    setpartnames('');
+  }
+
+  const cancelPrint = () => {
+    fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}`, { method: 'DELETE', }).then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    }).then(data => {
+      updateTable("printer", "currentJob", selectedPrinter.printerName, '', () => {
+        handlePrinterStatusChange(selectedPrinter.status === 'admin-busy' ? 'admin' : 'available')
+      })
+    }).catch(error => {
+      console.error('Error:', error);
+    });
+  }
+
+  const sortPrinterList = (list, by = 'Availability') => {
+    let sortedPrinters = []
+    if (by === 'Availability') {
+      const availabilityOrder = ['available', 'admin', 'busy', 'admin-busy', 'testing', 'broken'];
+      sortedPrinters = list.sort((a, b) => {
+        const diff = availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status);
+        if (diff === 0) {
+          return a.printerName.localeCompare(b.printerName);
+        }
+        return diff;
+      });
+    } if (by === 'Printer Name') {
+      sortedPrinters = list.sort((a, b) => {
+        return a.printerName.localeCompare(b.printerName);
+      });
+    } if (by === 'Printer Model') {
+      sortedPrinters = list.sort((a, b) => {
+        return a.model.localeCompare(b.model);
+      });
+    }
+
+    return (sortedPrinters)
+  }
+
+
 
   function getDirectDownloadLink(driveLink) {
     // Regular expression to extract the file ID from different Google Drive URL formats
@@ -540,7 +555,7 @@ function App() {
 
   const getStatMsg = () => {
     if (((selectedPrinter.status === 'busy') || (selectedPrinter.status === 'admin-busy')) && curJob) {
-      return ("This printer is busy printing: " + ((!curJob.partNames) ? 'No parts specified.': truncateString(curJob.partNames, 80)))
+      return ("This printer is busy printing: " + ((!curJob.partNames) ? 'No parts specified.' : truncateString(curJob.partNames, 80)))
     } else if (selectedPrinter.status === 'available') {
       return ("This printer is available!")
     } else if (selectedPrinter.status === 'broken') {
@@ -561,10 +576,10 @@ function App() {
     console.log('given pswd: ' + hash)
     console.log('actual pswd: ' + actual)
     if (hash === actual) {
-      showMsgForDuration("Logged in as Admin!", popupTime);
+      showMsgForDuration("Logged in as Admin!", 'msg', popupTime);
       handleIsAdminChange(true)
     } else {
-      showErrForDuration("Password  Incorrect.", popupTime);
+      showMsgForDuration("Password  Incorrect.", 'err', popupTime);
     }
     setAdminPswd('')
   }
@@ -577,11 +592,6 @@ function App() {
     if (!isInputFocused) {
       if (!menuOpen) {
         switch (e.key) {
-          case 'Enter':
-            if (editingJob.jobID === -1) {
-              handleStartPrintClick();
-            }
-            break;
           case 'Backspace':
             selectPrinter(null)
             break;
@@ -603,9 +613,7 @@ function App() {
       if (e.key === 's') {
         handleOpenMenu();
       } else if (e.key === 'c') {
-        setShowWarn(false);
-        setShowErr(false);
-        setShowMsg(false);
+        setMessageQueue([]);
       }
     } else if (menuOpen && e.key === 'Enter') {
       if (e.target.id === "adminInput") {
@@ -616,13 +624,16 @@ function App() {
     } else if (!menuOpen && editingJob.jobID !== -1 && e.key === 'Enter') {
       handleEditClick(editingJob);
     }
+    if (!menuOpen && editingJob.jobID === -1 && e.key === 'Enter') {
+      handleStartPrintClick();
+    }
   }
 
   const handleFeedbackClick = () => {
     if (feedbackSubject.length <= 0) {
-      showErrForDuration("No Feedback Subject! Not sent.", popupTime)
+      showMsgForDuration("No Feedback Subject! Not sent.", 'err', popupTime)
     } else if (feedbackText.length <= 0) {
-      showErrForDuration("No Feedback Text! Not sent.", popupTime)
+      showMsgForDuration("No Feedback Text! Not sent.", 'err', popupTime)
     } else {
       sendMail('3DPC PrintManager Feedback - ' + feedbackSubject, feedbackText, "thomp907@purdue.edu")
       setFeedbackSubject('')
@@ -698,41 +709,45 @@ function App() {
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin') {
-        showErrForDuration("This printer is not available!", popupTime);
+        showMsgForDuration("This printer is not available!", 'err', popupTime);
       } else if (selectedPrinter.status === 'admin' && !isAdmin) {
-        showErrForDuration("This printer is not available!", popupTime);
+        showMsgForDuration("This printer is not available!", 'err', popupTime);
       } else if (name.length === 0) {
         console.log("startPrintClick: err: no name");
-        showErrForDuration("No Name! Print not started.", popupTime);
+        showMsgForDuration("No Name! Print not started.", 'err', popupTime);
       } else if ((email.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no email");
-        showErrForDuration("No Email! Print not started.", popupTime);
+        showMsgForDuration("No Email! Print not started.", 'err', popupTime);
       } else if ((supervisor.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no supervisor");
-        showErrForDuration("No Supervisor! Print not started.", popupTime);
+        showMsgForDuration("No Supervisor! Print not started.", 'err', popupTime);
       } else if ((partNames.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no partNames");
-        showErrForDuration("No Part Names! Print not started.", popupTime);
+        showMsgForDuration("No Part Names! Print not started.", 'err', popupTime);
       }// else if (files.length === 0) {
       //   console.log("startPrintClick: err: no files");
       //   showErrForDuration("No Files! Print not started.", popupTime);
       // }
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
-        showErrForDuration("No Filament Usage! Print not started.", popupTime);
+        showMsgForDuration("No Filament Usage! Print not started.", 'err', popupTime);
       } else if (filamentUsage > 1000) {
         console.log("startPrintClick: warn: filamentUsage > 1000g");
-        showWarningForDuration("Warning: Filament Usage Exceeds 1kg", popupTime);
+        showMsgForDuration("Warning: Filament Usage Exceeds 1kg", 'warn', popupTime);
       } else {
-        //all fields have valid values, insert the print to the "printJob" table
+        //all fields have valid values...
+        //clear all warning popups 
+        setMessageQueue(prevQueue => prevQueue.filter(message => message.msg !== "Warning: Filament Usage Exceeds 1kg"));
+
+        // insert the print to the "printJob" table
         console.log("startPrintClick: all fields valid, inserting to printJob");
         startPrint();
       };
     };
   };
 
-  const handleWarningClick = () => {
-    setShowWarn(false);
+  const handleWarningClick = (id) => {
+    setMessageQueue(prevQueue => prevQueue.filter(message => message.msg !== "Warning: Filament Usage Exceeds 1kg"));
     startPrint();
   }
 
@@ -764,8 +779,10 @@ function App() {
                   updateTable("printer", "currentJob", selectedPrinter.printerName, response.data.currentJob[0].jobID, () => {
                     const updatedPrinterList = printerList.map(printer => {
                       if (printer.printerName === selectedPrinter.printerName) {
-                        let newPrinter = { ...printer, status: selectedPrinter.status === 'admin' ? 'admin-busy' : "busy",
-                           currentJob: response.data.currentJob[0].jobID }
+                        let newPrinter = {
+                          ...printer, status: selectedPrinter.status === 'admin' ? 'admin-busy' : "busy",
+                          currentJob: response.data.currentJob[0].jobID
+                        }
                         selectPrinter(newPrinter)
                         return newPrinter;
                       }
@@ -793,23 +810,23 @@ function App() {
     console.log(selectedPrinter);
 
     //close error message if its still open
-    setShowErr(false);
+    //setMessageType(null)
 
-    showMsgForDuration(`Print job successfully started!`, popupTime);
+    showMsgForDuration(`Print job successfully started!`, 'msg', popupTime);
   };
 
   const sendMail = (subject, text, target = curJob.email,) => {
     if (target.length === 0) {
-      showErrForDuration('Email not sent: No target', popupTime);
+      showMsgForDuration('Email not sent: No target', 'err', popupTime);
     } else {
       Axios.post(`${serverURL}/api/send-email`, {
         to: target,
         subject: subject,
         text: text
       }).then(() => {
-        showMsgForDuration('Email Sent Successfully', popupTime);
+        showMsgForDuration('Email Sent Successfully', 'msg', popupTime);
       }).catch((error) => {
-        showErrForDuration('Error Sending Email', popupTime);
+        showMsgForDuration('Error Sending Email', popupTime);
         console.error('Error sending email:', error.response ? error.response.data : error.message);
       });
 
@@ -842,7 +859,7 @@ function App() {
     try {
       console.log("print done was clicked... setting printer status to available");
       //set status to available
-      updateTable("printer", "status", selectedPrinter.printerName, selectedPrinter.status==='admin-busy'?'admin':"available", () => {
+      updateTable("printer", "status", selectedPrinter.printerName, selectedPrinter.status === 'admin-busy' ? 'admin' : "available", () => {
 
         //set the printJob status to statusArg
         Axios.put(`${serverURL}/api/update`, {
@@ -858,7 +875,7 @@ function App() {
             //apply the changes locally
             const updatedPrinterList = printerList.map(printer => {
               if (printer.printerName === selectedPrinter.printerName) {
-                return { ...printer, status: selectedPrinter.status==='admin-busy' ? 'admin' : "available", currentJob: "" };
+                return { ...printer, status: selectedPrinter.status === 'admin-busy' ? 'admin' : "available", currentJob: "" };
               }
               return printer;
             });
@@ -891,7 +908,7 @@ function App() {
                       if (failureCount >= 3) {
                         sendMail("3DPC: Print Failed", text);
                       } else {
-                        showErrForDuration(`Email not sent. Failures: ${failureCount}`, popupTime);
+                        showMsgForDuration(`Email not sent. Failures: ${failureCount}`, 'err', popupTime);
                       }
                     });
                   } catch (error) {
@@ -900,12 +917,12 @@ function App() {
                 }
 
               } catch (e) {
-                showErrForDuration('Error Sending Email', popupTime);
+                showMsgForDuration('Error Sending Email', 'err', popupTime);
                 console.log('Error sending email:', e);
               }
             } else {
               console.log('not sending email...')
-              showErrForDuration('No Email Sent. (Disabled)', popupTime);
+              showMsgForDuration('No Email Sent. (Disabled)', 'err', popupTime);
             }
 
             selectedPrinter.status = selectedPrinter.status === 'admin-busy' ? 'admin' : 'available';
@@ -925,47 +942,35 @@ function App() {
     }
   };
 
-  const showErrForDuration = (msg, duration) => {
-    setShowWarn(false);
-    setShowMsg(false);
-    setMessage(msg);
-    if (!showErr) {
-      setShowErr(true);
-      setTimeout(() => {
-        setShowErr(false);
-      }, duration);
-    }
-  };
-
-  const handleMsgExit = () => {
-    setShowWarn(false);
-    setShowMsg(false);
-    setShowErr(false);
+  const handleMsgExit = (id) => {
+    setMessageQueue(prevQueue => prevQueue.filter(message => message.id !== id));
   }
 
-  const showWarningForDuration = (msg, duration) => {
-    setShowErr(false);
-    setShowMsg(false);
-    setMessage(msg);
-    if (!showWarn) {
-      setShowWarn(true);
-      setTimeout(() => {
-        setShowWarn(false);
-      }, duration);
-    }
-  };
+  // const showMsgForDuration = (msg, type, duration) => {
+  //   console.log(type + ": "+msg)
+  //   setMessageType(type)
+  //   setMessage(msg);
+  //   setTimeout(() => {
+  //     setMessageType(null);
+  //   }, duration);
+  // };
+  useEffect(() => {
+    // Log the messageQueue whenever it changes
+    console.log("Updated messageQueue:", messageQueue);
+  }, [messageQueue]);
 
-  const showMsgForDuration = (msg, duration) => {
-    console.log(msg)
-    setShowWarn(false);
-    setShowErr(false);
-    setMessage(msg);
-    if (!showMsg) {
-      setShowMsg(true);
-      setTimeout(() => {
-        setShowMsg(false);
-      }, duration);
-    }
+  const showMsgForDuration = (msg, type, duration) => {
+    console.log('adding ' + msg + 'to the queue...')
+    const id = Date.now(); // Unique ID for each message
+
+    setMessageQueue(prevQueue => [...prevQueue, { id, msg, type }]);
+
+    // Set a timeout to remove the message after its duration
+    setTimeout(() => {
+      console.log('removing ' + msg + 'from the queue...')
+
+      setMessageQueue(prevQueue => prevQueue.filter(message => message.id !== id))
+    }, duration);
   };
 
   const handlePrinterClick = (printer) => {
@@ -987,7 +992,7 @@ function App() {
         if (data !== null && data.length > 0) {
           console.log('fetched form data: ');
           console.log(data)
-          showMsgForDuration('Form Filled Successfully!', popupTime);
+          showMsgForDuration('Form Filled Successfully!', 'msg', popupTime);
 
           let formData = data[0];
           // fill the form's fields with the data we just pulled...
@@ -998,11 +1003,11 @@ function App() {
           setnotes(formData[8]);
           setpartnames(formData[9]);
         } else {
-          showErrForDuration('Error Filling Form...', popupTime);
+          showMsgForDuration('Error Filling Form...', 'err', popupTime);
         }
       });
     } catch (e) {
-      showErrForDuration('Error Filling Form...', popupTime);
+      showMsgForDuration('Error Filling Form...', 'err', popupTime);
     }
   };
 
@@ -1246,7 +1251,7 @@ function App() {
 
             {/* Printer status pages: busy, available, admin, admin-busy, broken, and testing */}
 
-            {((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && <div>
+            {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy") && isAdmin)) && <div>
               <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
               <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
               <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Cancel Print</button>
@@ -1443,7 +1448,7 @@ function App() {
                 </thead>
                 <tbody>
                   {historyList.map((job) => {
-                    
+
                     return <tr className={`${job.status} history-row`} key={job.jobID}>
                       {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
                       {isAdmin && <td> <button onClick={() => handleEditClick(job)} className='history-btn'>
@@ -1523,17 +1528,23 @@ function App() {
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
             </div>
           )}
-        {showErr && <div className="err-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}
-        {showMsg && <div className="success-msg">{message}<ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon></div>}
-        {showWarn && <div style={{ paddingBottom: '10px' }} className="warning-msg"><ExitIcon className="msg-exit" onClick={handleMsgExit}></ExitIcon>
-          <div className="warning-content">
-            {message}<br></br>Continue anyway?
-            <div onClick={() => { handleWarningClick() }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
-          </div>
-        </div>}
+
+        {
+          messageQueue.map(({ id, msg, type }, index) => {
+            return (
+              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px` }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
+                {(type === 'warn') && <div className="warning-content">
+                  Continue anyway?
+                  <div onClick={() => { handleWarningClick(id) }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
+                </div>}
+              </div>
+            )
+          })
+        }
       </div>
     </div>
   );
+
 }
 
 export default App;
