@@ -37,6 +37,8 @@ function App() {
   const [feedbackText, setFeedbackText] = useState('');
 
   const [printerList, setPrinterList] = useState([]);
+  const printerRefs = useRef([]);
+
   const [printerNotes, setPrinterNotes] = useState(null);
   const [printerSort, setPrinterSort] = useState('Availability');
 
@@ -100,6 +102,11 @@ function App() {
 
   }, [serverURL, printerSort, selectedPrinter]);
 
+
+  // update printRefs whenever printerList changes
+  useEffect(() => {
+    printerRefs.current = printerList.map((_, i) => printerRefs.current[i] ?? React.createRef());
+  })
 
 
   //update the printer screen when selectedPrinter changes
@@ -282,6 +289,7 @@ function App() {
     }
   }, [selectedPrinter, serverURL, menuOpen, printerList]);
 
+
   // Add mouse event listeners to the document for resizing
   React.useEffect(() => {
     const handleMouseMove = (e) => {
@@ -374,7 +382,7 @@ function App() {
         }
         // if the job status was changed from active, set the printer status to available or admin and reset currentJob
         else if (job.status === 'active') {
-          updateTable("printer", "currentJob", selectedPrinter.printerName, '', ()=>{
+          updateTable("printer", "currentJob", selectedPrinter.printerName, '', () => {
             handlePrinterStatusChange(selectedPrinter.status === 'admin-busy' ? 'admin' : 'available');
             saveJob();
           })
@@ -645,14 +653,14 @@ function App() {
     console.log('moving printer by arrow key...')
     console.log(selectedPrinter)
     if (selectedPrinter === null) {
-      selectPrinter(printerList[0]);
+      handlePrinterClick(0);
       return;
     }
     try {
       let curIndex = printerList.findIndex(printer => printer.printerName === selectedPrinter.printerName);
       curIndex = (curIndex + direction) % printerList.length;
       if (curIndex === -1) curIndex = printerList.length - 1;
-      selectPrinter(printerList[curIndex]);
+      handlePrinterClick(curIndex);
     } catch (e) {
       console.log('arrow press failed: printer not found in printerList:\n' + e)
     }
@@ -973,12 +981,23 @@ function App() {
     }, duration);
   };
 
-  const handlePrinterClick = (printer) => {
+  const handlePrinterClick = (index) => {
+    let printer = printerList[index];
     if (selectedPrinter === printer) {
       selectPrinter(null);
       console.log("unselected printer: ");
       console.log(printer);
     } else {
+      // scroll the sidebar
+      const selected = printerRefs.current[index]?.current
+      if (selected) {
+        printerRefs.current[index]?.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        })
+
+      }
+
       selectPrinter(printer);
       console.log("selected printer: ");
       console.log(printer);
@@ -1116,7 +1135,7 @@ function App() {
     <div className="App">
       <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
         handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}
-        printerSort={printerSort} handlePrinterSort={handlePrinterSort} />
+        printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} />
 
       <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarWidth - 1}px` }}></div>
 

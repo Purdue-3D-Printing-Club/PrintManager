@@ -2,7 +2,7 @@ import React from 'react';
 import './Sidebar.css';
 
 const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width,
-     getStatusColor, printerSort, handlePrinterSort}) => {
+     getStatusColor, printerSort, handlePrinterSort, printerRefs}) => {
     return (
         <div className="sidebar" style={{ width: `${width}px` }}>
             <div className="mask" style={{ width: `${width}px` }}>
@@ -24,14 +24,16 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
                 
             </div>
             <div style={{ height: '135px' }}></div>
-            <div className='lowerBar'>
+
+            <div id='lowerBar'>
                 <div className={'sidePrinter'}
                     onClick={() => selectPrinter(null)}
                     style={{ backgroundColor: 'rgb(118, 152, 255)' }}> Home </div>
                 {printerList.map((printer, index) => {
                     return <div className={`sidePrinter ${(selectedPrinter && (selectedPrinter.printerName === printer.printerName)) ? 'selected' : ''}`}
                         key={index}
-                        onClick={() => handlePrinterClick(printer)}
+                        ref={printerRefs.current[index]}
+                        onClick={() => handlePrinterClick(index)}
                         style={{ backgroundColor: getStatusColor(printer.status) }}
                     >
                         {printer.printerName} - {printer.status ? "[" + printer.status + "]" : "[unknown]"}</div>

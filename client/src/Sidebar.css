@@ -62,6 +62,8 @@
     border-radius: 5px;
     transition: outline 0.05s;
     overflow: hidden;
+    scroll-margin-top: 140px;
+
 }
 
 .sidePrinter:not(.selected):hover {
@@ -76,7 +78,7 @@
     outline: 5px solid rgb(0, 80, 0);
 }
 
-.lowerBar {
+#lowerBar {
     overflow-y: auto;
 }
 
