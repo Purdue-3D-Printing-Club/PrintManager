@@ -49,6 +49,7 @@ function App() {
   //Printer menu data
   const [curJob, setCurJob] = useState(null);
   const [historyList, setHistoryList] = useState([]);
+  const [historySearch, setHistorySearch] = useState('');
   const [editingJob, setEditingJob] = useState({
     email: '',
     files: '',
@@ -308,6 +309,11 @@ function App() {
     };
   })
 
+  const handleHistorySearch = (e) => {
+    const newSearch = e.target.value
+    setHistorySearch(newSearch);
+    console.log("Set historySearch to " + newSearch);
+  }
 
   const handleJobEdit = (e, field) => {
     const newVal = e.target.value
@@ -426,7 +432,7 @@ function App() {
         return printer;
       });
       setPrinterList(updatedPrinterList)
-      
+
       // if (newType !== 'PLA') {
       //   handlePrinterStatusChange("admin")
       // } else{
@@ -508,7 +514,7 @@ function App() {
       sortedPrinters = list.sort((a, b) => {
         return a.model.localeCompare(b.model);
       });
-    }if (by === 'Filament Type') {
+    } if (by === 'Filament Type') {
       sortedPrinters = list.sort((a, b) => {
         return a.filamentType.localeCompare(b.filamentType);
       });
@@ -757,8 +763,8 @@ function App() {
         showMsgForDuration("No Filament Usage! Print not started.", 'err', popupTime);
       } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
         console.log("startPrintClick: warn: filament type not PLA");
-        showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime+2000);
-      }else if (filamentUsage > 1000) {
+        showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 2000);
+      } else if (filamentUsage > 1000) {
         console.log("startPrintClick: warn: filamentUsage > 1000g");
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg\nContinue anyway?", 'warn', popupTime);
       } else {
@@ -1480,75 +1486,116 @@ function App() {
             </div>}
 
             <div style={{ height: "50px" }}></div>
-            <div className="print-history">Print History [{historyList.length}]</div>
-            <div className='wrapper-wrapper'>
-              <table className='history-wrapper'>
-                <thead>
-                  <tr>
-                    {isAdmin && <th>Delete</th>}
-                    {isAdmin && <th>Edit</th>}
-                    <th>Time Started</th>
-                    <th>Status</th>
-                    <th>Parts</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Supervisor</th>
-                    <th>Filament</th>
-                    <th>Used (g)</th>
-                    <th>Notes</th>
-                    <th>Files</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historyList.map((job) => {
-
-                    return <tr className={`${job.status} history-row`} key={job.jobID}>
-                      {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
-                      {isAdmin && <td> <button onClick={() => handleEditClick(job)} className='history-btn'>
-                        {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
-                      </button></td>}
-                      <td>{formatDate(job.timeStarted, true)}</td>
-                      {(isAdmin && (editingJob.jobID === job.jobID)) ?
-                        <>
-                          <td>
-                            <select id="jobStatus" style={{ width: "100%" }} value={editingJob.status} onChange={(e) => handleJobEdit(e, "status")}>
-                              <option value="active">active</option>
-                              <option value="completed">completed</option>
-                              <option value="failed">failed</option>
-                            </select>
-                          </td>
-                          <td><input type="text" className="history-edit" value={editingJob.partNames} onChange={(e) => handleJobEdit(e, "partNames")}></input></td>
-                          <td><input type="text" className="history-edit" value={editingJob.name} onChange={(e) => handleJobEdit(e, "name")}></input></td>
-                          <td><input type="text" className="history-edit" value={editingJob.email} onChange={(e) => handleJobEdit(e, "email")}></input></td>
-                          <td><input type="text" className="history-edit" value={editingJob.supervisorName} onChange={(e) => handleJobEdit(e, "supervisorName")}></input></td>
-                          <td>
-                            <select id="personalFilament" style={{ width: "100%" }} value={editingJob.personalFilament} onChange={(e) => handleJobEdit(e, "personalFilament")}>
-                              <option value="0">club</option>
-                              <option value="1">personal</option>
-                            </select>
-                          </td>
-                          <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
-                          <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
-                          <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
-                        </>
-                        :
-                        <>
-                          <td>{job.status}</td>
-                          <td>{truncateString(job.partNames, 40)}</td>
-                          <td>{truncateString(job.name, 20)}</td>
-                          <td>{truncateString(job.email, 30)}</td>
-                          <td>{truncateString(job.supervisorName, 20)}</td>
-                          <td>{job.personalFilament ? 'personal' : 'club'}</td>
-                          <td>{job.usage_g}</td>
-                          <td>{truncateString(job.notes, 256)}</td>
-                          <td>{truncateString(job.files, 256)}</td>
-                        </>}
-                    </tr>
-                  })}
-                </tbody>
-              </table>
+            <div className="print-history">
+              <div style={{ margin: '0px', padding: '0px' }}>Print History [{historyList.length}]</div>
+              <div className="search-bar">
+                Search:&nbsp;
+                <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
+                <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>
+              </div>
             </div>
-            <div style={{ height: '10vh' }} />
+
+            <div style={{ height: '68vh', overflow: 'hidden' }}>
+              <div className='wrapper-wrapper'>
+                <table className='history-wrapper'>
+                  <thead>
+                    <tr>
+                      {isAdmin && <th>Delete</th>}
+                      {isAdmin && <th>Edit</th>}
+                      <th>Time Started</th>
+                      <th>Status</th>
+                      <th>Parts</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Supervisor</th>
+                      <th>Filament</th>
+                      <th>Used (g)</th>
+                      <th>Notes</th>
+                      <th>Files</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyList.map((job) => {
+                      const containsSearch = Object.values(job).some(value =>
+                        typeof value === 'string' && value.toLowerCase().includes(historySearch.toLowerCase())
+                      );
+                      if (!containsSearch) {
+                        return null;
+                      }
+
+                      // Highlight the search in the job's fields by wrapping it with <strong>
+                      const applyHighlight = (text, length = 40) => {
+                        if (!text || !historySearch) return text; // Return the text if no search term
+                      
+                        // Truncate the text before applying the highlight
+                        const truncatedText = truncateString(text, length);
+                      
+                        // Create a case-insensitive regex for the search term
+                        const regex = new RegExp(historySearch, 'i');
+                        
+                        // Replace the search term with the highlighted text in the truncated string
+                        return truncatedText.replace(regex, (match) => {
+                          return `<strong style="color: red;">${match}</strong>`; // Highlight the matched part
+                        });
+                      };
+
+                      return <tr className={`${job.status} history-row`} key={job.jobID}>
+                        {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
+                        {isAdmin && <td> <button onClick={() => handleEditClick(job)} className='history-btn'>
+                          {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
+                        </button></td>}
+                        <td>{formatDate(job.timeStarted, true)}</td>
+                        {(isAdmin && (editingJob.jobID === job.jobID)) ?
+                          <>
+                            <td>
+                              <select id="jobStatus" style={{ width: "100%" }} value={editingJob.status} onChange={(e) => handleJobEdit(e, "status")}>
+                                <option value="active">active</option>
+                                <option value="completed">completed</option>
+                                <option value="failed">failed</option>
+                              </select>
+                            </td>
+                            <td><input type="text" className="history-edit" value={editingJob.partNames} onChange={(e) => handleJobEdit(e, "partNames")}></input></td>
+                            <td><input type="text" className="history-edit" value={editingJob.name} onChange={(e) => handleJobEdit(e, "name")}></input></td>
+                            <td><input type="text" className="history-edit" value={editingJob.email} onChange={(e) => handleJobEdit(e, "email")}></input></td>
+                            <td><input type="text" className="history-edit" value={editingJob.supervisorName} onChange={(e) => handleJobEdit(e, "supervisorName")}></input></td>
+                            <td>
+                              <select id="personalFilament" style={{ width: "100%" }} value={editingJob.personalFilament} onChange={(e) => handleJobEdit(e, "personalFilament")}>
+                                <option value="0">club</option>
+                                <option value="1">personal</option>
+                              </select>
+                            </td>
+                            <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
+                            <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
+                            <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
+                          </>
+                          :
+                          <>
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, 40) }} />
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, 40) }} />
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name,20) }} />
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email,30) }} />
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName,20) }} />
+                            <td>{job.personalFilament ? 'personal' : 'club'}</td>
+                            <td>{job.usage_g}</td>
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes,256) }} />
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files,256) }} />
+
+                            {/* <td>{truncateString(job.partNames, 40)}</td>
+                            <td>{truncateString(job.name, 20)}</td>
+                            <td>{truncateString(job.email, 30)}</td>
+                            <td>{truncateString(job.supervisorName, 20)}</td>
+                            <td>{job.personalFilament ? 'personal' : 'club'}</td>
+                            <td>{job.usage_g}</td>
+                            <td>{truncateString(job.notes, 256)}</td>
+                            <td>{truncateString(job.files, 256)}</td> */}
+                          </>}
+                      </tr>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div style={{ height: '4vh' }} />
 
 
             <div className='printer-header' style={{
@@ -1585,7 +1632,7 @@ function App() {
         {
           messageQueue.map(({ id, msg, type }, index) => {
             return (
-              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`,   whiteSpace: 'pre-line' }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
+              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line' }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
                 {(type === 'warn') && <div className="warning-content">
                   <div onClick={() => { handleWarningClick(id) }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
                 </div>}

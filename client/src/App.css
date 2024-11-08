@@ -304,18 +304,26 @@ option  {
 .wrapper-wrapper {
   margin: auto;
   width: 95.2%;
-  max-height: 70vh;
   margin-bottom: 30px;
   overflow-x: auto;
+  max-height:68vh;
+}
+
+.search-bar {
+  font-size: large;
+  display: flex;
+  gap: 5px; 
+  justify-content: center;
+  margin-top:5px;
 }
 
 .print-history {
   margin: auto;
   width: 95%;
-
+  margin-bottom:0px;
   background-color: silver;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top:5px;
+  padding-bottom:5px;
   font-weight: bold;
   font-size: xx-large;
   outline: 2px solid black;

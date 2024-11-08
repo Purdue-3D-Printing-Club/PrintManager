@@ -28,7 +28,7 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
 
         <div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large', marginBottom: '2px' }}>Hotkeys</div>
-          <div className='wrapper-wrapper'>
+          <div className='hotkeys-wrapper-wrapper'>
             <table className='hotkeys-wrapper'>
               <thead>
                 <tr>
