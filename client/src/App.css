@@ -72,6 +72,9 @@ html::-webkit-scrollbar {
   opacity: 1;
 }
 
+#filamentType{
+  font-size: medium;
+}
 .printForm {
   margin-top: 5px;
   flex-direction: column;

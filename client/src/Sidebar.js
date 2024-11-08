@@ -3,6 +3,13 @@ import './Sidebar.css';
 
 const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width,
      getStatusColor, printerSort, handlePrinterSort, printerRefs}) => {
+        const getPrinterInfo = (printer) => {
+            switch (printerSort) {
+                case "Printer Model": return printer.model
+                case "Filament Type": return printer.filamentType
+                default: return printer.status
+            }
+        }
     return (
         <div className="sidebar" style={{ width: `${width}px` }}>
             <div className="mask" style={{ width: `${width}px` }}>
@@ -19,6 +26,7 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
                     <option value="Availability">Availability</option>
                     <option value="Printer Name">Printer Name</option>
                     <option value="Printer Model">Printer Model</option>
+                    <option value="Filament Type">Filament Type</option>
                 </select>
                 </div>
                 
@@ -36,7 +44,7 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
                         onClick={() => handlePrinterClick(index)}
                         style={{ backgroundColor: getStatusColor(printer.status) }}
                     >
-                        {printer.printerName} - {printer.status ? "[" + printer.status + "]" : "[unknown]"}</div>
+                        {printer.printerName} - {printer.status ? "[" + getPrinterInfo(printer) + "]" : "[unknown]"}</div>
                 })}
             </div>
         </div>

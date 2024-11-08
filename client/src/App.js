@@ -415,6 +415,27 @@ function App() {
     console.log('now sorting printers by ' + newSort);
   }
 
+  const handleFilamentType = (e) => {
+    const newType = e.target.value;
+    updateTable("printer", "filamentType", selectedPrinter.printerName, newType, () => {
+      selectedPrinter.filamentType = newType;
+      const updatedPrinterList = printerList.map(printer => {
+        if (printer.printerName === selectedPrinter.printerName) {
+          return { ...printer, filamentType: newType };
+        }
+        return printer;
+      });
+      setPrinterList(updatedPrinterList)
+      
+      // if (newType !== 'PLA') {
+      //   handlePrinterStatusChange("admin")
+      // } else{
+      //   handlePrinterStatusChange("available")
+      // }
+    })
+    console.log('changed filament type to ' + newType);
+  }
+
   const handlePrinterNotes = (e) => {
     const newPrinterNotes = e.target.value;
     setPrinterNotes(newPrinterNotes);
@@ -486,6 +507,10 @@ function App() {
     } if (by === 'Printer Model') {
       sortedPrinters = list.sort((a, b) => {
         return a.model.localeCompare(b.model);
+      });
+    }if (by === 'Filament Type') {
+      sortedPrinters = list.sort((a, b) => {
+        return a.filamentType.localeCompare(b.filamentType);
       });
     }
 
@@ -730,13 +755,16 @@ function App() {
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
         showMsgForDuration("No Filament Usage! Print not started.", 'err', popupTime);
-      } else if (filamentUsage > 1000) {
+      } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
+        console.log("startPrintClick: warn: filament type not PLA");
+        showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime+2000);
+      }else if (filamentUsage > 1000) {
         console.log("startPrintClick: warn: filamentUsage > 1000g");
-        showMsgForDuration("Warning: Filament Usage Exceeds 1kg", 'warn', popupTime);
+        showMsgForDuration("Warning: Filament Usage Exceeds 1kg\nContinue anyway?", 'warn', popupTime);
       } else {
         //all fields have valid values...
         //clear all warning popups 
-        setMessageQueue(prevQueue => prevQueue.filter(message => message.msg !== "Warning: Filament Usage Exceeds 1kg"));
+        setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
 
         // insert the print to the "printJob" table
         console.log("startPrintClick: all fields valid, inserting to printJob");
@@ -746,7 +774,7 @@ function App() {
   };
 
   const handleWarningClick = (id) => {
-    setMessageQueue(prevQueue => prevQueue.filter(message => message.msg !== "Warning: Filament Usage Exceeds 1kg"));
+    setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
     startPrint();
   }
 
@@ -1231,9 +1259,21 @@ function App() {
 
           {selectedPrinter && !menuOpen && <div>
             <div style={{ height: "35px" }}></div>
-            <div className='stat-msg'>{
-              getStatMsg()
-            }</div>
+            <div className='stat-msg'>
+              {getStatMsg()}
+              <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+              {isAdmin ? <div> {"Use "}
+                <select id="filamentType" value={selectedPrinter.filamentType} onChange={handleFilamentType}>
+                  <option value="PLA">PLA</option>
+                  <option value="PETG">PETG</option>
+                  <option value="TPU">TPU</option>
+
+                </select>
+                {" filament on this printer."}</div>
+                :
+                "Use " + selectedPrinter.filamentType + " filament on this printer."
+              }
+            </div>
             <br />
             {
               (curJob && (selectedPrinter.status === 'busy' || selectedPrinter.status === 'admin-busy')) &&
@@ -1545,9 +1585,8 @@ function App() {
         {
           messageQueue.map(({ id, msg, type }, index) => {
             return (
-              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px` }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
+              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`,   whiteSpace: 'pre-line' }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
                 {(type === 'warn') && <div className="warning-content">
-                  Continue anyway?
                   <div onClick={() => { handleWarningClick(id) }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
                 </div>}
               </div>
