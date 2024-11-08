@@ -111,6 +111,60 @@ function App() {
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
+    const createLineChart = (ref, filledPersonalData, filledClubData, dateWidnow) => {
+
+      // Destroy existing chart if it already exists
+      if (ref.current.chart) {
+        ref.current.chart.destroy();
+      }
+
+      // Create the line chart
+      const ctx = ref.current.getContext('2d');
+      ref.current.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dateWidnow,
+          datasets: [{
+            label: 'Personal Filament',
+            data: filledPersonalData,
+            fill: false,
+            borderColor: 'rgba(255, 100, 100, 1)',
+            tension: 0.1,
+          },
+          {
+            label: 'Club Filament',
+            data: filledClubData,
+            fill: false,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            tension: 0.1,
+          }],
+        },
+        options: {
+          plugins: {
+            legend: {
+              position: 'bottom',
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+            },
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 2.5,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+    }
+
     setPrinterNotes(null)
     const generateDateRange = (startDate, endDate) => {
       const dateArray = [];
@@ -156,7 +210,7 @@ function App() {
         Axios.get(`${serverURL}/api/getfreq`).then((response) => {
           console.log("frequencies: ");
           console.log(response.data);
-          const sortedData = response.data.res.sort((a, b) => b.cnt - a.cnt);
+          const sortedData = response.data.res;
 
           setPrinterNames(sortedData.map(printer => printer.printerName));
           setFrequencies(sortedData.map(printer => printer.cnt));
@@ -165,8 +219,7 @@ function App() {
           try {
             Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
               console.log('supervisor data:')
-              const sortedData = response.data.res.sort((a, b) => b.cnt - a.cnt);
-              setSupervisorData(sortedData);
+              setSupervisorData(response.data.res);
               console.log(sortedData)
               Axios.get(`${serverURL}/api/getfilamentdata`).then((response) => {
                 console.log('filament name data:')
@@ -176,101 +229,39 @@ function App() {
                 Axios.get(`${serverURL}/api/getdailyprints`).then((response2) => {
                   console.log("daily data:");
                   console.log(response2.data);
-                  if (lineRef1.current && response2.data) {
-
+                  if (response2.data) {
                     const dailyData = response2.data.res;
+                    const personal = dailyData.filter(item => item.personalFilament)
+                    const club = dailyData.filter(item => !item.personalFilament)
+
                     const startDate = dailyData.length > 0 ? dailyData[0].date : null;
                     const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
-
                     if (startDate && endDate) {
                       const allDates = generateDateRange(startDate, endDate);
-                      const dataMap = new Map(dailyData.map(day => [formatDate(day.date, false), day.cnt]));
-                      // Fill in missing dates with 0
-                      const filledDailyCnt = allDates.map(date => dataMap.get(date) || 0);
-                      // Destroy existing chart if it already exists
-                      if (lineRef1.current.chart) {
-                        lineRef1.current.chart.destroy();
+
+                      if (lineRef1.current) {
+                        const personalDataMap = new Map(personal.map(day => [formatDate(day.date, false), day.cnt]));
+                        const clubDataMap = new Map(club.map(day => [formatDate(day.date, false), day.cnt]));
+
+                        // Fill in missing dates with 0
+                        const filledPersonalCnt = allDates.map(date => personalDataMap.get(date) || 0);
+                        const filledClubCnt = allDates.map(date => clubDataMap.get(date) || 0);
+
+                        createLineChart(lineRef1, filledPersonalCnt, filledClubCnt, allDates)
                       }
 
-                      // Create the line chart
-                      const ctx = lineRef1.current.getContext('2d');
-                      lineRef1.current.chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                          labels: allDates,
-                          datasets: [{
-                            label: 'Prints Completed',
-                            data: filledDailyCnt,
-                            fill: false,
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            tension: 0.1,
-                          }],
-                        },
-                        options: {
-                          plugins: {
-                            legend: {
-                              position: 'bottom',
-                            },
-                          },
-                          responsive: true,
-                          maintainAspectRatio: true,
-                          aspectRatio: 2.5,
-                          scales: {
-                            y: {
-                              beginAtZero: true,
-                            },
-                          },
-                        },
-                      });
-                    }
-                  }
-                  if (lineRef2.current && response2.data) {
+                      if (lineRef2.current) {
+                        const personalDataMap = new Map(personal.map(day => [formatDate(day.date, false), day.sum]));
+                        const clubDataMap = new Map(club.map(day => [formatDate(day.date, false), day.sum]));
 
-                    const dailyData = response2.data.res;
-                    const startDate = dailyData.length > 0 ? dailyData[0].date : null;
-                    const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
+                        // Fill in missing dates with 0
+                        const filledPersonalSum = allDates.map(date => personalDataMap.get(date) || 0);
+                        const filledClubSum = allDates.map(date => clubDataMap.get(date) || 0);
 
-                    if (startDate && endDate) {
-                      const allDates = generateDateRange(startDate, endDate);
-                      const dataMap = new Map(dailyData.map(day => [formatDate(day.date, false), day.sum]));
-                      // Fill in missing dates with 0
-                      const filledDailyCnt = allDates.map(date => dataMap.get(date) || 0);
-                      // Destroy existing chart if it already exists
-                      if (lineRef2.current.chart) {
-                        lineRef2.current.chart.destroy();
+                        createLineChart(lineRef2, filledPersonalSum, filledClubSum, allDates)
                       }
-
-                      // Create the line chart
-                      const ctx = lineRef2.current.getContext('2d');
-                      lineRef2.current.chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                          labels: allDates,
-                          datasets: [{
-                            label: 'Filament Used',
-                            data: filledDailyCnt,
-                            fill: false,
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            tension: 0.1,
-                          }],
-                        },
-                        options: {
-                          plugins: {
-                            legend: {
-                              position: 'bottom',
-                            },
-                          },
-                          responsive: true,
-                          maintainAspectRatio: true,
-                          aspectRatio: 2.5,
-                          scales: {
-                            y: {
-                              beginAtZero: true,
-                            },
-                          },
-                        },
-                      });
                     }
+
                   }
                   setLoading(false);
                 });
@@ -1140,7 +1131,7 @@ function App() {
       <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarWidth - 1}px` }}></div>
 
       <div className='main-content' style={{ marginLeft: `${sidebarWidth}px` }}>
-        <div style={{ height: selectedPrinter ? '100px' : '65px' }}></div>
+        <div style={{ height: selectedPrinter ? '105px' : '75px' }}></div>
 
         <div className="printer-screen">
           {(!selectedPrinter && !menuOpen) && <div>
@@ -1249,22 +1240,16 @@ function App() {
               <div>
                 <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left' }}>
                   &nbsp;Name: {curJob.name}
-                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop: '5px' }} />
+                  <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                   &nbsp;Email: {curJob.email}
-                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop: '5px' }} />
+                  <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                   &nbsp;Supervisor: {curJob.supervisorName}
-                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop: '5px' }} />
+                  <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                   &nbsp;Files: {curJob.files}
-                  <hr style={{ borderTop: '2px solid black', width: '100%', marginTop: '5px' }} />
+                  <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                   &nbsp;Notes: {curJob.notes}
                 </div>
-                {/* Checkbox to toggle email sending */}
-                <label
-                  className={`checkbox-container ${sendEmail ? 'active' : ''}`}>
-                  <input type="checkbox" checked={sendEmail} onChange={handleSendEmailChange} />
-                  <span className="custom-checkbox"></span>
-                  <span style={{ userSelect: 'none' }} className="checkbox-label">Send Email</span>
-                </label>
+
               </div>
             }
 
@@ -1291,6 +1276,15 @@ function App() {
                   }
                 })
               }
+              {/* Checkbox to toggle email sending */}
+              <div>
+                <label
+                  className={`checkbox-container ${sendEmail ? 'active' : ''}`}>
+                  <input type="checkbox" checked={sendEmail} onChange={handleSendEmailChange} />
+                  <span className="custom-checkbox"></span>
+                  <span style={{ userSelect: 'none' }} className="checkbox-label">Send Email</span>
+                </label>
+              </div>
             </div>}
 
             {selectedPrinter && (selectedPrinter.status === "available") && <div>

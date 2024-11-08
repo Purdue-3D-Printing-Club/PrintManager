@@ -9,6 +9,7 @@
     "axios": "^1.6.8",
     "chart.js": "^4.4.2",
     "chartjs-2": "^0.0.1-security",
+    "chartjs-plugin-annotation": "^3.1.0",
     "cors": "^2.8.5",
     "crypto-browserify": "^3.12.1",
     "crypto-js": "^4.2.0",

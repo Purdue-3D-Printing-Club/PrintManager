@@ -177,7 +177,31 @@ app.get('/api/getjob', (req, res) => {
 });
 
 app.get('/api/getfreq', (req, res) => {
-    const sqlSelectFreq = `SELECT printerName, COUNT(*) AS cnt, SUM(usage_g) AS sum FROM printjob GROUP BY printerName`;
+    const sqlSelectFreq = `
+    (SELECT printerName, COUNT(*) AS cnt, SUM(usage_g) AS sum 
+    FROM printjob 
+    WHERE name IS NOT NULL 
+    GROUP BY printerName 
+    HAVING printerName IS NOT NULL
+    ORDER BY cnt DESC 
+    LIMIT 10)
+  
+    UNION ALL
+  
+    (SELECT 'Other' AS name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
+    FROM printjob 
+    WHERE name IS NOT NULL 
+    AND printerName NOT IN (
+      SELECT printerName 
+      FROM (SELECT printerName
+        FROM printjob 
+        WHERE name IS NOT NULL 
+        GROUP BY printerName 
+        HAVING printerName IS NOT NULL
+        ORDER BY COUNT(*) DESC 
+        LIMIT 10) AS top_names
+    ))
+  `;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -217,9 +241,9 @@ app.get('/api/getsupervisordata', (req, res) => {
   
     (SELECT 'Other' AS name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
     FROM printjob 
-    WHERE name IS NOT NULL 
-    AND name NOT IN (
-      SELECT name 
+    WHERE supervisorName IS NOT NULL 
+    AND supervisorName NOT IN (
+      SELECT supervisorName 
       FROM (SELECT supervisorName
         FROM printjob 
         WHERE name IS NOT NULL 
@@ -304,7 +328,7 @@ app.get('/api/getfilamentdata', (req, res) => {
 });
 
 app.get('/api/getdailyprints', (req, res) => {
-    const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt, SUM(usage_g) AS sum FROM printjob GROUP BY DATE(timeStarted)`;
+    const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt, SUM(usage_g) AS sum, personalFilament FROM printjob GROUP BY DATE(timeStarted), personalFilament`;
 
     pool.getConnection((err, connection) => {
         if (err) {
