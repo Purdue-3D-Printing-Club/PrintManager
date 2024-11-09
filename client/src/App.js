@@ -107,8 +107,24 @@ function App() {
   // update printRefs whenever printerList changes
   useEffect(() => {
     printerRefs.current = printerList.map((_, i) => printerRefs.current[i] ?? React.createRef());
-  })
+  }, [printerList])
 
+  // Scroll to selected printer after printer list is updated
+  useEffect(() => {
+    setMenuOpen(false)
+    if (selectedPrinter) {
+      // Calculate the new index after the state has updated
+      const curIndex = printerList.findIndex(printer => printer.printerName === selectedPrinter.printerName);
+      // Scroll to the printer
+      if (curIndex !== -1 && printerRefs.current[curIndex]) {
+        printerRefs.current[curIndex].current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }
+    }
+  }, [selectedPrinter, printerList]); // Run effect when selectedPrinter or printerList changes
+  
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
@@ -197,7 +213,7 @@ function App() {
         } else {
           setCurJob(null)
         }
-        Axios.get(`${serverURL}/api/getHistory?printerName=${selectedPrinter.printerName}`).then((response) => {
+        Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
           const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
           setHistoryList(newHistory);
           console.log('Got history list:')
@@ -322,7 +338,7 @@ function App() {
   }
 
   const refreshHistory = () => {
-    Axios.get(`${serverURL}/api/getHistory?printerName=${selectedPrinter.printerName}`).then((response) => {
+    Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
       const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
       setHistoryList(newHistory);
       console.log('Got history list:')
@@ -431,13 +447,7 @@ function App() {
         }
         return printer;
       });
-      setPrinterList(updatedPrinterList)
-
-      // if (newType !== 'PLA') {
-      //   handlePrinterStatusChange("admin")
-      // } else{
-      //   handlePrinterStatusChange("available")
-      // }
+      setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
     })
     console.log('changed filament type to ' + newType);
   }
@@ -497,8 +507,9 @@ function App() {
 
   const sortPrinterList = (list, by = 'Availability') => {
     let sortedPrinters = []
+    const availabilityOrder = ['available', 'admin', 'busy', 'admin-busy', 'testing', 'broken'];
+
     if (by === 'Availability') {
-      const availabilityOrder = ['available', 'admin', 'busy', 'admin-busy', 'testing', 'broken'];
       sortedPrinters = list.sort((a, b) => {
         const diff = availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status);
         if (diff === 0) {
@@ -512,10 +523,16 @@ function App() {
       });
     } if (by === 'Printer Model') {
       sortedPrinters = list.sort((a, b) => {
+        if (a.model === b.model) {
+          return (availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status));
+        }
         return a.model.localeCompare(b.model);
       });
     } if (by === 'Filament Type') {
       sortedPrinters = list.sort((a, b) => {
+        if (a.filamentType === b.filamentType) {
+          return (availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status));
+        }
         return a.filamentType.localeCompare(b.filamentType);
       });
     }
@@ -735,7 +752,7 @@ function App() {
     });
   };
 
-  const handleStartPrintClick = () => {
+  const handleStartPrintClick = (queue = false) => {
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin') {
@@ -761,6 +778,12 @@ function App() {
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
         showMsgForDuration("No Filament Usage! Print not started.", 'err', popupTime);
+      } else if (historyList.filter(item => item.status === 'queued').some(job => job.name === name)) {
+        console.log("startPrintClick: warn: duplicate name entry in queue");
+        showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 2000);
+      } else if (historyList.filter(item => item.status === 'queued').length >= 5) {
+        console.log("startPrintClick: warn: already 5 queued resin prints");
+        showMsgForDuration("Resin queue is full! Print not queued.", 'err', popupTime);
       } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
         console.log("startPrintClick: warn: filament type not PLA");
         showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 2000);
@@ -774,7 +797,7 @@ function App() {
 
         // insert the print to the "printJob" table
         console.log("startPrintClick: all fields valid, inserting to printJob");
-        startPrint();
+        startPrint(queue);
       };
     };
   };
@@ -784,14 +807,14 @@ function App() {
     startPrint();
   }
 
-  const startPrint = () => {
+  const startPrint = (queue = false) => {
     try {
       Axios.post(`${serverURL}/api/insert`, {
         printerName: selectedPrinter.printerName,
         files: truncateString(files, 512),
         usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
         timeStarted: new Date().toISOString(),
-        status: "active",
+        status: selectedPrinter.filamentType === 'Resin' ? "queued" : "active",
         name: truncateString(name, 64),
         supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
         notes: truncateString(notes, 256),
@@ -799,37 +822,46 @@ function App() {
         email: truncateString(email, 64),
         personalFilament: personalFilament
       }).then(() => {
-        setTimeout(() => {
-          //update the current job of the printer that was selected for the print
-          try {
-            Axios.get(`${serverURL}/api/getCurrentJob?printerName=${selectedPrinter.printerName}`).then((response) => {
-              console.log("CurrentJob data: ");
-              console.log(response.data);
-              //update the printer status of the printer that was given the job
-              updateTable("printer", "status", selectedPrinter.printerName, selectedPrinter.status === 'admin' ? "admin-busy" : "busy", () => {
-                //update the currentJob of the printer that was used for the printJob
-                if (response.data.currentJob[0]) {
-                  updateTable("printer", "currentJob", selectedPrinter.printerName, response.data.currentJob[0].jobID, () => {
-                    const updatedPrinterList = printerList.map(printer => {
-                      if (printer.printerName === selectedPrinter.printerName) {
-                        let newPrinter = {
-                          ...printer, status: selectedPrinter.status === 'admin' ? 'admin-busy' : "busy",
-                          currentJob: response.data.currentJob[0].jobID
+        if (!queue) {
+          setTimeout(() => {
+            //update the current job of the printer that was selected for the print
+            try {
+              Axios.get(`${serverURL}/api/getCurrentJob?printerName=${selectedPrinter.printerName}`).then((response) => {
+                console.log("CurrentJob data: ");
+                console.log(response.data);
+                //update the printer status of the printer that was given the job
+                updateTable("printer", "status", selectedPrinter.printerName, selectedPrinter.status === 'admin' ? "admin-busy" : "busy", () => {
+                  //update the currentJob of the printer that was used for the printJob
+                  if (response.data.currentJob[0]) {
+                    updateTable("printer", "currentJob", selectedPrinter.printerName, response.data.currentJob[0].jobID, () => {
+                      const updatedPrinterList = printerList.map(printer => {
+                        if (printer.printerName === selectedPrinter.printerName) {
+                          let newPrinter = {
+                            ...printer, status: selectedPrinter.status === 'admin' ? 'admin-busy' : "busy",
+                            currentJob: response.data.currentJob[0].jobID
+                          }
+                          selectPrinter(newPrinter)
+                          return newPrinter;
                         }
-                        selectPrinter(newPrinter)
-                        return newPrinter;
-                      }
-                      return printer;
+                        return printer;
+                      });
+                      setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
                     });
-                    setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
-                  });
-                }
+                  }
+                });
               });
-            });
-          } catch (error) {
-            console.error("Error fetching printer data: ", error);
-          }
-        });
+            } catch (error) {
+              console.error("Error fetching printer data: ", error);
+            }
+          });
+        } else {
+          Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
+            const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
+            setHistoryList(newHistory);
+            console.log('Got history list:')
+            console.log(newHistory);
+          });
+        }
       }, 500)
     } catch (error) {
       console.error('Error submitting printJob: ', error);
@@ -845,7 +877,8 @@ function App() {
     //close error message if its still open
     //setMessageType(null)
 
-    showMsgForDuration(`Print job successfully started!`, 'msg', popupTime);
+    showMsgForDuration(selectedPrinter.filamentType === 'Resin' ? 'Print job queued!'
+      : `Print job successfully started!`, 'msg', popupTime);
   };
 
   const sendMail = (subject, text, target = curJob.email,) => {
@@ -1013,16 +1046,6 @@ function App() {
       console.log("unselected printer: ");
       console.log(printer);
     } else {
-      // scroll the sidebar
-      const selected = printerRefs.current[index]?.current
-      if (selected) {
-        printerRefs.current[index]?.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest'
-        })
-
-      }
-
       selectPrinter(printer);
       console.log("selected printer: ");
       console.log(printer);
@@ -1156,6 +1179,70 @@ function App() {
     return time ? `${mm}/${dd}/${yyyy} ${hh}:${min} ${amOrPm}` : `${mm}/${dd}/${yyyy}`;
   }
 
+  const createHistoryRow = (job, queue = false) => {
+    return (
+      <>
+        {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
+        {
+          isAdmin && <td> <button onClick={() => handleEditClick(job)} className='history-btn'>
+            {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
+          </button></td>
+        }
+        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), 40) }} />
+
+        {
+          (isAdmin && (editingJob.jobID === job.jobID)) ?
+            <>
+              {!queue && <td>
+                <select id="jobStatus" style={{ width: "100%" }} value={editingJob.status} onChange={(e) => handleJobEdit(e, "status")}>
+                  <option value="active">active</option>
+                  <option value="completed">completed</option>
+                  <option value="failed">failed</option>
+                </select>
+              </td>}
+              <td><input type="text" className="history-edit" value={editingJob.partNames} onChange={(e) => handleJobEdit(e, "partNames")}></input></td>
+              <td><input type="text" className="history-edit" value={editingJob.name} onChange={(e) => handleJobEdit(e, "name")}></input></td>
+              <td><input type="text" className="history-edit" value={editingJob.email} onChange={(e) => handleJobEdit(e, "email")}></input></td>
+              <td><input type="text" className="history-edit" value={editingJob.supervisorName} onChange={(e) => handleJobEdit(e, "supervisorName")}></input></td>
+              {!queue && <td>
+                <select id="personalFilament" style={{ width: "100%" }} value={editingJob.personalFilament} onChange={(e) => handleJobEdit(e, "personalFilament")}>
+                  <option value="0">club</option>
+                  <option value="1">personal</option>
+                </select>
+              </td>}
+              <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
+              <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
+              <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
+            </>
+            :
+            <>
+              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, 40) }} />}
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, 40) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, 20) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, 30) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName, 20) }} />
+              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', 20) }} />}
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), 20) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, 128) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, 256) }} />
+            </>
+        }
+      </>
+    )
+  }
+
+  // Highlight the search in the job's fields by wrapping it with <b>
+  const applyHighlight = (text, length = 40) => {
+    if (!text || !historySearch) return truncateString(text, length);
+    const truncatedText = truncateString(text, length);
+    const regex = new RegExp(historySearch, 'i');
+
+    // Replace the search term with a bold html tag around the matched text
+    return truncatedText.replace(regex, (match) => {
+      return `<b style="color: rgb(40,200,40);">${match}</b>`;
+    });
+  };
+
   return (
     <div className="App">
       <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
@@ -1267,8 +1354,8 @@ function App() {
             <div style={{ height: "35px" }}></div>
             <div className='stat-msg'>
               {getStatMsg()}
-              <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-              {isAdmin ? <div> {"Use "}
+              <hr style={{ borderTop: '1px solid black', width: '100%' }} />
+              {selectedPrinter.filamentType !== 'Resin' ? (isAdmin ? <div> {"Use "}
                 <select id="filamentType" value={selectedPrinter.filamentType} onChange={handleFilamentType}>
                   <option value="PLA">PLA</option>
                   <option value="PETG">PETG</option>
@@ -1277,7 +1364,9 @@ function App() {
                 </select>
                 {" filament on this printer."}</div>
                 :
-                "Use " + selectedPrinter.filamentType + " filament on this printer."
+                "Use " + selectedPrinter.filamentType + " filament on this printer.")
+                :
+                "This is a Resin Printer."
               }
             </div>
             <br />
@@ -1298,6 +1387,7 @@ function App() {
 
               </div>
             }
+
 
             {/* Printer status pages: busy, available, admin, admin-busy, broken, and testing */}
 
@@ -1357,7 +1447,7 @@ function App() {
                 </div>
 
                 <br />
-                <button onClick={() => { handleStartPrintClick() }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Start Print</button>
+                <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
                 <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
                 {isAdmin && <div style={{ display: 'block' }}>
                   <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
@@ -1374,12 +1464,12 @@ function App() {
                   <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
                 </label>
                 {/* Checkbox to toggle personal filament */}
-                <label
+                {(selectedPrinter.filamentType !== 'Resin') && <label
                   className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
                   <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
                   <span className="custom-checkbox"></span>
                   <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
-                </label>
+                </label>}
                 <br />
                 {
                   files && files.split(',').map((link, index) => {
@@ -1419,7 +1509,7 @@ function App() {
               </div>
 
               <br />
-              <button onClick={() => { handleStartPrintClick() }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Start Print</button>
+              <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
               <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
               {isAdmin && <div style={{ display: 'block' }}>
                 <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
@@ -1436,12 +1526,12 @@ function App() {
                 <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
               </label>
               {/* Checkbox to toggle personal filament */}
-              <label
+              {(selectedPrinter.filamentType !== 'Resin') && <label
                 className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
                 <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
                 <span className="custom-checkbox"></span>
                 <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
-              </label>
+              </label>}
               <br />
               {
                 files && files.split(',').map((link, index) => {
@@ -1486,16 +1576,68 @@ function App() {
             </div>}
 
             <div style={{ height: "50px" }}></div>
+
+            {
+              selectedPrinter.filamentType === 'Resin' && <div>
+                <div className="print-history" style={{ marginTop: '20px' }}>Resin Printing Queue [{historyList.filter(item => item.status === 'queued').length}/5]</div>
+
+                <div className='wrapper-wrapper'>
+                  <table className='history-wrapper'>
+                    <thead>
+                      <tr>
+                        {isAdmin && <th>Delete</th>}
+                        {isAdmin && <th>Edit</th>}
+                        <th>Time Queued</th>
+                        <th>Parts</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Supervisor</th>
+                        <th>Usage (ml)</th>
+                        <th>Notes</th>
+                        <th>Files</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyList.map((job) => {
+                        const containsSearch = Object.keys(job).some(key => {
+                          let value = job[key]
+                          if (key === 'timeStarted') {
+                            value = formatDate(value, true)
+                          } else if (key === 'personalFilament') {
+                            value = value ? 'personal' : 'club'
+                          } else if (key === 'usage_g') {
+                            value = value.toString()
+                            console.log(value)
+                          }
+                          return (typeof value === 'string' && value.toLowerCase().includes(historySearch.toLowerCase()))
+                        }
+                        );
+                        if (!containsSearch) {
+                          return null;
+                        }
+
+                        return <tr className={`${job.status} history-row`} key={job.jobID}>
+                          {createHistoryRow(job, true)}
+                        </tr>
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            }
+
+            <div style={{ height: "100px" }}></div>
+
             <div className="print-history">
-              <div style={{ margin: '0px', padding: '0px' }}>Print History [{historyList.length}]</div>
+              <div style={{ margin: '0px', padding: '0px' }}>Print History [{historyList.length - historyList.filter(item => item.status === 'queued').length}]</div>
               <div className="search-bar">
                 Search:&nbsp;
                 <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
                 <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>
               </div>
             </div>
-
-            <div style={{ height: '68vh', overflow: 'hidden' }}>
+            <div style={{ height: '70vh', overflow: 'hidden' }}>
               <div className='wrapper-wrapper'>
                 <table className='history-wrapper'>
                   <thead>
@@ -1509,93 +1651,39 @@ function App() {
                       <th>Email</th>
                       <th>Supervisor</th>
                       <th>Filament</th>
-                      <th>Used (g)</th>
+                      <th>Used {selectedPrinter.filamentType === 'Resin' ? '(ml)' : '(g)'}</th>
                       <th>Notes</th>
                       <th>Files</th>
                     </tr>
                   </thead>
                   <tbody>
                     {historyList.map((job) => {
-                      const containsSearch = Object.values(job).some(value =>
-                        typeof value === 'string' && value.toLowerCase().includes(historySearch.toLowerCase())
+                      const containsSearch = Object.keys(job).some(key => {
+                        let value = job[key]
+                        if (key === 'timeStarted') {
+                          value = formatDate(value, true)
+                        } else if (key === 'personalFilament') {
+                          value = value ? 'personal' : 'club'
+                        } else if (key === 'usage_g') {
+                          value = value.toString()
+                          console.log(value)
+                        }
+                        return (typeof value === 'string' && value.toLowerCase().includes(historySearch.toLowerCase()))
+                      }
                       );
-                      if (!containsSearch) {
+                      if (!containsSearch || job.status === 'queued') {
                         return null;
                       }
 
-                      // Highlight the search in the job's fields by wrapping it with <strong>
-                      const applyHighlight = (text, length = 40) => {
-                        if (!text || !historySearch) return text; // Return the text if no search term
-                      
-                        // Truncate the text before applying the highlight
-                        const truncatedText = truncateString(text, length);
-                      
-                        // Create a case-insensitive regex for the search term
-                        const regex = new RegExp(historySearch, 'i');
-                        
-                        // Replace the search term with the highlighted text in the truncated string
-                        return truncatedText.replace(regex, (match) => {
-                          return `<strong style="color: red;">${match}</strong>`; // Highlight the matched part
-                        });
-                      };
-
                       return <tr className={`${job.status} history-row`} key={job.jobID}>
-                        {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
-                        {isAdmin && <td> <button onClick={() => handleEditClick(job)} className='history-btn'>
-                          {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
-                        </button></td>}
-                        <td>{formatDate(job.timeStarted, true)}</td>
-                        {(isAdmin && (editingJob.jobID === job.jobID)) ?
-                          <>
-                            <td>
-                              <select id="jobStatus" style={{ width: "100%" }} value={editingJob.status} onChange={(e) => handleJobEdit(e, "status")}>
-                                <option value="active">active</option>
-                                <option value="completed">completed</option>
-                                <option value="failed">failed</option>
-                              </select>
-                            </td>
-                            <td><input type="text" className="history-edit" value={editingJob.partNames} onChange={(e) => handleJobEdit(e, "partNames")}></input></td>
-                            <td><input type="text" className="history-edit" value={editingJob.name} onChange={(e) => handleJobEdit(e, "name")}></input></td>
-                            <td><input type="text" className="history-edit" value={editingJob.email} onChange={(e) => handleJobEdit(e, "email")}></input></td>
-                            <td><input type="text" className="history-edit" value={editingJob.supervisorName} onChange={(e) => handleJobEdit(e, "supervisorName")}></input></td>
-                            <td>
-                              <select id="personalFilament" style={{ width: "100%" }} value={editingJob.personalFilament} onChange={(e) => handleJobEdit(e, "personalFilament")}>
-                                <option value="0">club</option>
-                                <option value="1">personal</option>
-                              </select>
-                            </td>
-                            <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
-                            <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
-                            <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
-                          </>
-                          :
-                          <>
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, 40) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, 40) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name,20) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email,30) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName,20) }} />
-                            <td>{job.personalFilament ? 'personal' : 'club'}</td>
-                            <td>{job.usage_g}</td>
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes,256) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files,256) }} />
-
-                            {/* <td>{truncateString(job.partNames, 40)}</td>
-                            <td>{truncateString(job.name, 20)}</td>
-                            <td>{truncateString(job.email, 30)}</td>
-                            <td>{truncateString(job.supervisorName, 20)}</td>
-                            <td>{job.personalFilament ? 'personal' : 'club'}</td>
-                            <td>{job.usage_g}</td>
-                            <td>{truncateString(job.notes, 256)}</td>
-                            <td>{truncateString(job.files, 256)}</td> */}
-                          </>}
+                        {createHistoryRow(job)}
                       </tr>
                     })}
                   </tbody>
                 </table>
               </div>
             </div>
-            <div style={{ height: '4vh' }} />
+            <div style={{ height: '3vh' }} />
 
 
             <div className='printer-header' style={{

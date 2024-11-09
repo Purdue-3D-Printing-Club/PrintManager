@@ -70,8 +70,6 @@ app.post('/api/send-email', (req, res) => {
 app.get('/api/get', (req, res) => {
 
     const sqlSelectPrinters = "SELECT * FROM printer";
-    //const sqlSelectFilament = "SELECT * FROM filament";
-    //const sqlUsingFilament = `SELECT filamentIDLoaded FROM printjob WHERE status = "active"`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -355,8 +353,9 @@ app.get('/api/getdailyprints', (req, res) => {
 
 
 app.get('/api/getHistory', (req, res) => {
-    const printerName = req.query.printerName;
-    const sqlSelectHistory = `SELECT * FROM printjob WHERE printerName = ?`
+    const value = req.query.value;
+    const field = req.query.field
+    const sqlSelectHistory = `SELECT * FROM printjob WHERE ${field} = ?`
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting connection from pool:', err);
@@ -365,7 +364,7 @@ app.get('/api/getHistory', (req, res) => {
         }
         //transaction with no isolation level: reads only (transaction ensures consistency)
         connection.beginTransaction(function (err) {
-            connection.query(sqlSelectHistory, [printerName], (errHistory, resultHistory) => {
+            connection.query(sqlSelectHistory, [value], (errHistory, resultHistory) => {
                 if (errHistory) {
                     console.log(errHistory);
                     res.status(500).send("Error accessing printjob files data");
@@ -378,6 +377,8 @@ app.get('/api/getHistory', (req, res) => {
         });
     });
 });
+
+
 
 app.get('/api/getFailureCount', (req, res) => {
     const parts = req.query.parts;
