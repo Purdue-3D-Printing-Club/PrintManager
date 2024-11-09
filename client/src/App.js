@@ -17,6 +17,7 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = useState(225); // Initial sidebar width
   const [isResizing, setIsResizing] = useState(false);
 
+  const [formData, setFormData] = useState(null)
   const [filamentUsage, setFilamentUsage] = useState('');
   const [name, setname] = useState('');
   const [email, setemail] = useState('');
@@ -764,7 +765,7 @@ function App() {
       showMsgForDuration('No jobs in queue! Print not started.', 'err', popupTime);
       return;
     }
-    if(!((selectedPrinter.status === 'available') || (selectedPrinter.status === 'admin'))) {
+    if (!((selectedPrinter.status === 'available') || (selectedPrinter.status === 'admin'))) {
       showMsgForDuration('Printer is busy! Finish current job first.', 'err', popupTime);
       return;
     }
@@ -792,7 +793,7 @@ function App() {
             return printer;
           });
           setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
-          showMsgForDuration('Resin print successfully started!','msg',popupTime)
+          showMsgForDuration('Resin print successfully started!', 'msg', popupTime)
         })
       });
     });
@@ -800,6 +801,8 @@ function App() {
   }
 
   const handleStartPrintClick = (queue = false) => {
+    let matchingJob = ''
+
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin') {
@@ -825,9 +828,15 @@ function App() {
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
         showMsgForDuration("No Filament Usage! Print not started.", 'err', popupTime);
-      } else if (historyList.filter(item => item.status === 'queued').some(job => job.name === name)) {
+      } else if (historyList.filter(item => item.status === 'queued').some(job => {
+        if (job.name.toLowerCase() === name.toLowerCase()) {
+          matchingJob = job;
+          return true;
+        }
+        return false;
+      })) {
         console.log("startPrintClick: warn: duplicate name entry in queue");
-        showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 2000);
+        showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 2000, matchingJob);
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 5)) {
         console.log("startPrintClick: warn: already 5 queued resin prints");
         showMsgForDuration("Resin queue is full! Print not queued.", 'err', popupTime);
@@ -849,9 +858,41 @@ function App() {
     };
   };
 
-  const handleWarningClick = (id) => {
+  const handleWarningClick = (id, replaceJob) => {
     setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
-    startPrint();
+
+    if (replaceJob) {
+      // delete the old queued job with the same name
+      fetch(`${serverURL}/api/deleteJob/${replaceJob.jobID}`, { method: 'DELETE', }).then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      }).then(data => {
+        refreshHistory();
+        console.log('Deleted job with id ' + replaceJob.jobID);
+
+
+        //apply changes locally
+      const updatedHistoryList = historyList.filter(job => !(job.jobID === replaceJob.jobID))
+      
+      console.log('updated history list:')
+      console.log(updatedHistoryList)
+
+      setHistoryList(updatedHistoryList);
+
+      // queue the new one
+      startPrint(true);
+
+      }).catch(error => {
+        console.error('Error:', error);
+      });
+
+      
+
+    } else {
+      startPrint();
+    }
   }
 
   const startPrint = (queue = false) => {
@@ -901,32 +942,24 @@ function App() {
               console.error("Error fetching printer data: ", error);
             }
           });
+          if (selectedPrinter.filamentType !== 'Resin') { clearFields(); }
         } else {
           Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
             const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
             setHistoryList(newHistory);
             console.log('Got history list:')
             console.log(newHistory);
-          });
+          }); 
+          clearFields();
         }
       }, 500)
     } catch (error) {
       console.error('Error submitting printJob: ', error);
     }
 
-    //lastly, clear the fields of the text input and filament selected
-    clearFields();
-    console.log('selectedPrinter');
-
-
-    console.log(selectedPrinter);
-
-    //close error message if its still open
-    //setMessageType(null)
-
-    showMsgForDuration(selectedPrinter.filamentType === 'Resin' ? 'Print job queued!'
-      : `Print job successfully started!`, 'msg', popupTime);
+    showMsgForDuration(queue ? 'Print job queued!' : `Print job successfully started!`, 'msg', popupTime);
   };
+
 
   const sendMail = (subject, text, target = curJob.email,) => {
     if (target.length === 0) {
@@ -1072,11 +1105,11 @@ function App() {
     console.log("Updated messageQueue:", messageQueue);
   }, [messageQueue]);
 
-  const showMsgForDuration = (msg, type, duration) => {
+  const showMsgForDuration = (msg, type, duration, replaceJob = null) => {
     console.log('adding ' + msg + 'to the queue...')
     const id = Date.now(); // Unique ID for each message
 
-    setMessageQueue(prevQueue => [...prevQueue, { id, msg, type }]);
+    setMessageQueue(prevQueue => [...prevQueue, { id, msg, type, replaceJob }]);
 
     // Set a timeout to remove the message after its duration
     setTimeout(() => {
@@ -1105,23 +1138,45 @@ function App() {
     }
   };
 
-  const fillFromSheets = (e) => {
+  const fillFormData = (index) => {
+    // fill the form's fields with the data that was clicked
+    let job = formData[index]
+    if (!job) {
+      showMsgForDuration('Error: Form data not found', 'err', popupTime);
+    }
+    setname(job.name);
+    setemail(job.email);
+    setsupervisor(job.supervisorName)
+    setfiles(job.files);
+    setnotes(job.notes);
+    setpartnames(job.partNames);
+
+    //clear the form data table
+    setFormData(null);
+  }
+
+  const pullFormData = (e) => {
     try {
       const url = 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec';
       fetch(url).then(response => response.json()).then(data => {
         if (data !== null && data.length > 0) {
           console.log('fetched form data: ');
           console.log(data)
-          showMsgForDuration('Form Filled Successfully!', 'msg', popupTime);
+          showMsgForDuration('Form Data Retrieved Successfully!', 'msg', popupTime);
 
-          let formData = data[0];
-          // fill the form's fields with the data we just pulled...
-          setname(formData[1]);
-          setemail(formData[2]);
-          setsupervisor(formData[10])
-          setfiles(formData[4]);
-          setnotes(formData[8]);
-          setpartnames(formData[9]);
+          let formattedData = data.map((job) => {
+            return ({
+              name: job[1],
+              email: job[2],
+              supervisorName: job[10],
+              files: job[4],
+              notes: job[8],
+              partNames: job[9]
+            })
+          })
+
+          setFormData(formattedData)
+
         } else {
           showMsgForDuration('Error Filling Form...', 'err', popupTime);
         }
@@ -1479,7 +1534,34 @@ function App() {
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
               <div>
                 <div className='printForm'>
-                  <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Autofill From Latest Print Form Submission...</button>
+                  <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>{formData ? "Clear Form Data Table" : "Retrieve Latest Five Form Submissions..."}</button>
+                  {formData && <div className="form-data-wrapper">
+                    <table className="form-data-table">
+                      <thead>
+                        <tr>
+                          <th>Parts</th>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Supervisor</th>
+                          <th>Notes</th>
+                          <th>Files</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.map((job, index) => {
+                          return <tr className={`history-row form-data-row`} onClick={() => { fillFormData(index) }} key={index}>
+                            <td> {truncateString(job.partNames, 40)} </td>
+                            <td> {truncateString(job.name, 20)} </td>
+                            <td> {truncateString(job.email, 30)} </td>
+                            <td> {truncateString(job.supervisorName, 20)} </td>
+                            <td> {truncateString(job.notes, 128)} </td>
+                            <td> {truncateString(job.files, 256)} </td>
+                          </tr>
+                        })}
+                      </tbody>
+                    </table>
+
+                  </div>}
                   <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                   <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                   <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
@@ -1493,7 +1575,7 @@ function App() {
                     <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
                     <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="(Optional) Google Drive links" value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
                   </div>
-                  <div> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> g</div>
+                  <div> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'} → ${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.15 : 0.1)).toFixed(2)} </div>
                   <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
                     <br />
                     <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea></div>
@@ -1541,7 +1623,7 @@ function App() {
 
             {selectedPrinter && (selectedPrinter.status === "admin") && isAdmin && <div>
               <div className='printForm'>
-                <button onClick={fillFromSheets} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Autofill From Latest Print Form Submission...</button>
+                <button onClick={pullFormData} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer' }}>Retrieve Latest Five Form Submissions...</button>
                 <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
@@ -1653,7 +1735,7 @@ function App() {
                     </thead>
                     <tbody>
                       {historyList.map((job) => {
-                        if (!(job.status==='queued')) {
+                        if (!(job.status === 'queued')) {
                           return null;
                         }
 
@@ -1664,8 +1746,8 @@ function App() {
                     </tbody>
                   </table>
                 </div>
-                {((historyList.filter(item => item.status === 'queued').length > 0) && ((isAdmin && (selectedPrinter.status==='admin')) || (selectedPrinter.status ==='available'))) &&
-                 <button onClick={() => { releaseFromQueue() }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{'Release From Queue'}</button>}
+                {((historyList.filter(item => item.status === 'queued').length > 0) && ((isAdmin && (selectedPrinter.status === 'admin')) || (selectedPrinter.status === 'available'))) &&
+                  <button onClick={() => { releaseFromQueue() }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{'Release From Queue'}</button>}
 
               </div>
             }
@@ -1762,11 +1844,11 @@ function App() {
         </div>
 
         {
-          messageQueue.map(({ id, msg, type }, index) => {
+          messageQueue.map(({ id, msg, type, replaceJob }, index) => {
             return (
               <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line' }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
                 {(type === 'warn') && <div className="warning-content">
-                  <div onClick={() => { handleWarningClick(id) }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
+                  <div onClick={() => { handleWarningClick(id, replaceJob) }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
                 </div>}
               </div>
             )
