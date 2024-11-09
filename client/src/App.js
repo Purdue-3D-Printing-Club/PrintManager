@@ -124,7 +124,7 @@ function App() {
       }
     }
   }, [selectedPrinter, printerList]); // Run effect when selectedPrinter or printerList changes
-  
+
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
@@ -752,6 +752,53 @@ function App() {
     });
   };
 
+  const releaseFromQueue = () => {
+    // get the latest queued print, and if it doesnt exist, show an error popup
+    let queue = historyList.filter(item => item.status === 'queued')
+    let toRelease = queue[queue.length - 1]
+    console.log('-----asdasd')
+    console.log(queue)
+    console.log(toRelease)
+    // edge case handling
+    if ((queue.length <= 0) || !toRelease) {
+      showMsgForDuration('No jobs in queue! Print not started.', 'err', popupTime);
+      return;
+    }
+    if(!((selectedPrinter.status === 'available') || (selectedPrinter.status === 'admin'))) {
+      showMsgForDuration('Printer is busy! Finish current job first.', 'err', popupTime);
+      return;
+    }
+
+    // set the printJob status to statusArg
+    Axios.put(`${serverURL}/api/update`, {
+      table: "queue",
+      column: "status",
+      id: toRelease.jobID,
+      val: 'active'
+    }).then(() => {
+      // add the jobID to the printer
+      updateTable("printer", "currentJob", selectedPrinter.printerName, toRelease.jobID, () => {
+        //update the printer status
+        updateTable("printer", "status", selectedPrinter.printerName, selectedPrinter.status === 'admin' ? 'admin-busy' : "busy", () => {
+          const updatedPrinterList = printerList.map(printer => {
+            if (printer.printerName === selectedPrinter.printerName) {
+              let newPrinter = {
+                ...printer, status: selectedPrinter.status === 'admin' ? 'admin-busy' : "busy",
+                currentJob: toRelease.jobID
+              }
+              selectPrinter(newPrinter)
+              return newPrinter;
+            }
+            return printer;
+          });
+          setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
+          showMsgForDuration('Resin print successfully started!','msg',popupTime)
+        })
+      });
+    });
+
+  }
+
   const handleStartPrintClick = (queue = false) => {
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
@@ -781,7 +828,7 @@ function App() {
       } else if (historyList.filter(item => item.status === 'queued').some(job => job.name === name)) {
         console.log("startPrintClick: warn: duplicate name entry in queue");
         showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 2000);
-      } else if (historyList.filter(item => item.status === 'queued').length >= 5) {
+      } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 5)) {
         console.log("startPrintClick: warn: already 5 queued resin prints");
         showMsgForDuration("Resin queue is full! Print not queued.", 'err', popupTime);
       } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
@@ -966,7 +1013,7 @@ function App() {
                 if (success) {
                   sendMail("3DPC: Print Completed", text)
                 } else {
-                  // Pull the count of prints with the same part names that failed
+                  // Pull the count of prints with the same name and part names that failed
                   try {
                     Axios.get(`${serverURL}/api/getFailureCount?parts=${curJob.partNames}&name=${curJob.name}`).then((response) => {
                       let failureCount = response.data.count[0].cnt
@@ -1040,15 +1087,21 @@ function App() {
   };
 
   const handlePrinterClick = (index) => {
-    let printer = printerList[index];
-    if (selectedPrinter === printer) {
+    setMenuOpen(false)
+    if (!index) {
       selectPrinter(null);
-      console.log("unselected printer: ");
-      console.log(printer);
-    } else {
-      selectPrinter(printer);
-      console.log("selected printer: ");
-      console.log(printer);
+    }
+    let printer = printerList[index];
+    if (printer) {
+      if (selectedPrinter && (selectedPrinter.printerName === printer.printerName)) {
+        selectPrinter(null);
+        console.log("unselected printer: ");
+        console.log(printer);
+      } else {
+        selectPrinter(printer);
+        console.log("selected printer: ");
+        console.log(printer);
+      }
     }
   };
 
@@ -1252,12 +1305,12 @@ function App() {
       <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarWidth - 1}px` }}></div>
 
       <div className='main-content' style={{ marginLeft: `${sidebarWidth}px` }}>
-        <div style={{ height: selectedPrinter ? '105px' : '75px' }}></div>
+        <div style={{ height: selectedPrinter ? '85px' : '55px' }}></div>
 
         <div className="printer-screen">
           {(!selectedPrinter && !menuOpen) && <div>
             <div className='null'>
-              No printer selected! <br></br>Choose one from the printer list on the left.
+              No printer selected! <br />Choose one from the printer list on the left.
             </div>
             {!loadingSummary && <div>
               <h2 style={{ fontSize: "xx-large" }}>Lab Summary</h2>
@@ -1575,16 +1628,17 @@ function App() {
               <button onClick={() => { updatePrinterNotes() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Save Notes</button>
             </div>}
 
-            <div style={{ height: "50px" }}></div>
 
             {
               selectedPrinter.filamentType === 'Resin' && <div>
+                <div style={{ height: "50px" }}></div>
+
                 <div className="print-history" style={{ marginTop: '20px' }}>Resin Printing Queue [{historyList.filter(item => item.status === 'queued').length}/5]</div>
 
                 <div className='wrapper-wrapper'>
                   <table className='history-wrapper'>
                     <thead>
-                      <tr>
+                      <tr className='queue-top'>
                         {isAdmin && <th>Delete</th>}
                         {isAdmin && <th>Edit</th>}
                         <th>Time Queued</th>
@@ -1599,20 +1653,7 @@ function App() {
                     </thead>
                     <tbody>
                       {historyList.map((job) => {
-                        const containsSearch = Object.keys(job).some(key => {
-                          let value = job[key]
-                          if (key === 'timeStarted') {
-                            value = formatDate(value, true)
-                          } else if (key === 'personalFilament') {
-                            value = value ? 'personal' : 'club'
-                          } else if (key === 'usage_g') {
-                            value = value.toString()
-                            console.log(value)
-                          }
-                          return (typeof value === 'string' && value.toLowerCase().includes(historySearch.toLowerCase()))
-                        }
-                        );
-                        if (!containsSearch) {
+                        if (!(job.status==='queued')) {
                           return null;
                         }
 
@@ -1623,6 +1664,8 @@ function App() {
                     </tbody>
                   </table>
                 </div>
+                {((historyList.filter(item => item.status === 'queued').length > 0) && ((isAdmin && (selectedPrinter.status==='admin')) || (selectedPrinter.status ==='available'))) &&
+                 <button onClick={() => { releaseFromQueue() }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{'Release From Queue'}</button>}
 
               </div>
             }
@@ -1637,7 +1680,7 @@ function App() {
                 <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>
               </div>
             </div>
-            <div style={{ height: '70vh', overflow: 'hidden' }}>
+            <div style={{ height: 'calc(85vh - 90px)', overflow: 'hidden' }}>
               <div className='wrapper-wrapper'>
                 <table className='history-wrapper'>
                   <thead>
@@ -1693,9 +1736,7 @@ function App() {
               {selectedPrinter.printerName} - {selectedPrinter.model}
             </div>
           </div>}
-          <div className="header" style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
-            <h1>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
-          </div>
+
 
         </div>
         {menuOpen ? (
@@ -1716,6 +1757,9 @@ function App() {
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
             </div>
           )}
+        <div className="header" style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)`, }}>
+          <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
+        </div>
 
         {
           messageQueue.map(({ id, msg, type }, index) => {

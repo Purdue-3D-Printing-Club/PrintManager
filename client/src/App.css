@@ -36,18 +36,19 @@ html::-webkit-scrollbar {
 
 
 .header {
-  font-size: x-large;
+  font-size: large;
   display: flex;
   justify-content: center;
   align-items: center;
   position: fixed;
   top: 0;
-  background-color: rgba(118, 152, 255, 0.6);
-  height: 68px;
-  outline: 3px solid rgb(117, 117, 117);
+  background-color: rgba(170, 170, 170, 0.6);/*rgba(118, 152, 255, 0.6);*/
+  height: 48px;
+  outline: 3px solid rgb(0, 0, 0);
   overflow: hidden;
   white-space: nowrap;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(5px);
+  
 }
 
 .disable-scroll {
@@ -61,7 +62,7 @@ html::-webkit-scrollbar {
   background-color: rgba(0, 0, 0, 0.75);
   position: fixed;
   height: 100%;
-  top: 70px;
+  top: 0px;
 }
 
 .menuBG.hidden {
@@ -115,7 +116,6 @@ html::-webkit-scrollbar {
   top: -29px;
   right: -29px;
   transition: stroke 0.2s ease;
-  /* Add transition for stroke color */
 }
 
 .msg-exit:hover {
@@ -149,7 +149,7 @@ html::-webkit-scrollbar {
   padding: 2%;
   font-weight: bold;
   font-size: xx-large;
-  background-color: rgba(225, 225, 40, 0.7);
+  background-color: rgba(255, 255, 200, 0.7);
   justify-content: center;
   align-items: center;
   margin: 15px 20px 20px;
@@ -167,9 +167,9 @@ html::-webkit-scrollbar {
   display: flex;
   align-items: center;
   justify-content: center;
-  top: 72px;
+  top: 52px;
   border-radius: 10px;
-  padding: 5px 10px 5px 10px;
+  padding: 2px 0px 2px 0px;
   outline: 3px solid black;
   overflow: hidden;
   white-space: nowrap;
@@ -242,7 +242,7 @@ option  {
 
 #resizer {
   position: fixed;
-  top: 130px;
+  top: 50px;
   width: 4px;
   height: 100vh;
   background: black;
@@ -250,7 +250,7 @@ option  {
 }
 
 .stat-msg {
-  background-color: #e1ebff;
+  background-color: #d2e0ff;  
   width: 80%;
   margin-left: 10%;
   padding: 10px;
@@ -311,9 +311,9 @@ option  {
 .wrapper-wrapper {
   margin: auto;
   width: 95.2%;
-  margin-bottom: 30px;
+  margin-bottom: 10px;
   overflow-x: auto;
-  max-height:70vh;
+  max-height:calc(85vh - 90px);
 }
 
 .search-bar {
@@ -354,11 +354,15 @@ option  {
   white-space: nowrap;
 }
 
-.history-wrapper th {
+.history-wrapper th:not(.queue-top th){
   background-color: #d2e0ff;
   font-size: x-large;
   position: sticky;
   top: 0;
+}
+
+.queue-top{
+  background-color: rgb(230,215,255);
 }
 
 .history-wrapper td {
@@ -412,7 +416,7 @@ h2 {
   padding: 5px;
   outline: 2px solid black;
   border-radius: 5px;
-  margin: 10px 0px 10px 5px;
+  margin: 10px 5px 10px 8px;
 
 }
 
@@ -440,7 +444,6 @@ h2 {
   border-radius: 5px;
   border: 2px solid #ccc;
   background-color: #f2f2f2;
-  /* Default background color */
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 

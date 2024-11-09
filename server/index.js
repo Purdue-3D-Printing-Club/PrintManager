@@ -495,6 +495,9 @@ app.put('/api/update', (req, res) => {
         case "printjob":
             sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE printerName = ? AND status = "active"`;
             break;
+        case "queue":
+            sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE jobID = ?`;
+            break;
         default:
             return res.status(400).send("Invalid table");
     }

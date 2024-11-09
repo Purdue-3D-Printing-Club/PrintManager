@@ -31,12 +31,11 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
                 </div>
                 
             </div>
-            <div style={{ height: '135px' }}></div>
+            <div style={{ height: '115px' }}></div>
 
             <div id='lowerBar'>
                 <div className={'sidePrinter'}
-                    onClick={() => {
-                        selectPrinter(null);}}
+                    onClick={() => handlePrinterClick(null)}
                     style={{ backgroundColor: 'rgb(118, 152, 255)' }}> Home </div>
                 {printerList.map((printer, index) => {
                     return <div className={`sidePrinter ${(selectedPrinter && (selectedPrinter.printerName === printer.printerName)) ? 'selected' : ''}`}

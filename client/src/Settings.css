@@ -1,22 +1,17 @@
 .settings {
   background-color: white;
   position: fixed;
-  margin-top: 0.5%;
-  height: 82.5%;
+  margin-top: calc(50px + 2vh);
+  height: calc(95vh - 50px);
   border-radius: 5px;
   border: 2px solid rgb(118, 152, 255);
 }
 
-.content-wrapper::-webkit-scrollbar {
-  display: none;
-}
 
 .content-wrapper{
   overflow:auto;
   width:100%;
   height:100%;
-  scrollbar-width: none;
-
 }
 
 .settings-header {
