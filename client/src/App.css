@@ -42,7 +42,7 @@ html::-webkit-scrollbar {
   align-items: center;
   position: fixed;
   top: 0;
-  background-color: rgba(170, 170, 170, 0.6);/*rgba(118, 152, 255, 0.6);*/
+  background-color: rgba(180, 180, 180, 0.6);/*rgba(118, 152, 255, 0.6);*/
   height: 48px;
   outline: 3px solid rgb(0, 0, 0);
   overflow: hidden;
