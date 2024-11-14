@@ -4,6 +4,7 @@ This app is the new lab organizer for the Purdue 3D Printing Club (3DPC). To see
 Below are some technical instructions:
 
 <br/>
+
 # How to change the admin password
 
 1. Open the organizer and open the settings (top left)
@@ -68,7 +69,7 @@ If you want to change the database schema, you cannot do this while the server i
 ![pm_8](https://github.com/user-attachments/assets/4731622b-eab0-49c8-9022-3eb6aa7269dc)
 
 <br/><br/>
-# How to add and remove printers (or directly edit the database in other ways)
+# How to add and remove printers (or otherwise directly edit the database)
 
 1. Assuming you've already installed mySQL workbench from the tutorial above, you can directly edit the database by opening the printer or printjob table, right clicking, and clicking 'Select Rows - limit 1000'.
 2. Next, in the table that appears, you can directly modify the values by clicking a cell and typing a new value. You can also delete a row by clicking the farthest left column and pressing delete.
