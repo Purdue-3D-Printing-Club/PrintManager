@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import './App.css';
-import Axios from 'axios'
-import Sidebar from './Sidebar';
-import Settings from './Settings';
-import { Pie } from 'react-chartjs-2';
+import Axios from 'axios';
 import Chart from 'chart.js/auto';
-import { ReactComponent as ExitIcon } from './images/exit.svg';
 import CryptoJS from 'crypto-js';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pie } from 'react-chartjs-2';
+import './App.css';
+import { ReactComponent as ExitIcon } from './images/exit.svg';
+import Settings from './Settings';
+import Sidebar from './Sidebar';
+import PrintForm from './PrintForm';
+
 
 
 const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
@@ -43,8 +45,6 @@ function App() {
   const [printerNotes, setPrinterNotes] = useState(null);
   const [printerSort, setPrinterSort] = useState('Availability');
 
-  //const [message, setMessage] = useState('');
-  //const [messageType, setMessageType] = useState(null);
   const [messageQueue, setMessageQueue] = useState([]);
 
   //Printer menu data
@@ -77,6 +77,7 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   const popupTime = 8000;
+
 
   const getWarningsBeforeIndex = (index) => {
     let warnCount = 0;
@@ -653,27 +654,37 @@ function App() {
             break;
           default:
         }
+        if (editingJob.jobID === -1 && e.key === 'Enter') {
+          handleStartPrintClick();
+        }
       } else {
         if (e.key === 'Backspace') {
           setMenuOpen(false)
         }
       }
+      // runs whether menu is open or not
       if (e.key === 's') {
         handleOpenMenu();
       } else if (e.key === 'c') {
         setMessageQueue([]);
       }
-    } else if (menuOpen && e.key === 'Enter') {
+
+    } else { //input is focused
+      if (!menuOpen) {
+        if ((e.target.id === "printerNotesInput") && (e.key === 'Enter')) {
+          updatePrinterNotes();
+        } else if ((editingJob.jobID !== -1) && (e.key === 'Enter')) {
+          handleEditClick(editingJob);
+        }
+      }
+    }
+
+    if (menuOpen && (e.key === 'Enter')) {
       if (e.target.id === "adminInput") {
         checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD)
       } else if (e.target.id === "subjectInput" || e.target.id === "feedbackInput") {
         handleFeedbackClick();
       }
-    } else if (!menuOpen && editingJob.jobID !== -1 && e.key === 'Enter') {
-      handleEditClick(editingJob);
-    }
-    if (!menuOpen && editingJob.jobID === -1 && e.key === 'Enter') {
-      handleStartPrintClick();
     }
   }
 
@@ -874,21 +885,21 @@ function App() {
 
 
         //apply changes locally
-      const updatedHistoryList = historyList.filter(job => !(job.jobID === replaceJob.jobID))
-      
-      console.log('updated history list:')
-      console.log(updatedHistoryList)
+        const updatedHistoryList = historyList.filter(job => !(job.jobID === replaceJob.jobID))
 
-      setHistoryList(updatedHistoryList);
+        console.log('updated history list:')
+        console.log(updatedHistoryList)
 
-      // queue the new one
-      startPrint(true);
+        setHistoryList(updatedHistoryList);
+
+        // queue the new one
+        startPrint(true);
 
       }).catch(error => {
         console.error('Error:', error);
       });
 
-      
+
 
     } else {
       startPrint();
@@ -949,7 +960,7 @@ function App() {
             setHistoryList(newHistory);
             console.log('Got history list:')
             console.log(newHistory);
-          }); 
+          });
           clearFields();
         }
       }, 500)
@@ -1092,14 +1103,36 @@ function App() {
     setMessageQueue(prevQueue => prevQueue.filter(message => message.id !== id));
   }
 
-  // const showMsgForDuration = (msg, type, duration) => {
-  //   console.log(type + ": "+msg)
-  //   setMessageType(type)
-  //   setMessage(msg);
-  //   setTimeout(() => {
-  //     setMessageType(null);
-  //   }, duration);
-  // };
+  const pullFormData = (e) => {
+    try {
+      const url = 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec';
+      fetch(url).then(response => response.json()).then(data => {
+        if (data !== null && data.length > 0) {
+          console.log('fetched form data: ');
+          console.log(data)
+          showMsgForDuration('Form Data Retrieved Successfully!', 'msg', popupTime);
+
+          let formattedData = data.map((job) => {
+            return ({
+              name: job[1],
+              email: job[2],
+              supervisorName: job[10],
+              files: job[4],
+              notes: job[8],
+              partNames: job[9]
+            })
+          })
+          setFormData(formattedData)
+
+        } else {
+          showMsgForDuration('Error Filling Form...', 'err', popupTime);
+        }
+      });
+    } catch (e) {
+      showMsgForDuration('Error Filling Form...', 'err', popupTime);
+    }
+  };
+
   useEffect(() => {
     // Log the messageQueue whenever it changes
     console.log("Updated messageQueue:", messageQueue);
@@ -1155,36 +1188,6 @@ function App() {
     setFormData(null);
   }
 
-  const pullFormData = (e) => {
-    try {
-      const url = 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec';
-      fetch(url).then(response => response.json()).then(data => {
-        if (data !== null && data.length > 0) {
-          console.log('fetched form data: ');
-          console.log(data)
-          showMsgForDuration('Form Data Retrieved Successfully!', 'msg', popupTime);
-
-          let formattedData = data.map((job) => {
-            return ({
-              name: job[1],
-              email: job[2],
-              supervisorName: job[10],
-              files: job[4],
-              notes: job[8],
-              partNames: job[9]
-            })
-          })
-
-          setFormData(formattedData)
-
-        } else {
-          showMsgForDuration('Error Filling Form...', 'err', popupTime);
-        }
-      });
-    } catch (e) {
-      showMsgForDuration('Error Filling Form...', 'err', popupTime);
-    }
-  };
 
   const handlefiles = (e) => {
     const files = e.target.value;
@@ -1352,6 +1355,11 @@ function App() {
       return `<b style="color: rgb(40,200,40);">${match}</b>`;
     });
   };
+
+  const printFormArgs = {setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
+    handlesupervisor, handlePartsUpload, partNames, handlePartNames, handleFileUpload, handleFilamentUsage, selectedPrinter,
+     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles}
+
 
   return (
     <div className="App">
@@ -1535,56 +1543,7 @@ function App() {
 
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
               <div>
-                <div className='printForm'>
-                  <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>{formData ? "Clear Autofill Data Table" : "Retrieve Latest Five Form Submissions..."}</button>
-                  {formData && <div className="form-data-wrapper">
-                    <table className="form-data-table">
-                      <thead>
-                        <tr>
-                          <th>Parts</th>
-                          <th>Name</th>
-                          <th>Email</th>
-                          <th>Supervisor</th>
-                          <th>Notes</th>
-                          <th>Files</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.map((job, index) => {
-                          return <tr className={`history-row form-data-row`} onClick={() => { fillFormData(index) }} key={index}>
-                            <td> {truncateString(job.partNames, 40)} </td>
-                            <td> {truncateString(job.name, 20)} </td>
-                            <td> {truncateString(job.email, 30)} </td>
-                            <td> {truncateString(job.supervisorName, 20)} </td>
-                            <td> {truncateString(job.notes, 128)} </td>
-                            <td> {truncateString(job.files, 256)} </td>
-                          </tr>
-                        })}
-                      </tbody>
-                    </table>
-
-                  </div>}
-                  <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                  <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Parts:&nbsp;
-                    <input type="file" multiple onChange={handlePartsUpload} style={{ display: 'none' }} id="parts-upload" />
-                    <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('parts-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                    <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-
-                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Files:&nbsp;&nbsp;
-                    <input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
-                    <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                    <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="(Optional) Google Drive links" value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
-                  </div>
-                  <div> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
-                   {(selectedPrinter.filamentType !== 'PLA') && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.15 : 0.1)).toFixed(2)}`)} </div>
-                  
-                  <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
-                    <br />
-                    <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea></div>
-                </div>
-
+                <PrintForm  printFormArgs={printFormArgs}></PrintForm>
                 <br />
                 <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
                 <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
@@ -1626,55 +1585,7 @@ function App() {
             </div>}
 
             {selectedPrinter && (selectedPrinter.status === "admin") && isAdmin && <div>
-              <div className='printForm'>
-                  <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>{formData ? "Clear Autofill Data Table" : "Retrieve Latest Five Form Submissions..."}</button>
-                  {formData && <div className="form-data-wrapper">
-                    <table className="form-data-table">
-                      <thead>
-                        <tr>
-                          <th>Parts</th>
-                          <th>Name</th>
-                          <th>Email</th>
-                          <th>Supervisor</th>
-                          <th>Notes</th>
-                          <th>Files</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.map((job, index) => {
-                          return <tr className={`history-row form-data-row`} onClick={() => { fillFormData(index) }} key={index}>
-                            <td> {truncateString(job.partNames, 40)} </td>
-                            <td> {truncateString(job.name, 20)} </td>
-                            <td> {truncateString(job.email, 30)} </td>
-                            <td> {truncateString(job.supervisorName, 20)} </td>
-                            <td> {truncateString(job.notes, 128)} </td>
-                            <td> {truncateString(job.files, 256)} </td>
-                          </tr>
-                        })}
-                      </tbody>
-                    </table>
-
-                  </div>}
-                  <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                  <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Parts:&nbsp;
-                    <input type="file" multiple onChange={handlePartsUpload} style={{ display: 'none' }} id="parts-upload" />
-                    <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('parts-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                    <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-
-                  <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Files:&nbsp;&nbsp;
-                    <input type="file" multiple onChange={handleFileUpload} style={{ display: 'none' }} id="file-upload" />
-                    <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('file-upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                    <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="(Optional) Google Drive links" value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
-                  </div>
-                  <div> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
-                   {(selectedPrinter.filamentType !== 'PLA') && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.15 : 0.1)).toFixed(2)}`)} </div>
-                  
-                  <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
-                    <br />
-                    <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea></div>
-                </div>
+              <PrintForm printFormArgs={printFormArgs}></PrintForm>
 
 
               <br />
@@ -1739,7 +1650,7 @@ function App() {
             {selectedPrinter && isAdmin && printerNotes !== null && <div>
               <div className='notes-msg'>
                 <strong>Printer Status Notes</strong><br />
-                <textarea value={printerNotes} type="text" onChange={handlePrinterNotes} style={{ width: '400px', height: '60px', fontSize: 'large', maxWidth: '95%', maxHeight: '200px' }}></textarea>
+                <textarea id="printerNotesInput" value={printerNotes} type="text" onChange={handlePrinterNotes} style={{ width: '400px', height: '60px', fontSize: 'large', maxWidth: '95%', maxHeight: '200px' }}></textarea>
               </div>
               <button onClick={() => { updatePrinterNotes() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Save Notes</button>
             </div>}

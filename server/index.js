@@ -11,7 +11,7 @@ const nodemailer = require('nodemailer')
 const pool = isLocal ? mysql.createPool({ // for local development
     host: "localhost",
     user: "root",
-    password: "password",
+    password: "rootpassword",
     database: "printmanagerdb2"
 }) :
     mysql.createPool({ // for the 3DPC lab
