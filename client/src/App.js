@@ -130,30 +130,34 @@ function App() {
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
-    const createLineChart = (ref, filledPersonalData, filledClubData, dateWidnow) => {
+    const createLineChart = (ref, filledPersonalData, filledClubData, dateWindow) => {
 
       // Destroy existing chart if it already exists
       if (ref.current.chart) {
         ref.current.chart.destroy();
       }
+      
+      let lastX = null; 
 
       // Create the line chart
       const ctx = ref.current.getContext('2d');
       ref.current.chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: dateWidnow,
+          labels: dateWindow,
           datasets: [{
             label: 'Personal Filament',
             data: filledPersonalData,
-            fill: false,
+            fill: true,
+            backgroundColor: 'rgba(255,100,100,0.1)',
             borderColor: 'rgba(255, 100, 100, 1)',
             tension: 0.1,
           },
           {
             label: 'Club Filament',
             data: filledClubData,
-            fill: false,
+            fill: true,
+            backgroundColor: 'rgba(75,192,192,0.1)',
             borderColor: 'rgba(75, 192, 192, 1)',
             tension: 0.1,
           }],
@@ -181,8 +185,39 @@ function App() {
             },
           },
         },
+        plugins: [
+          {
+            id: 'verticalLinePlugin',
+            beforeDatasetsDraw: (chart) => {
+              const { ctx, chartArea } = chart;
+    
+              // Fetch active tooltip elements
+              const activeElements = chart.tooltip.getActiveElements();
+    
+              if (activeElements.length > 0) {
+                const { x } = activeElements[0].element;
+    
+                // Interpolate the line position to transition to the new position
+                if (lastX === null) lastX = x; 
+                lastX += (x - lastX) * 0.25;
+    
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(lastX, chartArea.top);
+                ctx.lineTo(lastX, chartArea.bottom);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'black';
+                ctx.stroke();
+                ctx.restore();
+              } else {
+                // Reset the line when not hovering
+                lastX = null;
+              }
+            },
+          },
+        ],
       });
-    }
+    };
 
     setPrinterNotes(null)
     const generateDateRange = (startDate, endDate) => {
