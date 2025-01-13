@@ -9,8 +9,6 @@ import Settings from './Settings';
 import Sidebar from './Sidebar';
 import PrintForm from './PrintForm';
 
-
-
 const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
 
 function App() {
@@ -136,8 +134,8 @@ function App() {
       if (ref.current.chart) {
         ref.current.chart.destroy();
       }
-      
-      let lastX = null; 
+
+      let lastX = null;
 
       // Create the line chart
       const ctx = ref.current.getContext('2d');
@@ -190,17 +188,17 @@ function App() {
             id: 'verticalLinePlugin',
             beforeDatasetsDraw: (chart) => {
               const { ctx, chartArea } = chart;
-    
+
               // Fetch active tooltip elements
               const activeElements = chart.tooltip.getActiveElements();
-    
+
               if (activeElements.length > 0) {
                 const { x } = activeElements[0].element;
-    
+
                 // Interpolate the line position to transition to the new position
-                if (lastX === null) lastX = x; 
+                if (lastX === null) lastX = x;
                 lastX += (x - lastX) * 0.25;
-    
+
                 ctx.save();
                 ctx.beginPath();
                 ctx.moveTo(lastX, chartArea.top);
@@ -339,7 +337,7 @@ function App() {
   React.useEffect(() => {
     const handleMouseMove = (e) => {
       if (isResizing) {
-        const newWidth = Math.max(175, Math.min(e.clientX, 400));
+        const newWidth = Math.max(180, Math.min(e.clientX, 400));
         setSidebarWidth(newWidth);
       }
     };
@@ -663,7 +661,7 @@ function App() {
       showMsgForDuration("Logged in as Admin!", 'msg', popupTime);
       handleIsAdminChange(true)
     } else {
-      showMsgForDuration("Password  Incorrect.", 'err', popupTime);
+      showMsgForDuration("Incorrect Password.", 'err', popupTime);
     }
     setAdminPswd('')
   }
@@ -1048,6 +1046,7 @@ function App() {
 
 
   const handlePrintDoneClick = (statusArg, callback) => {
+    setPersonalFilament(false);
     try {
       console.log("print done was clicked... setting printer status to available");
       //set status to available
@@ -1188,6 +1187,7 @@ function App() {
   };
 
   const handlePrinterClick = (index) => {
+    setPersonalFilament(false);
     setMenuOpen(false)
     if (!index) {
       selectPrinter(null);
@@ -1391,9 +1391,11 @@ function App() {
     });
   };
 
-  const printFormArgs = {setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
+  const printFormArgs = {
+    setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
     handlesupervisor, handlePartsUpload, partNames, handlePartNames, handleFileUpload, handleFilamentUsage, selectedPrinter,
-     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles}
+    filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles
+  }
 
 
   return (
@@ -1527,15 +1529,27 @@ function App() {
               (curJob && (selectedPrinter.status === 'busy' || selectedPrinter.status === 'admin-busy')) &&
               <div>
                 <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left' }}>
-                  &nbsp;Name: {curJob.name}
-                  <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                  &nbsp;Email: {curJob.email}
-                  <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                  &nbsp;Supervisor: {curJob.supervisorName}
-                  <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                  &nbsp;Files: {curJob.files}
-                  <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                  &nbsp;Notes: {curJob.notes}
+                  {
+                    curJob.name === curJob.supervisorName ? <>
+                      <span>&nbsp;<b>Name:</b> {curJob.name}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Supervisor Print</b> -- No more data</span>
+                    </> : <>
+                      <span>&nbsp;<b>Name:</b> {curJob.name}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Email:</b> {curJob.email}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Supervisor:</b> {curJob.supervisorName}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Files:</b> {curJob.files}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
+                    </>
+
+                  }
+
                 </div>
 
               </div>
@@ -1578,7 +1592,7 @@ function App() {
 
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
               <div>
-                <PrintForm  printFormArgs={printFormArgs}></PrintForm>
+                <PrintForm printFormArgs={printFormArgs}></PrintForm>
                 <br />
                 <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
                 <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
@@ -1790,13 +1804,18 @@ function App() {
             </div>
             <div style={{ height: '3vh' }} />
 
+            <div className='printer-header-wrapper' style={{width: `calc((100% - ${sidebarWidth}px))`}}>
+              <div className='printer-header' style={{
+                //left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 4)`
+                width: `calc((100% - ${sidebarWidth}px)/2)`,
+                backgroundColor: `${getStatusColor(selectedPrinter.status)}`,
+                minWidth: 'fit-content',
+              }}>
+                {selectedPrinter.printerName} - {selectedPrinter.model}
+              </div>
 
-            <div className='printer-header' style={{
-              left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 4)`, width: `calc((100% - ${sidebarWidth}px)/2)`,
-              backgroundColor: `${getStatusColor(selectedPrinter.status)}`
-            }}>
-              {selectedPrinter.printerName} - {selectedPrinter.model}
             </div>
+
           </div>}
 
 

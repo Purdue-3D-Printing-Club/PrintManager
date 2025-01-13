@@ -76,3 +76,13 @@
 .hotkeys-wrapper td {
   overflow: hidden;
 }
+
+
+.qr-wrapper {
+  max-width:350px;
+  margin: auto;
+  margin-bottom: 20px;
+}
+.qr-wrapper img {
+  width:100%;
+}

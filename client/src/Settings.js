@@ -1,8 +1,10 @@
 import React from 'react';
 import './Settings.css';
 
+import discord_qr from './images/3dpc_discord.png'
+
 function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
-  handleFeedbackSubjectChange, handleFeedbackClick,handleIsAdminChange }) {
+  handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange }) {
 
 
   return (
@@ -18,7 +20,7 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
             <input id="adminInput" type="text" autoComplete='off' placeholder=" Enter Admin Password..." value={adminPswd} onChange={handlePswdChange} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
             <button onClick={() => { checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Login</button>
           </div>
-            :          
+            :
             <div>
               <div style={{ fontSize: 'x-large', marginBottom: '5px' }}>Admin Logout</div>
               <button onClick={() => { handleIsAdminChange(false) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Logout</button>
@@ -47,6 +49,10 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
               </tbody>
             </table>
           </div>
+        </div>
+
+        <div className='qr-wrapper'>
+          <img src={discord_qr} alt='3DPC Discord QR Code'></img>
         </div>
 
         <div className='settings-wrapper'>
