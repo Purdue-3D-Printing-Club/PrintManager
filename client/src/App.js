@@ -75,6 +75,10 @@ function App() {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [loading, setLoading] = useState(true)
 
+  const [linePersonalData, setLinePersonalData] = useState([]);
+  const [lineClubData, setLineClubData] = useState([]);
+  const [lineDateWindow, setLineDateWindow] = useState([]);
+
   const popupTime = 8000;
 
 
@@ -130,9 +134,9 @@ function App() {
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
 
-
     console.log('updating printer screen')
     console.log('selectedPrinter: ' + selectedPrinter)
+
     //Update the data that is shown
     if (selectedPrinter !== null && selectedPrinter !== undefined) {
       //get data from the database
@@ -159,7 +163,100 @@ function App() {
         console.error("Error fetching printer data: ", error);
       }
     } else {
+      const generateDateRange = (startDate, endDate) => {
+        const dateArray = [];
+        let currentDate = new Date(startDate);
 
+        while (currentDate <= new Date(endDate)) {
+          dateArray.push(formatDate(new Date(currentDate), false));
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        return dateArray;
+      };
+
+      //console.log(`### loading line chart ${index}...`)
+      try {
+        Axios.get(`${serverURL}/api/getfreq`).then((response) => {
+          console.log("frequencies: ");
+          console.log(response.data);
+          const sortedData = response.data.res;
+
+          setPrinterNames(sortedData.map(printer => printer.printerName));
+          setFrequencies(sortedData.map(printer => printer.cnt));
+          setFilamentSum(sortedData.map(printer => printer.sum));
+
+
+
+          try {
+            Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
+              console.log('supervisor data:')
+              setSupervisorData(response.data.res);
+              console.log(sortedData)
+              Axios.get(`${serverURL}/api/getfilamentdata`).then((response) => {
+                console.log('filament name data:')
+                setNameFilamentData(response.data.res);
+                console.log(response.data.res)
+
+                Axios.get(`${serverURL}/api/getdailyprints`).then((response2) => {
+                  console.log("daily data:");
+                  console.log(response2.data);
+
+                  if (response2.data) {
+                    const dailyData = response2.data.res;
+                    const personal = dailyData.filter(item => item.personalFilament)
+                    const club = dailyData.filter(item => !item.personalFilament)
+
+                    const startDate = dailyData.length > 0 ? dailyData[0].date : null;
+                    const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
+                    if (startDate && endDate) {
+                      const allDates = generateDateRange(startDate, endDate);
+
+                      // store the data needed for line chart 1
+                      const personalDataMap1 = new Map(personal.map(day => [formatDate(day.date, false), day.cnt]));
+                      const clubDataMap1 = new Map(club.map(day => [formatDate(day.date, false), day.cnt]));
+
+                      // Fill in missing dates with 0
+                      const filledPersonalCnt = allDates.map(date => personalDataMap1.get(date) || 0);
+                      const filledClubCnt = allDates.map(date => clubDataMap1.get(date) || 0);
+
+                      //createLineChart(lineRef, filledPersonalCnt, filledClubCnt, allDates)
+
+
+                      // store the data needed for line chart 2
+                      const personalDataMap2 = new Map(personal.map(day => [formatDate(day.date, false), day.sum]));
+                      const clubDataMap2 = new Map(club.map(day => [formatDate(day.date, false), day.sum]));
+
+                      // Fill in missing dates with 0
+                      const filledPersonalSum = allDates.map(date => personalDataMap2.get(date) || 0);
+                      const filledClubSum = allDates.map(date => clubDataMap2.get(date) || 0);
+
+                      //createLineChart(lineRef, filledPersonalSum, filledClubSum, allDates)
+
+
+                      // set the useState variables to the processed data
+                      setLinePersonalData([filledPersonalCnt, filledPersonalSum]);
+                      setLineClubData([filledClubCnt, filledClubSum]);
+                      setLineDateWindow(allDates);
+                      // console.log('linePersonalData: ', filledPersonalCnt)
+                      // console.log('lineClubData: ', filledClubCnt)
+                      // console.log('lineDateWindow: ', allDates)
+                    }
+                  }
+                  setLoading(false);
+                });
+              });
+            });
+          } catch (error) {
+            console.error("Error getting daily stats: ", error);
+          }
+          setLoadingSummary(false);
+        });
+
+      } catch (error) {
+        console.error("Error fetching printer data: ", error);
+        setLoadingSummary(false);
+      }
     }
   }, [selectedPrinter, serverURL, menuOpen, printerList]);
 
@@ -539,9 +636,10 @@ function App() {
 
     } else { //input is focused
       if (!menuOpen) {
-        if ((e.target.id === "printerNotesInput") && (e.key === 'Enter')) {
-          updatePrinterNotes();
-        } else if ((editingJob.jobID !== -1) && (e.key === 'Enter')) {
+        // if ((e.target.id === "printerNotesInput") && (e.key === 'Enter')) {
+        //   updatePrinterNotes();
+        // } else
+        if ((editingJob.jobID !== -1) && (e.key === 'Enter')) {
           handleEditClick(editingJob);
         }
       }
@@ -1245,10 +1343,6 @@ function App() {
     handlesupervisor, handlePartsUpload, partNames, handlePartNames, handleFileUpload, handleFilamentUsage, selectedPrinter,
     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles
   }
-  const lineChartArgs = {
-    formatDate, setLoading, setLoadingSummary, setFrequencies,
-    setFilamentSum, serverURL, setSupervisorData, setNameFilamentData, setPrinterNames
-  }
 
 
   return (
@@ -1260,8 +1354,6 @@ function App() {
             printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} />
           : <></>
       }
-      <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarOpen ? sidebarWidth - 1 : 0}px` }}></div>
-      <div id="resizer-btn" onMouseDown={() => { handleCollapseSidebar() }} style={{ marginLeft: `${sidebarOpen ? sidebarWidth - 5 : 0}px` }}><b style={{ userSelect: 'none' }}>&lt;<br />&gt;</b></div>
 
 
       <div className='main-content' style={{ marginLeft: `${sidebarOpen ? sidebarWidth : 0}px` }}>
@@ -1273,9 +1365,6 @@ function App() {
             <div className='null'>
               No printer selected! <br /> Choose one from the printer list on the left.
             </div>
-
-            <LineChart argsObject={lineChartArgs} index={1} />
-            <LineChart argsObject={lineChartArgs} index={2} />
 
             {!loadingSummary && <div>
               <h2 style={{ fontSize: "xx-large" }}>Lab Summary</h2>
@@ -1315,7 +1404,8 @@ function App() {
                   </div>
                 </div>}
 
-
+                <LineChart argsObject={{ filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0], dateWindow: lineDateWindow }} index={1} />
+                <LineChart argsObject={{ filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1], dateWindow: lineDateWindow }} index={2} />
 
                 {!loading && <div className="pie">
                   <div className='pie-chart'>
@@ -1580,7 +1670,17 @@ function App() {
 
             {selectedPrinter && isAdmin && (printerNotes === null) && <div>
               <div className='notes-msg'>
-                <strong>-- Printer Status Notes --</strong><br /> {selectedPrinter.notes ? selectedPrinter.notes : "This printer has no notes."}
+                <strong>-- Printer Status Notes --</strong><br />
+                {
+                  selectedPrinter.notes ?
+                    <div className='printer-notes-wrapper'>
+                      {selectedPrinter.notes}
+                    </div> :
+                    <>
+                      {"This printer has no notes."}
+                    </>
+                }
+
               </div>
               <button onClick={() => { handleEditPrinterNotesClick() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Edit Notes</button>
             </div>}
@@ -1588,7 +1688,7 @@ function App() {
             {selectedPrinter && isAdmin && printerNotes !== null && <div>
               <div className='notes-msg'>
                 <strong>-- Printer Status Notes --</strong><br />
-                <textarea id="printerNotesInput" value={printerNotes} type="text" onChange={handlePrinterNotes} style={{ width: '400px', height: '60px', fontSize: 'large', maxWidth: '95%', maxHeight: '200px' }}></textarea>
+                <textarea id="printerNotesInput" value={printerNotes} type="text" onChange={handlePrinterNotes}></textarea>
               </div>
               <button onClick={() => { updatePrinterNotes() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Save Notes</button>
             </div>}
@@ -1710,9 +1810,9 @@ function App() {
 
         </div>
         {menuOpen ? (
-          <div className='menuBG visible' style={{ left: `${sidebarWidth + 2}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
+          <div className='menuBG visible' style={{ left: `${sidebarOpen ? sidebarWidth + 2 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)` }}>
             {
-              <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
+              <Settings sidebarWidth={sidebarOpen ? sidebarWidth : 0} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
@@ -1727,9 +1827,7 @@ function App() {
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
             </div>
           )}
-        <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, }}>
-          <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
-        </div>
+
 
         {
           messageQueue.map(({ id, msg, type, replaceJob }, index) => {
@@ -1743,6 +1841,13 @@ function App() {
           })
         }
       </div>
+      <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, }}>
+        <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
+      </div>
+
+      <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarOpen ? sidebarWidth - 1 : 0}px` }}></div>
+      <div id="resizer-btn" onMouseDown={() => { handleCollapseSidebar() }} style={{ marginLeft: `${sidebarOpen ? sidebarWidth - 4 : 0}px` }}><b style={{ userSelect: 'none' }}>&lt;<br />&gt;</b></div>
+
     </div>
   );
 
