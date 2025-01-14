@@ -252,6 +252,22 @@ option  {
   cursor: ew-resize;
 }
 
+#resizer-btn {
+  width:15px;
+  height:40px;
+  background-color: lightgray;
+  position: fixed;
+  top: calc(50% - 40px);
+  cursor: pointer;
+  border-radius: 5px;
+  outline: 1px solid black;
+  transition: background-color 0.2s ease;
+}
+
+#resizer-btn:hover{
+  background-color: lightgreen;
+}
+
 .stat-msg {
   background-color: #d2e0ff;  
   width: 80%;
@@ -259,7 +275,7 @@ option  {
   padding: 10px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 4px 2px rgb(50,50,50);
+  box-shadow: 0 0 3px 2px rgb(50,50,50);
 }
 .stat-msg b{
   display: inline;
@@ -391,6 +407,9 @@ th, td {
 .queue-top{
   background-color: rgb(230,215,255);
 }
+.queue-top th{
+  font-size: x-large;
+}
 
 .history-wrapper td {
   overflow: hidden;
@@ -419,6 +438,7 @@ th, td {
 .pie {
   padding: 0px 20px;
   width:calc(100% - 40px);
+  max-width:1000px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   justify-content: center;
@@ -439,6 +459,15 @@ th, td {
   margin: 20px;
   border-radius: 10px;
   outline: 2px solid black;
+}
+
+.line-options {
+  background-color: lightgray;
+  width:100%;
+  height:50px;
+  margin-bottom: 10px;
+  outline: 1px solid black;
+  border-radius: 5px;
 }
 
 h2 {

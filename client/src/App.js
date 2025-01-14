@@ -1,21 +1,24 @@
 import Axios from 'axios';
-import Chart from 'chart.js/auto';
 import CryptoJS from 'crypto-js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import './App.css';
 import { ReactComponent as ExitIcon } from './images/exit.svg';
+
 import Settings from './Settings';
 import Sidebar from './Sidebar';
 import PrintForm from './PrintForm';
+import LineChart from './LineChart'
 
 const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
 
 function App() {
   const serverURL = isLocal ? "http://localhost:3001" : "https://printmanager-server.onrender.com";
 
-  const [sidebarWidth, setSidebarWidth] = useState(225); // Initial sidebar width
+  const [sidebarWidth, setSidebarWidth] = useState(225); // Initial sidebar width set to 225
+  const minSidebarWidth = 180;
   const [isResizing, setIsResizing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [formData, setFormData] = useState(null)
   const [filamentUsage, setFilamentUsage] = useState('');
@@ -70,8 +73,6 @@ function App() {
   const [nameFilamentData, setNameFilamentData] = useState([]);
   const [filamentSum, setFilamentSum] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(true);
-  const lineRef1 = useRef(null);
-  const lineRef2 = useRef(null);
   const [loading, setLoading] = useState(true)
 
   const popupTime = 8000;
@@ -128,107 +129,7 @@ function App() {
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
-    const createLineChart = (ref, filledPersonalData, filledClubData, dateWindow) => {
 
-      // Destroy existing chart if it already exists
-      if (ref.current.chart) {
-        ref.current.chart.destroy();
-      }
-
-      let lastX = null;
-
-      // Create the line chart
-      const ctx = ref.current.getContext('2d');
-      ref.current.chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: dateWindow,
-          datasets: [{
-            label: 'Personal Filament',
-            data: filledPersonalData,
-            fill: true,
-            backgroundColor: 'rgba(255,100,100,0.1)',
-            borderColor: 'rgba(255, 100, 100, 1)',
-            tension: 0.1,
-          },
-          {
-            label: 'Club Filament',
-            data: filledClubData,
-            fill: true,
-            backgroundColor: 'rgba(75,192,192,0.1)',
-            borderColor: 'rgba(75, 192, 192, 1)',
-            tension: 0.1,
-          }],
-        },
-        options: {
-          plugins: {
-            legend: {
-              position: 'bottom',
-            },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-            },
-          },
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
-          responsive: true,
-          maintainAspectRatio: true,
-          aspectRatio: 2.5,
-          scales: {
-            y: {
-              beginAtZero: true,
-            },
-          },
-        },
-        plugins: [
-          {
-            id: 'verticalLinePlugin',
-            beforeDatasetsDraw: (chart) => {
-              const { ctx, chartArea } = chart;
-
-              // Fetch active tooltip elements
-              const activeElements = chart.tooltip.getActiveElements();
-
-              if (activeElements.length > 0) {
-                const { x } = activeElements[0].element;
-
-                // Interpolate the line position to transition to the new position
-                if (lastX === null) lastX = x;
-                lastX += (x - lastX) * 0.25;
-
-                ctx.save();
-                ctx.beginPath();
-                ctx.moveTo(lastX, chartArea.top);
-                ctx.lineTo(lastX, chartArea.bottom);
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = 'black';
-                ctx.stroke();
-                ctx.restore();
-              } else {
-                // Reset the line when not hovering
-                lastX = null;
-              }
-            },
-          },
-        ],
-      });
-    };
-
-    setPrinterNotes(null)
-    const generateDateRange = (startDate, endDate) => {
-      const dateArray = [];
-      let currentDate = new Date(startDate);
-
-      while (currentDate <= new Date(endDate)) {
-        dateArray.push(formatDate(new Date(currentDate), false));
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-
-      return dateArray;
-    };
 
     console.log('updating printer screen')
     console.log('selectedPrinter: ' + selectedPrinter)
@@ -258,77 +159,7 @@ function App() {
         console.error("Error fetching printer data: ", error);
       }
     } else {
-      try {
-        Axios.get(`${serverURL}/api/getfreq`).then((response) => {
-          console.log("frequencies: ");
-          console.log(response.data);
-          const sortedData = response.data.res;
 
-          setPrinterNames(sortedData.map(printer => printer.printerName));
-          setFrequencies(sortedData.map(printer => printer.cnt));
-          setFilamentSum(sortedData.map(printer => printer.sum));
-
-          try {
-            Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
-              console.log('supervisor data:')
-              setSupervisorData(response.data.res);
-              console.log(sortedData)
-              Axios.get(`${serverURL}/api/getfilamentdata`).then((response) => {
-                console.log('filament name data:')
-                setNameFilamentData(response.data.res);
-                console.log(response.data.res)
-
-                Axios.get(`${serverURL}/api/getdailyprints`).then((response2) => {
-                  console.log("daily data:");
-                  console.log(response2.data);
-                  if (response2.data) {
-                    const dailyData = response2.data.res;
-                    const personal = dailyData.filter(item => item.personalFilament)
-                    const club = dailyData.filter(item => !item.personalFilament)
-
-                    const startDate = dailyData.length > 0 ? dailyData[0].date : null;
-                    const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
-                    if (startDate && endDate) {
-                      const allDates = generateDateRange(startDate, endDate);
-
-                      if (lineRef1.current) {
-                        const personalDataMap = new Map(personal.map(day => [formatDate(day.date, false), day.cnt]));
-                        const clubDataMap = new Map(club.map(day => [formatDate(day.date, false), day.cnt]));
-
-                        // Fill in missing dates with 0
-                        const filledPersonalCnt = allDates.map(date => personalDataMap.get(date) || 0);
-                        const filledClubCnt = allDates.map(date => clubDataMap.get(date) || 0);
-
-                        createLineChart(lineRef1, filledPersonalCnt, filledClubCnt, allDates)
-                      }
-
-                      if (lineRef2.current) {
-                        const personalDataMap = new Map(personal.map(day => [formatDate(day.date, false), day.sum]));
-                        const clubDataMap = new Map(club.map(day => [formatDate(day.date, false), day.sum]));
-
-                        // Fill in missing dates with 0
-                        const filledPersonalSum = allDates.map(date => personalDataMap.get(date) || 0);
-                        const filledClubSum = allDates.map(date => clubDataMap.get(date) || 0);
-
-                        createLineChart(lineRef2, filledPersonalSum, filledClubSum, allDates)
-                      }
-                    }
-
-                  }
-                  setLoading(false);
-                });
-              });
-            });
-          } catch (error) {
-            console.error("Error getting daily stats: ", error);
-          }
-          setLoadingSummary(false);
-        });
-
-      } catch (error) {
-        console.error("Error fetching printer data: ", error);
-        setLoadingSummary(false);
-      }
     }
   }, [selectedPrinter, serverURL, menuOpen, printerList]);
 
@@ -337,7 +168,7 @@ function App() {
   React.useEffect(() => {
     const handleMouseMove = (e) => {
       if (isResizing) {
-        const newWidth = Math.max(180, Math.min(e.clientX, 400));
+        const newWidth = Math.max(minSidebarWidth, Math.min(e.clientX, 400));
         setSidebarWidth(newWidth);
       }
     };
@@ -589,6 +420,10 @@ function App() {
       //If the file cant be processed, return the original link.
       return driveLink;
     }
+  }
+
+  function handleCollapseSidebar() {
+    setSidebarOpen(!sidebarOpen);
   }
 
   const handleMouseDown = (e) => {
@@ -849,7 +684,7 @@ function App() {
 
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
-      if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin') {
+      if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' && selectedPrinter.filamentType !== 'Resin') {
         showMsgForDuration("This printer is not available!", 'err', popupTime);
       } else if (selectedPrinter.status === 'admin' && !isAdmin) {
         showMsgForDuration("This printer is not available!", 'err', popupTime);
@@ -1099,7 +934,7 @@ function App() {
                       if (failureCount >= 3) {
                         sendMail("3DPC: Print Failed", text);
                       } else {
-                        showMsgForDuration(`Email not sent. Failures: ${failureCount}`, 'err', popupTime);
+                        showMsgForDuration(`Email not sent. Failures: ${failureCount}`, 'msg', popupTime);
                       }
                     });
                   } catch (error) {
@@ -1130,6 +965,20 @@ function App() {
       });
     } catch (error) {
       console.error("Error updating printer: ", error);
+    }
+
+
+    // if the print failed, fill in the print form data with the job's data
+    if (statusArg === 'failed') {
+      setname(curJob.name);
+      setemail(curJob.email);
+      setsupervisor(curJob.supervisorName);
+      setpartnames(curJob.partNames);
+      setfiles(curJob.files);
+      setFilamentUsage(curJob.usage_g);
+      setnotes(curJob.notes);
+      setSupervisorPrint(curJob.name === curJob.supervisorName);
+      setPersonalFilament(curJob.personalFilament);
     }
   };
 
@@ -1396,24 +1245,38 @@ function App() {
     handlesupervisor, handlePartsUpload, partNames, handlePartNames, handleFileUpload, handleFilamentUsage, selectedPrinter,
     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles
   }
+  const lineChartArgs = {
+    formatDate, setLoading, setLoadingSummary, setFrequencies,
+    setFilamentSum, serverURL, setSupervisorData, setNameFilamentData, setPrinterNames
+  }
 
 
   return (
     <div className="App">
-      <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
-        handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}
-        printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} />
+      {
+        sidebarOpen ?
+          <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
+            handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}
+            printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} />
+          : <></>
+      }
+      <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarOpen ? sidebarWidth - 1 : 0}px` }}></div>
+      <div id="resizer-btn" onMouseDown={() => { handleCollapseSidebar() }} style={{ marginLeft: `${sidebarOpen ? sidebarWidth - 5 : 0}px` }}><b style={{ userSelect: 'none' }}>&lt;<br />&gt;</b></div>
 
-      <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarWidth - 1}px` }}></div>
 
-      <div className='main-content' style={{ marginLeft: `${sidebarWidth}px` }}>
+      <div className='main-content' style={{ marginLeft: `${sidebarOpen ? sidebarWidth : 0}px` }}>
         <div style={{ height: selectedPrinter ? '85px' : '55px' }}></div>
 
         <div className="printer-screen">
           {(!selectedPrinter && !menuOpen) && <div>
+
             <div className='null'>
-              No printer selected! <br />Choose one from the printer list on the left.
+              No printer selected! <br /> Choose one from the printer list on the left.
             </div>
+
+            <LineChart argsObject={lineChartArgs} index={1} />
+            <LineChart argsObject={lineChartArgs} index={2} />
+
             {!loadingSummary && <div>
               <h2 style={{ fontSize: "xx-large" }}>Lab Summary</h2>
               <div className='chart-wrapper'>
@@ -1435,7 +1298,6 @@ function App() {
                         },
                       }} />
                   </div>
-
                   <div className='pie-chart'>
                     <h2>Total Filament Used Per Printer (g)</h2>
                     <Pie data={{
@@ -1452,14 +1314,9 @@ function App() {
                       }} />
                   </div>
                 </div>}
-                <div className='line-chart'>
-                  <h2 style={{ marginBottom: "10px" }}>Total Prints By Day</h2>
-                  <canvas ref={lineRef1} width="400" height="300"></canvas>
-                </div>
-                <div className='line-chart'>
-                  <h2 style={{ marginBottom: "10px" }}>Total Filament Usage By Day (g)</h2>
-                  <canvas ref={lineRef2} width="400" height="300"></canvas>
-                </div>
+
+
+
                 {!loading && <div className="pie">
                   <div className='pie-chart'>
                     <h2>Number of Prints By Supervisor</h2>
@@ -1515,7 +1372,6 @@ function App() {
                   <option value="PLA">PLA</option>
                   <option value="PETG">PETG</option>
                   <option value="TPU">TPU</option>
-
                 </select>
                 {" filament on this printer."}</div>
                 :
@@ -1549,11 +1405,19 @@ function App() {
                     </>
 
                   }
-
                 </div>
-
+                {/* Checkbox to toggle email sending */}
+                <div>
+                  <label
+                    className={`checkbox-container ${sendEmail ? 'active' : ''}`}>
+                    <input type="checkbox" checked={sendEmail} onChange={handleSendEmailChange} />
+                    <span className="custom-checkbox"></span>
+                    <span style={{ userSelect: 'none' }} className="checkbox-label">Send Email</span>
+                  </label>
+                </div>
               </div>
             }
+
 
 
             {/* Printer status pages: busy, available, admin, admin-busy, broken, and testing */}
@@ -1579,20 +1443,58 @@ function App() {
                   }
                 })
               }
-              {/* Checkbox to toggle email sending */}
-              <div>
-                <label
-                  className={`checkbox-container ${sendEmail ? 'active' : ''}`}>
-                  <input type="checkbox" checked={sendEmail} onChange={handleSendEmailChange} />
-                  <span className="custom-checkbox"></span>
-                  <span style={{ userSelect: 'none' }} className="checkbox-label">Send Email</span>
-                </label>
-              </div>
+
+              {/* If the printer is a resin printer, then also include the option to queue up a new print */}
+              {
+                selectedPrinter.filamentType === 'Resin' && <>
+                  <br /><br />
+                  <PrintForm printFormArgs={printFormArgs}></PrintForm>
+                  <br />
+
+                  {/* Checkbox to toggle supervisor print */}
+                  <label
+                    className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
+                    <input type="checkbox" checked={supervisorPrint} onChange={handleSupervisorPrintChange} />
+                    <span className="custom-checkbox"></span>
+                    <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
+                  </label>
+
+                  {/* Checkbox to toggle personal filament */}
+                  {(selectedPrinter.filamentType !== 'Resin') && <label
+                    className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
+                    <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
+                    <span className="custom-checkbox"></span>
+                    <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
+                  </label>}
+
+                  <br />
+                  <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
+                  <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
+                </>
+              }
             </div>}
 
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
               <div>
                 <PrintForm printFormArgs={printFormArgs}></PrintForm>
+                <br />
+
+                {/* Checkbox to toggle supervisor print */}
+                <label
+                  className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
+                  <input type="checkbox" checked={supervisorPrint} onChange={handleSupervisorPrintChange} />
+                  <span className="custom-checkbox"></span>
+                  <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
+                </label>
+
+                {/* Checkbox to toggle personal filament */}
+                {(selectedPrinter.filamentType !== 'Resin') && <label
+                  className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
+                  <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
+                  <span className="custom-checkbox"></span>
+                  <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
+                </label>}
+
                 <br />
                 <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
                 <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
@@ -1601,23 +1503,9 @@ function App() {
                   <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
                   <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
                 </div>}
+                <br />
 
-                <br />
-                {/* Checkbox to toggle supervisor print */}
-                <label
-                  className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
-                  <input type="checkbox" checked={supervisorPrint} onChange={handleSupervisorPrintChange} />
-                  <span className="custom-checkbox"></span>
-                  <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
-                </label>
-                {/* Checkbox to toggle personal filament */}
-                {(selectedPrinter.filamentType !== 'Resin') && <label
-                  className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
-                  <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
-                  <span className="custom-checkbox"></span>
-                  <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
-                </label>}
-                <br />
+
                 {
                   files && files.split(',').map((link, index) => {
                     if (link.trim().startsWith('https://')) {
@@ -1635,18 +1523,8 @@ function App() {
 
             {selectedPrinter && (selectedPrinter.status === "admin") && isAdmin && <div>
               <PrintForm printFormArgs={printFormArgs}></PrintForm>
-
-
               <br />
-              <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
-              <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
-              {isAdmin && <div style={{ display: 'block' }}>
-                <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
-                <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
-                <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Available</button>
-              </div>}
 
-              <br />
               {/* Checkbox to toggle supervisor print */}
               <label
                 className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
@@ -1661,7 +1539,18 @@ function App() {
                 <span className="custom-checkbox"></span>
                 <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
               </label>}
+
               <br />
+              <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
+              <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
+              {isAdmin && <div style={{ display: 'block' }}>
+                <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
+                <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
+                <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Available</button>
+              </div>}
+
+              <br />
+
               {
                 files && files.split(',').map((link, index) => {
                   if (link.trim().startsWith('https://')) {
@@ -1698,7 +1587,7 @@ function App() {
 
             {selectedPrinter && isAdmin && printerNotes !== null && <div>
               <div className='notes-msg'>
-                <strong>Printer Status Notes</strong><br />
+                <strong>-- Printer Status Notes --</strong><br />
                 <textarea id="printerNotesInput" value={printerNotes} type="text" onChange={handlePrinterNotes} style={{ width: '400px', height: '60px', fontSize: 'large', maxWidth: '95%', maxHeight: '200px' }}></textarea>
               </div>
               <button onClick={() => { updatePrinterNotes() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Save Notes</button>
@@ -1804,10 +1693,10 @@ function App() {
             </div>
             <div style={{ height: '3vh' }} />
 
-            <div className='printer-header-wrapper' style={{width: `calc((100% - ${sidebarWidth}px))`}}>
+            <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
               <div className='printer-header' style={{
                 //left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 4)`
-                width: `calc((100% - ${sidebarWidth}px)/2)`,
+                width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px)/2)`,
                 backgroundColor: `${getStatusColor(selectedPrinter.status)}`,
                 minWidth: 'fit-content',
               }}>
@@ -1831,14 +1720,14 @@ function App() {
           </div>
         ) :
           (
-            <div className='menuBG hidden' style={{ left: `${sidebarWidth + 2}px`, width: `calc(100vw - ${sidebarWidth}px)` }}>
-              <Settings sidebarWidth={sidebarWidth} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
+            <div className='menuBG hidden' style={{ left: `${sidebarOpen ? sidebarWidth + 2 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)` }}>
+              <Settings sidebarWidth={sidebarOpen ? sidebarWidth : 0} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
             </div>
           )}
-        <div className="header" style={{ left: `${sidebarWidth + 3}px`, width: `calc(100vw - ${sidebarWidth}px)`, }}>
+        <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, }}>
           <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
         </div>
 

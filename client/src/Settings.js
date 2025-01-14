@@ -8,9 +8,8 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
 
 
   return (
-    <div className='settings' style={{
-      left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 8)`, width: `calc((100% - ${sidebarWidth}px)*0.75)`
-    }}>
+    <div className='settings' style={{//left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 8)`,
+       width: `95%`}}>
       <div className='content-wrapper'>
         <div style={{ height: '75px' }}></div>
 
@@ -66,8 +65,8 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
           <button onClick={() => { handleFeedbackClick() }} style={{ fontSize: 'large', marginTop: '5px', cursor: 'pointer' }}>Send Feedback</button>
         </div>
         <div style={{ height: '100px' }}></div>
-        <div className='settings-header'>Settings</div>
       </div>
+      <div className='settings-header'>Settings</div>
     </div>
   );
 }

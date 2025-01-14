@@ -1,0 +1,40 @@
+.slider-container {
+    width: 90%;
+    margin: auto;
+  }
+
+.custom-slider {
+    height: 20px;
+    border-radius: 5px;
+  }
+  
+  .custom-thumb {
+    height: 20px;
+    width: 20px;
+    background-color: lightgreen;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  
+  .custom-track {
+    height: 4px;
+    margin-top:8px;
+    border-radius: 5px;
+  }
+  .custom-track-1 {
+    background-color: green;
+  }
+  .custom-track-0, .custom-track-2 {
+    background-color: black;
+  }
+
+
+  .custom-mark{
+    height: 6px;
+    width: 6px;
+    margin-top:7px;
+    background-color: white;
+    border-radius: 50%;
+    transform: translateX(7px);
+
+  }
