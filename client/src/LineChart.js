@@ -37,8 +37,8 @@ const LineChart = ({ argsObject, index }) => {
                 setSliderValues([0, Math.min(365, dateLen)]);
                 break;
             case "All Time":
-                setSliderRange({ min: 0, max: Math.min(999, dateLen) });
-                setSliderValues([0, Math.min(999, dateLen)]);
+                setSliderRange({ min: 0, max: dateLen });
+                setSliderValues([0, dateLen]);
                 break;
             default:
                 break;
