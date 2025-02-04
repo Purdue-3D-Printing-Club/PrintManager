@@ -9,9 +9,9 @@ const LineChart = ({ argsObject, index }) => {
     const lineRef = useRef(null);
     const dateLen = dateWindow.length;
 
-    const [dateRange, setDateRange] = useState("Past Month");
-    const [sliderRange, setSliderRange] = useState({ min: 0, max: dateLen ? Math.min(30, dateLen) : 28 });
-    const [sliderValues, setSliderValues] = useState([0, dateLen? Math.min(30, dateLen) : 28]);
+    const [dateRange, setDateRange] = useState("Past 3 Months");
+    const [sliderRange, setSliderRange] = useState({ min: 0, max: dateLen ? Math.min(90, dateLen) : 90 });
+    const [sliderValues, setSliderValues] = useState([0, dateLen? Math.min(90, dateLen) : 90]);
 
 
     const handleDropdownChange = (event) => {

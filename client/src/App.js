@@ -1828,7 +1828,9 @@ function App() {
             </div>
           )}
 
-
+        <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, }}>
+          <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
+        </div>
         {
           messageQueue.map(({ id, msg, type, replaceJob }, index) => {
             return (
@@ -1841,9 +1843,7 @@ function App() {
           })
         }
       </div>
-      <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, }}>
-        <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
-      </div>
+
 
       <div id="resizer" onMouseDown={handleMouseDown} style={{ marginLeft: `${sidebarOpen ? sidebarWidth - 1 : 0}px` }}></div>
       <div id="resizer-btn" onMouseDown={() => { handleCollapseSidebar() }} style={{ marginLeft: `${sidebarOpen ? sidebarWidth - 4 : 0}px` }}><b style={{ userSelect: 'none' }}>&lt;<br />&gt;</b></div>
