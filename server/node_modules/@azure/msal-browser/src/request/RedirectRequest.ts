@@ -3,7 +3,10 @@
  * Licensed under the MIT License.
  */
 
-import { CommonAuthorizationUrlRequest, StringDict } from "@azure/msal-common";
+import {
+    CommonAuthorizationUrlRequest,
+    StringDict,
+} from "@azure/msal-common/browser";
 
 /**
  * RedirectRequest: Request object passed by user to retrieve a Code from the
@@ -41,11 +44,16 @@ export type RedirectRequest = Partial<
         | "codeChallenge"
         | "codeChallengeMethod"
         | "requestedClaimsHash"
-        | "nativeBroker"
+        | "platformBroker"
     >
 > & {
     scopes: Array<string>;
     redirectStartPage?: string;
+    /**
+     * @deprecated
+     * onRedirectNavigate is deprecated and will be removed in the next major version.
+     * Set onRedirectNavigate in Configuration instead.
+     */
     onRedirectNavigate?: (url: string) => boolean | void;
     tokenBodyParameters?: StringDict;
 };
