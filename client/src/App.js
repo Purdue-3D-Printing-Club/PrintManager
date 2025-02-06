@@ -1086,7 +1086,8 @@ function App() {
 
   const pullFormData = (e) => {
     try {
-      const url = 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec';
+    // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
+      const url = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec';
       fetch(url).then(response => response.json()).then(data => {
         if (data !== null && data.length > 0) {
           console.log('fetched form data: ');
@@ -1097,10 +1098,10 @@ function App() {
             return ({
               name: job[1],
               email: job[2],
-              supervisorName: job[10],
+              supervisorName: job[3],
               files: job[4],
-              notes: job[8],
-              partNames: job[9]
+              partNames: job[5],
+              notes: job[10]
             })
           })
           setFormData(formattedData)
