@@ -6,7 +6,27 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
 const isLocal = process.env.ISLOCAL == 'true';
-const nodemailer = require('nodemailer')
+const nodemailer = require('nodemailer');
+const { ClientSecretCredential } = require('@azure/identity');
+const { Client } = require('@microsoft/microsoft-graph-client');
+require('isomorphic-fetch');
+
+const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
+
+async function getGraphClient() {
+    const tokenResponse = await credential.getToken("https://graph.microsoft.com/.default");
+
+    if (!tokenResponse || !tokenResponse.token) {
+        throw new Error("Failed to obtain access token.");
+    }
+
+    return Client.init({
+        authProvider: (done) => {
+            done(null, tokenResponse.token);
+        }
+    });
+}
+
 
 const pool = isLocal ? mysql.createPool({ // for local development
     host: "localhost",
@@ -20,16 +40,6 @@ const pool = isLocal ? mysql.createPool({ // for local development
         password: "supervisor",
         database: "printmanagerdb2"
     })
-
-// Use the following connection for cloud hosting
-// mysql.createPool({
-//     host: "34.122.154.87",
-//     port: "3306",
-//     user: "andrewtho5942",
-//     password: process.env.PSWD,
-//     database: "printmanagerdb" 
-// });
-
 
 app.use(cors());
 app.use(express.json());
@@ -46,22 +56,46 @@ const transporter = nodemailer.createTransport({
 });
 
 // Sends an email when called
-app.post('/api/send-email', (req, res) => {
-    const b = req.body;
+// app.post('/api/send-email', (req, res) => {
+//     const b = req.body;
+//     try {
+//         transporter.sendMail({
+//             from: 'purdue3dpcprintjobs@gmail.com',
+//             to: b.to,
+//             subject: b.subject,
+//             text: b.text
+//         }, (error, info) => {
+//             if (error) {
+//                 return res.status(500).send(error.toString());
+//             }
+//             res.send('Email sent: ' + info.response);
+//         });
+//     } catch (e) {
+//         console.log(e);
+//     }
+// });
+
+// Sends an email from purdue graph api when called
+app.post('/api/send-email', async (req, res) => {
+    const { to, subject, text } = req.body;
+
+    const client = await getGraphClient();
+    
     try {
-        transporter.sendMail({
-            from: 'purdue3dpcprintjobs@gmail.com',
-            to: b.to,
-            subject: b.subject,
-            text: b.text
-        }, (error, info) => {
-            if (error) {
-                return res.status(500).send(error.toString());
+        await client.api(`/users/${process.env.PURDUE_EMAIL}/sendMail`).post({
+            message: {
+                subject: subject,
+                body: {
+                    contentType: "Text",
+                    content: text
+                },
+                toRecipients: [{ emailAddress: { address: to } }]
             }
-            res.send('Email sent: ' + info.response);
         });
-    } catch (e) {
-        console.log(e);
+        res.send('Email sent successfully');
+    } catch (error) {
+        console.error("Graph API Error:", error);
+        res.status(500).send(error.toString());
     }
 });
 
@@ -524,9 +558,9 @@ app.put('/api/update', (req, res) => {
 });
 
 app.put('/api/updateJob', (req, res) => {
-    const {  email, files, jobID, name, partNames, personalFilament, status, supervisorName, usage_g, notes } = req.body;
+    const { email, files, jobID, name, partNames, personalFilament, status, supervisorName, usage_g, notes } = req.body;
     let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, name = ?, partNames = ?, personalFilament = ?, status = ?, supervisorName = ?, usage_g = ?, notes=? WHERE jobID = ?`;
-    
+
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting connection from pool:', err);

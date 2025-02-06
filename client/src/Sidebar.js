@@ -24,7 +24,8 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
                     <div className='settings-icon-wrapper' style={menuOpen ? { outline: "4px solid black" } : {}}><img id="settingsIcon" src={settingsIcon} alt="Settings Icon" title="Open Settings" onClick={() => handleOpenMenu()}></img></div>
                     <a target="_blank" rel="noreferrer" href="https://www.purdue3dpc.org/index.html"><img className='resizeIcon' src={clubIcon} alt="3DPC Icon" title="To 3DPC Website"></img></a>
                     <a target="_blank" rel="noreferrer" href="https://docs.google.com/forms/d/e/1FAIpQLSckMloffh9PONUhHrROZlVQuzQYM5OmCLcRbEWVs6_qrLqd9w/viewform"><img className="resizeIcon" src={formIcon} alt="Google forms Icon" title="To Job Form"></img></a>
-                    <a target="_blank" rel="noreferrer" href="https://docs.google.com/spreadsheets/d/1MmkZDc7zRuepVEo2r84ithNJ6Q01GhMqSWrNzZSzRpQ/edit?gid=701945760#gid=701945760"><img className="resizeIcon" src={sheetsIcon} alt="Google sheets Icon" title="To Job Form Submissions"></img></a>
+                    <a target="_blank" rel="noreferrer" href="https://docs.google.com/spreadsheets/d/1qqYqVSz2mWbBKAXCtJFE8krPFTx8mSw6u1mR7jS0O7I/edit?gid=466331251#gid=466331251"><img className="resizeIcon" src={sheetsIcon} alt="Google sheets Icon" title="To Job Form Submissions"></img></a>
+                    {/* old form link: https://docs.google.com/spreadsheets/d/1MmkZDc7zRuepVEo2r84ithNJ6Q01GhMqSWrNzZSzRpQ/edit?gid=701945760#gid=701945760 */}
                 </div>
 
                 {/* <div className="sidebtn" style={menuOpen ? { outline: "4px solid black" } : {}} onClick={() => handleOpenMenu()}>

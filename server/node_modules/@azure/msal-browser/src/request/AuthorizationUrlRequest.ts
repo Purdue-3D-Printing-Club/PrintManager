@@ -3,14 +3,14 @@
  * Licensed under the MIT License.
  */
 
-import { CommonAuthorizationUrlRequest } from "@azure/msal-common";
+import { CommonAuthorizationUrlRequest } from "@azure/msal-common/browser";
 
 /**
  * This type is deprecated and will be removed on the next major version update
  */
 export type AuthorizationUrlRequest = Omit<
     CommonAuthorizationUrlRequest,
-    "state" | "nonce" | "requestedClaimsHash" | "nativeBroker"
+    "state" | "nonce" | "requestedClaimsHash" | "platformBroker"
 > & {
     state: string;
     nonce: string;
