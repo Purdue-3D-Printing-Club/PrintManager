@@ -55,7 +55,7 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Sends an email when called
+// Old Gmail endpoint to automatically send emails
 // app.post('/api/send-email', (req, res) => {
 //     const b = req.body;
 //     try {
@@ -87,11 +87,25 @@ app.post('/api/send-email', async (req, res) => {
                 subject: subject,
                 body: {
                     contentType: "Text",
-                    content: text
+                    content: text + '\n\nThis was an automated email sent by the lab organizer.'
                 },
-                toRecipients: [{ emailAddress: { address: to } }]
-            }
+                toRecipients: [{ emailAddress: { address: to } }],
+            },
+            saveToSentItems: false
         });
+
+        await client.api(`/users/${process.env.PURDUE_EMAIL}/createMessage`).post({
+            message: {
+                subject: subject,
+                body: {
+                    contentType: "Text",
+                    content: text + '\n\nThis was an automated email sent by the lab organizer.'
+                },
+                toRecipients: [{ emailAddress: { address: to } }],
+            },
+            saveToSentItems: false
+        });
+
         res.send('Email sent successfully');
     } catch (error) {
         console.error("Graph API Error:", error);

@@ -49,6 +49,8 @@ function App() {
   const [messageQueue, setMessageQueue] = useState([]);
 
   //Printer menu data
+  const [formDataLoading, setFormDataLoading] = useState(false);
+
   const [curJob, setCurJob] = useState(null);
   const [historyList, setHistoryList] = useState([]);
   const [historySearch, setHistorySearch] = useState('');
@@ -81,6 +83,23 @@ function App() {
 
   const popupTime = 8000;
 
+
+  const getStatMsgColor = () => {
+    if(selectedPrinter.status === 'busy') {
+      return 'rgb(249, 249, 202)';
+    }if(selectedPrinter.status === 'admin-busy') {
+      return 'rgb(253, 253, 180)';
+    }
+    if(selectedPrinter.status === 'available') {
+      return 'rgb(215, 250, 213)';
+    }if(selectedPrinter.status === 'admin') {
+      return 'rgb(186, 234, 184)';
+    } if(selectedPrinter.status === 'broken') {
+      return 'rgb(251, 230, 230)';
+    } 
+    // testing status included
+    return 'rgb(255, 255, 255)';
+  }
 
   const getWarningsBeforeIndex = (index) => {
     let warnCount = 0;
@@ -573,7 +592,7 @@ function App() {
     } else if (selectedPrinter.status === 'available') {
       return ("This printer is available!")
     } else if (selectedPrinter.status === 'broken') {
-      return ("This printer is broken.. (0_0)")
+      return ("This printer is broken... (0_0)")
     } else if (selectedPrinter.status === 'testing') {
       return ("This printer is currently in testing, and is not available to print on.")
     } else if ((selectedPrinter.status === 'admin') && !isAdmin) {
@@ -660,7 +679,7 @@ function App() {
     } else if (feedbackText.length <= 0) {
       showMsgForDuration("No Feedback Text! Not sent.", 'err', popupTime)
     } else {
-      sendMail('3DPC PrintManager Feedback - ' + feedbackSubject, feedbackText, "thomp907@purdue.edu")
+      sendMail('PrintManager Feedback - ' + feedbackSubject, feedbackText, "thomp907@purdue.edu")
       setFeedbackSubject('')
       setFeedbackText('')
     }
@@ -1088,11 +1107,15 @@ function App() {
     try {
     // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
       const url = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec';
+      
+      setFormDataLoading(true);
       fetch(url).then(response => response.json()).then(data => {
         if (data !== null && data.length > 0) {
           console.log('fetched form data: ');
           console.log(data)
           showMsgForDuration('Form Data Retrieved Successfully!', 'msg', popupTime);
+          setFormDataLoading(false);
+
 
           let formattedData = data.map((job) => {
             return ({
@@ -1282,7 +1305,7 @@ function App() {
             {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
           </button></td>
         }
-        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), 40) }} />
+        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), queue, 40) }} />
 
         {
           (isAdmin && (editingJob.jobID === job.jobID)) ?
@@ -1306,19 +1329,19 @@ function App() {
               </td>}
               <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
-              <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
+              <td><input type="text" className="history-edit" value={editingJob.files}  onChange={(e) => handleJobEdit(e, "files")}></input></td>
             </>
             :
             <>
-              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, 40) }} />}
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, 40) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, 20) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, 30) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName, 20) }} />
-              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', 20) }} />}
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), 20) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, 128) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, 256) }} />
+              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, queue, 40) }} />}
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, queue, 40) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, queue, 20) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, queue, 30) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName, queue, 20) }} />
+              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', queue, 20) }} />}
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), queue, 20) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, queue, 128) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, queue, 256) }} />
             </>
         }
       </>
@@ -1326,8 +1349,8 @@ function App() {
   }
 
   // Highlight the search in the job's fields by wrapping it with <b>
-  const applyHighlight = (text, length = 40) => {
-    if (!text || !historySearch) return truncateString(text, length);
+  const applyHighlight = (text, queue, length = 40) => {
+    if (!text || !historySearch || queue) return truncateString(text, length);
     const truncatedText = truncateString(text, length);
 
     const escapedSearch = historySearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -1342,7 +1365,7 @@ function App() {
   const printFormArgs = {
     setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
     handlesupervisor, handlePartsUpload, partNames, handlePartNames, handleFileUpload, handleFilamentUsage, selectedPrinter,
-    filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles
+    filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading
   }
 
 
@@ -1369,8 +1392,8 @@ function App() {
 
             {!loadingSummary && <div>
               <h2 style={{ fontSize: "xx-large" }}>Lab Summary</h2>
-              <div className='chart-wrapper'>
-                {!loading && <div className='pie'>
+             
+              {!loading && <div className='pie'>
                   <div className='pie-chart'>
                     <h2>Total Number of Jobs Per Printer</h2>
                     <Pie data={{
@@ -1405,10 +1428,15 @@ function App() {
                   </div>
                 </div>}
 
+              <div className='chart-wrapper'>
+                
+
                 <LineChart argsObject={{ filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0], dateWindow: lineDateWindow }} index={1} />
                 <LineChart argsObject={{ filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1], dateWindow: lineDateWindow }} index={2} />
 
-                {!loading && <div className="pie">
+              </div>
+              
+              {!loading && <div className="pie">
                   <div className='pie-chart'>
                     <h2>Number of Prints By Supervisor</h2>
                     <Pie data={{
@@ -1429,7 +1457,7 @@ function App() {
                   </div>
 
                   <div className='pie-chart'>
-                    <h2>Filament Used by Person</h2>
+                    <h2>Filament Used by Person (g)</h2>
                     <Pie data={{
                       labels: nameFilamentData.map((entry) => { return (truncateString(entry.name, 20)) }),
                       datasets: [{
@@ -1448,14 +1476,13 @@ function App() {
                     }} />
                   </div>
                 </div>}
-              </div>
               <div style={{ height: '80px' }} />
             </div>}
           </div>}
 
           {selectedPrinter && !menuOpen && <div>
             <div style={{ height: "35px" }}></div>
-            <div className='stat-msg'>
+            <div className='stat-msg' style={{backgroundColor: getStatMsgColor()}}>
               {getStatMsg()}
               <hr style={{ borderTop: '1px solid black', width: '100%' }} />
               {selectedPrinter.filamentType !== 'Resin' ? (isAdmin ? <div> {"Use "}
@@ -1490,7 +1517,7 @@ function App() {
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Supervisor:</b> {curJob.supervisorName}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Files:</b> {curJob.files}</span>
+                      <span>&nbsp;<b>Files:</b> {curJob.files.replace(/,/g, ',\n')}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
                     </>
