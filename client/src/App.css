@@ -56,6 +56,34 @@ html::-webkit-scrollbar {
   overflow: hidden;
 }
 
+.stl-preview {
+  cursor: pointer;
+  border: 2px solid black;
+  border-radius: 8px;
+  padding-top:5px;
+}
+
+.stl-previews {
+  width: 90%;
+  border-radius: 8px;
+  margin: auto;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  display: flex;
+  overflow: scroll;
+  column-gap: 10px;
+  padding-bottom: 15px;
+}
+
+.stl-previews.hidden {
+  display: none;
+}
+
+.preview-title {
+  background-color: transparent;
+}
+
+
 .menuBG {
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
@@ -201,7 +229,7 @@ html::-webkit-scrollbar {
   padding: 10px 20px 10px 20px;
   outline: 2px solid black;
   margin-top: 20px;
-  background-color: rgb(245,245,245);
+  background-color: rgb(245, 245, 245);
   width: 80%;
   margin-left: 10%;
   word-wrap: break-word;
@@ -210,14 +238,14 @@ html::-webkit-scrollbar {
 }
 
 .printer-notes-wrapper {
-  width:75%;
+  width: 75%;
   max-width: 600px;
   min-width: 350px;
   text-align: left;
-  margin:auto;
+  margin: auto;
   background-color: white;
-  padding:5px;
-  margin-top:5px;
+  padding: 5px;
+  margin-top: 5px;
 }
 
 #printerNotesInput {
