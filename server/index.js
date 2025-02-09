@@ -6,10 +6,11 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
 const isLocal = process.env.ISLOCAL == 'true';
-const nodemailer = require('nodemailer');
+//const nodemailer = require('nodemailer');
 const { ClientSecretCredential } = require('@azure/identity');
 const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
+const fetch = require('node-fetch');
 
 const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
 
@@ -45,17 +46,17 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-        user: 'purdue3dpcprintjobs@gmail.com',
-        pass: process.env.EMAIL_PSWD
-    }
-});
+// const transporter = nodemailer.createTransport({
+//     host: 'smtp.gmail.com',
+//     port: 587,
+//     secure: false,
+//     auth: {
+//         user: 'purdue3dpcprintjobs@gmail.com',
+//         pass: process.env.EMAIL_PSWD
+//     }
+// });
 
-// Sends an email when called
+// Old Gmail endpoint to automatically send emails
 // app.post('/api/send-email', (req, res) => {
 //     const b = req.body;
 //     try {
@@ -87,11 +88,25 @@ app.post('/api/send-email', async (req, res) => {
                 subject: subject,
                 body: {
                     contentType: "Text",
-                    content: text
+                    content: text + '\n\nThis was an automated email sent by the lab organizer.'
                 },
-                toRecipients: [{ emailAddress: { address: to } }]
-            }
+                toRecipients: [{ emailAddress: { address: to } }],
+            },
+            saveToSentItems: false
         });
+
+        await client.api(`/users/${process.env.PURDUE_EMAIL}/createMessage`).post({
+            message: {
+                subject: subject,
+                body: {
+                    contentType: "Text",
+                    content: text + '\n\nThis was an automated email sent by the lab organizer.'
+                },
+                toRecipients: [{ emailAddress: { address: to } }],
+            },
+            saveToSentItems: false
+        });
+
         res.send('Email sent successfully');
     } catch (error) {
         console.error("Graph API Error:", error);
@@ -99,6 +114,41 @@ app.post('/api/send-email', async (req, res) => {
     }
 });
 
+function getDirectLink(link) {
+    const regex = /id=([^/]+)/;
+    const match = link.match(regex);
+    if (match && match[1]) {
+      return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    }
+    // return the original link if it doesn't match the expected format
+    return link;
+  }
+  
+  // Endpoint to stream the STL file
+  app.get('/api/stream-stl', async (req, res) => {
+    const { url } = req.query;
+    if (!url) {
+      return res.status(400).send('Missing url parameter');
+    }
+  
+    const directUrl = getDirectLink(url);
+  
+    try {
+      const response = await fetch(directUrl);
+      if (!response.ok) {
+        return res.status(500).send('Error fetching the STL file from Google Drive');
+      }
+  
+      // Set the appropriate Content-Type header for STL files.
+      res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+  
+      // Stream the response body directly to the client.
+      response.body.pipe(res);
+    } catch (err) {
+      console.error('Error:', err);
+      res.status(500).send('Server error');
+    }
+  });
 
 
 app.get('/api/get', (req, res) => {
@@ -152,6 +202,33 @@ app.get('/api/get', (req, res) => {
         });
     });
 });
+
+app.get('/api/getRecentFiles', (req, res) => {
+    const printerName = req.query.printerName;
+    const sqlSelectRecentFiles = `SELECT files, partNames FROM printmanagerdb2.printjob WHERE name <> superVisorName ORDER BY timeStarted DESC LIMIT 5`;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+        //transaction with no isolation level: reads only (transaction ensures consistency)
+        connection.beginTransaction(function (err) {
+            connection.query(sqlSelectRecentFiles, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error accessing recent files data");
+                    connection.release();
+                    return;
+                }
+                res.send({ recentFiles: result });
+                connection.release();
+            });
+        });
+    });
+});
+
 
 app.get('/api/getCurrentJob', (req, res) => {
     const printerName = req.query.printerName;

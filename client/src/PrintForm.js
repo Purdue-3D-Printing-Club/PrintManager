@@ -1,11 +1,15 @@
+import loading from './images/loading.gif'
+
 const PrintForm = ({ printFormArgs }) => {
     const { setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
         handlesupervisor, handlePartsUpload, partNames, handlePartNames, handleFileUpload, handleFilamentUsage, selectedPrinter,
-        filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles } = printFormArgs
+        filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading } = printFormArgs
 
     return (
         <div className='printForm'>
             <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>{formData ? "Clear Autofill Data Table" : "Retrieve Latest Five Form Submissions..."}</button>
+            {formDataLoading && <img src={loading} alt="loading" style = {{width:"60px", height:"60px", margin:"auto", marginBottom:"15px", marginTop:"10px"}}>
+            </img>}
             {formData && <div className="form-data-wrapper">
                 <table className="form-data-table">
                     <thead>

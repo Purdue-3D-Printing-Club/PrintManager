@@ -5,6 +5,7 @@ import { Pie } from 'react-chartjs-2';
 import './App.css';
 import { ReactComponent as ExitIcon } from './images/exit.svg';
 
+import StlPreview from './StlPreview';
 import Settings from './Settings';
 import Sidebar from './Sidebar';
 import PrintForm from './PrintForm';
@@ -49,6 +50,8 @@ function App() {
   const [messageQueue, setMessageQueue] = useState([]);
 
   //Printer menu data
+  const [formDataLoading, setFormDataLoading] = useState(false);
+
   const [curJob, setCurJob] = useState(null);
   const [historyList, setHistoryList] = useState([]);
   const [historySearch, setHistorySearch] = useState('');
@@ -67,6 +70,7 @@ function App() {
 
 
   //summary page data
+  const [recentFiles, setRecentFiles] = useState([])
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
   const [supervisorData, setSupervisorData] = useState([]);
@@ -81,6 +85,21 @@ function App() {
 
   const popupTime = 8000;
 
+  const getStatMsgColor = () => {
+    if (selectedPrinter.status === 'busy') {
+      return 'rgb(249, 249, 202)';
+    } if (selectedPrinter.status === 'admin-busy') {
+      return 'rgb(253, 253, 180)';
+    } if (selectedPrinter.status === 'available') {
+      return 'rgb(223, 251, 222)';
+    } if (selectedPrinter.status === 'admin') {
+      return 'rgb(186, 234, 184)';
+    } if (selectedPrinter.status === 'broken') {
+      return 'rgb(251, 230, 230)';
+    }
+    // testing status included
+    return 'rgb(255, 255, 255)';
+  }
 
   const getWarningsBeforeIndex = (index) => {
     let warnCount = 0;
@@ -163,6 +182,26 @@ function App() {
         console.error("Error fetching printer data: ", error);
       }
     } else {
+      // fetch recent files
+      try {
+        Axios.get(`${serverURL}/api/getRecentFiles`).then((response) => {
+          let recentFilesTemp = response.data.recentFiles;
+          let newRecentFiles = [];
+          for (let fileno in recentFilesTemp) {
+            newRecentFiles.push({"file":recentFilesTemp[fileno].files.split(',')[0].trim(), 
+              "name":recentFilesTemp[fileno].partNames.split(',')[0].trim()})
+          }
+
+          console.log('setting new recent files: ', newRecentFiles)
+          setRecentFiles(newRecentFiles)
+        });
+      } catch (error) {
+        console.error("Error fetching recent files data: ", error);
+        setLoadingSummary(false);
+      }
+
+
+
       const generateDateRange = (startDate, endDate) => {
         const dateArray = [];
         let currentDate = new Date(startDate);
@@ -573,7 +612,7 @@ function App() {
     } else if (selectedPrinter.status === 'available') {
       return ("This printer is available!")
     } else if (selectedPrinter.status === 'broken') {
-      return ("This printer is broken.. (0_0)")
+      return ("This printer is broken... (0_0)")
     } else if (selectedPrinter.status === 'testing') {
       return ("This printer is currently in testing, and is not available to print on.")
     } else if ((selectedPrinter.status === 'admin') && !isAdmin) {
@@ -660,7 +699,7 @@ function App() {
     } else if (feedbackText.length <= 0) {
       showMsgForDuration("No Feedback Text! Not sent.", 'err', popupTime)
     } else {
-      sendMail('3DPC PrintManager Feedback - ' + feedbackSubject, feedbackText, "thomp907@purdue.edu")
+      sendMail('PrintManager Feedback - ' + feedbackSubject, feedbackText, "thomp907@purdue.edu")
       setFeedbackSubject('')
       setFeedbackText('')
     }
@@ -1086,13 +1125,17 @@ function App() {
 
   const pullFormData = (e) => {
     try {
-    // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
+      // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
       const url = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec';
+
+      setFormDataLoading(true);
       fetch(url).then(response => response.json()).then(data => {
         if (data !== null && data.length > 0) {
           console.log('fetched form data: ');
           console.log(data)
           showMsgForDuration('Form Data Retrieved Successfully!', 'msg', popupTime);
+          setFormDataLoading(false);
+
 
           let formattedData = data.map((job) => {
             return ({
@@ -1282,7 +1325,7 @@ function App() {
             {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
           </button></td>
         }
-        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), 40) }} />
+        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), queue, 40) }} />
 
         {
           (isAdmin && (editingJob.jobID === job.jobID)) ?
@@ -1310,15 +1353,15 @@ function App() {
             </>
             :
             <>
-              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, 40) }} />}
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, 40) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, 20) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, 30) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName, 20) }} />
-              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', 20) }} />}
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), 20) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, 128) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, 256) }} />
+              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, queue, 40) }} />}
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, queue, 40) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, queue, 20) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, queue, 30) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName, queue, 20) }} />
+              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', queue, 20) }} />}
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), queue, 20) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, queue, 128) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, queue, 256) }} />
             </>
         }
       </>
@@ -1326,8 +1369,8 @@ function App() {
   }
 
   // Highlight the search in the job's fields by wrapping it with <b>
-  const applyHighlight = (text, length = 40) => {
-    if (!text || !historySearch) return truncateString(text, length);
+  const applyHighlight = (text, queue, length = 40) => {
+    if (!text || !historySearch || queue) return truncateString(text, length);
     const truncatedText = truncateString(text, length);
 
     const escapedSearch = historySearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -1342,12 +1385,14 @@ function App() {
   const printFormArgs = {
     setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
     handlesupervisor, handlePartsUpload, partNames, handlePartNames, handleFileUpload, handleFilamentUsage, selectedPrinter,
-    filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles
+    filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading
   }
 
 
   return (
     <div className="App">
+
+
       {
         sidebarOpen ?
           <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
@@ -1360,102 +1405,120 @@ function App() {
       <div className='main-content' style={{ marginLeft: `${sidebarOpen ? sidebarWidth : 0}px` }}>
         <div style={{ height: selectedPrinter ? '85px' : '55px' }}></div>
 
+        {(!selectedPrinter && !menuOpen) && <div className='null'>
+          No printer selected! <br /> Choose one from the printer list on the left.
+        </div>}
+
+
+        {!loading && <div>
+          <h1><b>Recently Printed Files</b></h1>
+          <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+          {recentFiles.map((file, index) => {
+            return(
+              <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name}></StlPreview></div>
+            )
+          })
+          }
+        </div>
+        </div>}
+
+
         <div className="printer-screen">
           {(!selectedPrinter && !menuOpen) && <div>
 
-            <div className='null'>
-              No printer selected! <br /> Choose one from the printer list on the left.
-            </div>
-
             {!loadingSummary && <div>
               <h2 style={{ fontSize: "xx-large" }}>Lab Summary</h2>
+
+              {!loading && <div className='pie'>
+                <div className='pie-chart'>
+                  <h2>Total Number of Jobs Per Printer</h2>
+                  <Pie data={{
+                    labels: printerNames.map(name => truncateString(name, 15)),
+                    datasets: [{ data: frequencies, },
+                    { data: [], }],
+                  }}
+                    options={{
+                      maintainAspectRatio: true,
+                      aspectRatio: 1,
+                      plugins: {
+                        legend: {
+                          position: 'right',
+                        },
+                      },
+                    }} />
+                </div>
+                <div className='pie-chart'>
+                  <h2>Total Filament Used Per Printer (g)</h2>
+                  <Pie data={{
+                    labels: printerNames.map(name => truncateString(name, 15)),
+                    datasets: [{ data: filamentSum, },
+                    { data: [], }],
+                  }}
+                    options={{
+                      plugins: {
+                        legend: {
+                          position: 'right',
+                        },
+                      },
+                    }} />
+                </div>
+              </div>}
+
               <div className='chart-wrapper'>
-                {!loading && <div className='pie'>
-                  <div className='pie-chart'>
-                    <h2>Total Number of Jobs Per Printer</h2>
-                    <Pie data={{
-                      labels: printerNames.map(name => truncateString(name, 15)),
-                      datasets: [{ data: frequencies, },
-                      { data: [], }],
-                    }}
-                      options={{
-                        maintainAspectRatio: true,
-                        aspectRatio: 1,
-                        plugins: {
-                          legend: {
-                            position: 'right',
-                          },
-                        },
-                      }} />
-                  </div>
-                  <div className='pie-chart'>
-                    <h2>Total Filament Used Per Printer (g)</h2>
-                    <Pie data={{
-                      labels: printerNames.map(name => truncateString(name, 15)),
-                      datasets: [{ data: filamentSum, },
-                      { data: [], }],
-                    }}
-                      options={{
-                        plugins: {
-                          legend: {
-                            position: 'right',
-                          },
-                        },
-                      }} />
-                  </div>
-                </div>}
+
 
                 <LineChart argsObject={{ filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0], dateWindow: lineDateWindow }} index={1} />
                 <LineChart argsObject={{ filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1], dateWindow: lineDateWindow }} index={2} />
 
-                {!loading && <div className="pie">
-                  <div className='pie-chart'>
-                    <h2>Number of Prints By Supervisor</h2>
-                    <Pie data={{
-                      labels: supervisorData.map((entry) => { return (truncateString(entry.supervisorName, 20)) }),
-                      datasets: [{
-                        data: supervisorData.map((entry) => {
-                          return (entry.cnt)
-                        }),
-                      },
-                      { data: [], }],
-                    }} options={{
-                      plugins: {
-                        legend: {
-                          position: 'right',
-                        },
-                      },
-                    }} />
-                  </div>
-
-                  <div className='pie-chart'>
-                    <h2>Filament Used by Person</h2>
-                    <Pie data={{
-                      labels: nameFilamentData.map((entry) => { return (truncateString(entry.name, 20)) }),
-                      datasets: [{
-                        data: nameFilamentData.map((entry) => { return (entry.sum) }),
-                      },
-                      {
-                        data: [],
-                      }
-                      ],
-                    }} options={{
-                      plugins: {
-                        legend: {
-                          position: 'right',
-                        },
-                      },
-                    }} />
-                  </div>
-                </div>}
               </div>
+
+              {!loading && <div className="pie">
+                <div className='pie-chart'>
+                  <h2>Number of Prints By Supervisor</h2>
+                  <Pie data={{
+                    labels: supervisorData.map((entry) => { return (truncateString(entry.supervisorName, 20)) }),
+                    datasets: [{
+                      data: supervisorData.map((entry) => {
+                        return (entry.cnt)
+                      }),
+                    },
+                    { data: [], }],
+                  }} options={{
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                      },
+                    },
+                  }} />
+                </div>
+
+                <div className='pie-chart'>
+                  <h2>Filament Used by Person (g)</h2>
+                  <Pie data={{
+                    labels: nameFilamentData.map((entry) => { return (truncateString(entry.name, 20)) }),
+                    datasets: [{
+                      data: nameFilamentData.map((entry) => { return (entry.sum) }),
+                    },
+                    {
+                      data: [],
+                    }
+                    ],
+                  }} options={{
+                    plugins: {
+                      legend: {
+                        position: 'right',
+                      },
+                    },
+                  }} />
+                </div>
+              </div>}
               <div style={{ height: '80px' }} />
             </div>}
           </div>}
 
           {selectedPrinter && !menuOpen && <div>
             <div style={{ height: "35px" }}></div>
-            <div className='stat-msg'>
+            <div className='stat-msg' style={{ backgroundColor: getStatMsgColor() }}>
               {getStatMsg()}
               <hr style={{ borderTop: '1px solid black', width: '100%' }} />
               {selectedPrinter.filamentType !== 'Resin' ? (isAdmin ? <div> {"Use "}
@@ -1468,7 +1531,7 @@ function App() {
                 :
                 "Use " + selectedPrinter.filamentType + " filament on this printer.")
                 :
-                "This is a Resin Printer."
+                "This is a Resin (SLA) Printer."
               }
             </div>
             <br />
@@ -1490,7 +1553,7 @@ function App() {
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Supervisor:</b> {curJob.supervisorName}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Files:</b> {curJob.files}</span>
+                      <span>&nbsp;<b>Files:</b> {curJob.files.replace(/,/g, ',\n')}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
                     </>

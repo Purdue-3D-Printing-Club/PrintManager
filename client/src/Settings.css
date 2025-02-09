@@ -9,7 +9,10 @@
   max-width:850px;
 }
 
-
+/* Displays the characters as bullets */
+.customMasked {
+  -webkit-text-security: disc; 
+}
 .content-wrapper {
   overflow: auto;
   width: 100%;
@@ -29,6 +32,8 @@
   white-space: nowrap;
   border-radius: 5px;
   border: 2px solid rgb(0, 0, 0);
+  padding-top:5px;
+  padding-bottom:0px;
 }
 
 .settings-wrapper {
@@ -42,7 +47,23 @@
   margin-bottom: 30px;
   box-shadow: 0 0 3px 2px rgb(175, 175, 175);
 }
+#login-wrapper {
+  display: inline-flex;
+}
 
+.visibility-icon {
+  width: 25px;
+  height:25px;
+  margin:auto;
+  margin-right:10px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: scale 0.3s ease, opacity 0.3s ease;
+}
+.visibility-icon:hover {
+  opacity: 1;
+  scale:  1.05;
+}
 
 .hotkeys-wrapper-wrapper {
   margin: auto;
@@ -85,7 +106,16 @@
 .qr-wrapper {
   max-width: 350px;
   margin: auto;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  outline: 4px solid black;
+  border-radius: 8px;
+
+}
+.qr-wrapper h1 {
+  color: white;
+  background-color: black;
+  margin-bottom: 0px;
+  padding-bottom: 4px;
 }
 
 .qr-wrapper img {
