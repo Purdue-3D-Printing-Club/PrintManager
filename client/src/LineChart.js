@@ -194,7 +194,9 @@ const LineChart = ({ argsObject, index }) => {
                                     invert={true}
                                     renderThumb={(props, state) => <div {...props}>
                                         {state.valueNow}
-                                    </div>} />
+                                    </div>} 
+                                    />
+                                    
                             </div>
 
                             <select className='line-window-select' value={dateRange} onChange={handleDropdownChange}>

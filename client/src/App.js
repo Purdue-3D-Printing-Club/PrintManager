@@ -87,11 +87,10 @@ function App() {
   const getStatMsgColor = () => {
     if(selectedPrinter.status === 'busy') {
       return 'rgb(249, 249, 202)';
-    }if(selectedPrinter.status === 'admin-busy') {
+    } if(selectedPrinter.status === 'admin-busy') {
       return 'rgb(253, 253, 180)';
-    }
-    if(selectedPrinter.status === 'available') {
-      return 'rgb(215, 250, 213)';
+    } if(selectedPrinter.status === 'available') {
+      return 'rgb(223, 251, 222)';
     }if(selectedPrinter.status === 'admin') {
       return 'rgb(186, 234, 184)';
     } if(selectedPrinter.status === 'broken') {
