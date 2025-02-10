@@ -1,19 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-const StlPreview = ({ googleDriveLink, name }) => {
+const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink }) => {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     const scene = new THREE.Scene();
     //scene.background = new THREE.Color(0xf0f0f0);
 
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.set(0, 0, 100);
 
@@ -21,7 +22,7 @@ const StlPreview = ({ googleDriveLink, name }) => {
     renderer.setSize(width, height);
     renderer.setClearColor(0x000000, 0);
 
-    containerRef.current.appendChild(renderer.domElement);
+    container.appendChild(renderer.domElement);
 
     const ambientLight = new THREE.AmbientLight(0x404040, 2);
     scene.add(ambientLight);
@@ -30,7 +31,7 @@ const StlPreview = ({ googleDriveLink, name }) => {
     //scene.add(directionalLight);  
     camera.add(directionalLight);
     scene.add(camera);
-    
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -46,21 +47,48 @@ const StlPreview = ({ googleDriveLink, name }) => {
         geometry.center();
 
         const material = new THREE.MeshPhongMaterial({
-          color: 0xaaffaa,
+          color: 0x00ffff,
           specular: 0x111111,
           shininess: 200,
         });
         const mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
 
-        geometry.computeBoundingBox();
-        const bbox = geometry.boundingBox;
-        const size = new THREE.Vector3();
-        bbox.getSize(size);
-        const maxDim = Math.max(size.x, size.y, size.z);
-        camera.position.set(0, 0, maxDim * 2);
-        camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+
+        geometry.computeBoundingSphere();
+        const sphere = geometry.boundingSphere;
+        const center = sphere.center;
+        const radius = sphere.radius;
+
+        // Fit the model in the camera's view
+        const fovInRadians = camera.fov * (Math.PI / 180);
+        const cameraDistance = radius / Math.sin(fovInRadians / 2);
+
+        camera.position.copy(center);
+        camera.position.z += cameraDistance;
+        camera.position.y -= cameraDistance;
+        camera.position.x += cameraDistance/4;
+        
+
+        // Adjust the near and far clipping planes relative to the camera distance.
+        camera.near = cameraDistance / 100;
+        camera.far = cameraDistance * 100;
+        camera.updateProjectionMatrix();
+
+        // Update OrbitControls to center on the model.
+        controls.target.copy(center);
         controls.update();
+
+
+        // geometry.computeBoundingBox();
+        // const bbox = geometry.boundingBox;
+        // const size = new THREE.Vector3();
+        // bbox.getSize(size);
+        // const maxDim = Math.max(size.x, size.y, size.z);
+        // camera.position.set(0, 0, maxDim * 2);
+        // camera.lookAt(new THREE.Vector3(0, 0, 0));
+        // controls.update();
       },
       (xhr) => {
         //console.log(`Loading: ${Math.round((xhr.loaded / xhr.total) * 100)}%`);
@@ -87,20 +115,22 @@ const StlPreview = ({ googleDriveLink, name }) => {
     window.addEventListener('resize', handleResize);
 
     return () => {
+      // eslint-disable-next-line
+      const container = containerRef.current;
       window.removeEventListener('resize', handleResize);
-      if (containerRef.current && renderer.domElement) {
-        containerRef.current.removeChild(renderer.domElement);
+      if (container && renderer.domElement) {
+        container.removeChild(renderer.domElement);
       }
       renderer.dispose();
     };
   }, [googleDriveLink]);
 
 
-
   return <>
     <div>
       <span>{name}</span>
       <div ref={containerRef} style={{ width: '400px', height: '400px' }} />
+      <button onClick={() => {window.location.href = getDirectDownloadLink(googleDriveLink)}} style={{marginBottom:'2px'}}>Download</button>
     </div>
 
   </>;

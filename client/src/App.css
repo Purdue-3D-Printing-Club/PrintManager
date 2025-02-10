@@ -61,6 +61,7 @@ html::-webkit-scrollbar {
   border: 2px solid black;
   border-radius: 8px;
   padding-top:5px;
+  margin:auto;
 }
 
 .stl-previews {
@@ -71,11 +72,12 @@ html::-webkit-scrollbar {
   margin-bottom: 10px;
   display: flex;
   overflow: scroll;
+  overflow-y:hidden;
   column-gap: 10px;
   padding-bottom: 15px;
 }
 
-.stl-previews.hidden {
+.hidden {
   display: none;
 }
 

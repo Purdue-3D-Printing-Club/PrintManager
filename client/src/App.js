@@ -70,7 +70,8 @@ function App() {
 
 
   //summary page data
-  const [recentFiles, setRecentFiles] = useState([])
+  const [recentFiles, setRecentFiles] = useState([]);
+  const [showBusyPreviews, setShowBusyPreviews] = useState(true)
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
   const [supervisorData, setSupervisorData] = useState([]);
@@ -188,8 +189,10 @@ function App() {
           let recentFilesTemp = response.data.recentFiles;
           let newRecentFiles = [];
           for (let fileno in recentFilesTemp) {
-            newRecentFiles.push({"file":recentFilesTemp[fileno].files.split(',')[0].trim(), 
-              "name":recentFilesTemp[fileno].partNames.split(',')[0].trim()})
+            newRecentFiles.push({
+              "file": recentFilesTemp[fileno].files.split(',')[0].trim(),
+              "name": recentFilesTemp[fileno].partNames.split(',')[0].trim()
+            })
           }
 
           console.log('setting new recent files: ', newRecentFiles)
@@ -1411,15 +1414,15 @@ function App() {
 
 
         {!loading && <div>
-          <h1><b>Recently Printed Files</b></h1>
+          <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Recently Printed Files</b></h1>
           <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-          {recentFiles.map((file, index) => {
-            return(
-              <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name}></StlPreview></div>
-            )
-          })
-          }
-        </div>
+            {recentFiles.map((file, index) => {
+              return (
+                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
+              )
+            })
+            }
+          </div>
         </div>}
 
 
@@ -1557,17 +1560,23 @@ function App() {
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
                     </>
-
                   }
                 </div>
-                {/* Checkbox to toggle email sending */}
                 <div>
-                  <label
-                    className={`checkbox-container ${sendEmail ? 'active' : ''}`}>
-                    <input type="checkbox" checked={sendEmail} onChange={handleSendEmailChange} />
-                    <span className="custom-checkbox"></span>
-                    <span style={{ userSelect: 'none' }} className="checkbox-label">Send Email</span>
-                  </label>
+                  {/* Checkbox to toggle email sending */}
+                    <label
+                      className={`checkbox-container ${sendEmail ? 'active' : ''}`}>
+                      <input type="checkbox" checked={sendEmail} onChange={handleSendEmailChange} />
+                      <span className="custom-checkbox"></span>
+                      <span style={{ userSelect: 'none' }} className="checkbox-label">Send Email</span>
+                    </label>
+                  {/* Checkbox to toggle stl previews */}
+                    <label
+                      className={`checkbox-container ${showBusyPreviews ? 'active' : ''}`}>
+                      <input type="checkbox" checked={showBusyPreviews} onChange={() => { setShowBusyPreviews(!showBusyPreviews) }} />
+                      <span className="custom-checkbox"></span>
+                      <span style={{ userSelect: 'none' }} className="checkbox-label">STL Previews</span>
+                    </label>
                 </div>
               </div>
             }
@@ -1586,17 +1595,6 @@ function App() {
                 {selectedPrinter.status === 'busy' && <button onClick={() => { printerChangeWhileBusy("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>}
               </div>}
               <br />
-              {
-                curJob && curJob.files.split(',').map((link, index) => {
-                  if (link.trim().startsWith('https://')) {
-                    return (<button className='printer-btn' key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
-                      Download File {index + 1}
-                    </button>)
-                  } else {
-                    return ('');
-                  }
-                })
-              }
 
               {/* If the printer is a resin printer, then also include the option to queue up a new print */}
               {
@@ -1627,6 +1625,33 @@ function App() {
                 </>
               }
             </div>}
+
+            {/* Add file previews for the current print */}
+            {
+              showBusyPreviews ?
+                ((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && <div className={'stl-previews'}>
+                  {curJob && curJob.files.split(',').map((link, index) => {
+                    return (
+                      <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={link} name={'File ' + (index + 1)} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
+                    )
+                  })
+                  }
+                </div>
+                :
+                <>
+                  {
+                    curJob && curJob.files.split(',').map((link, index) => {
+                      if (link.trim().startsWith('https://')) {
+                        return (<button className='printer-btn' key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
+                          Download File {index + 1}
+                        </button>)
+                      } else {
+                        return ('');
+                      }
+                    })
+                  }
+                </>
+            }
 
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
               <div>
@@ -1898,7 +1923,7 @@ function App() {
         {
           messageQueue.map(({ id, msg, type, replaceJob }, index) => {
             return (
-              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line' }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
+              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line', zIndex: 11 }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
                 {(type === 'warn') && <div className="warning-content">
                   <div onClick={() => { handleWarningClick(id, replaceJob) }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
                 </div>}
