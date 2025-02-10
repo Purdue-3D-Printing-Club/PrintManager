@@ -27,8 +27,10 @@ const StlPreview = ({ googleDriveLink, name }) => {
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(0, 0, 1);
-    scene.add(directionalLight);
-
+    //scene.add(directionalLight);  
+    camera.add(directionalLight);
+    scene.add(camera);
+    
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
