@@ -71,6 +71,7 @@ function App() {
 
   //summary page data
   const [recentFiles, setRecentFiles] = useState([]);
+  // const [dailyPrint, setDailyPrint] = useState([]);
   const [showBusyPreviews, setShowBusyPreviews] = useState(true)
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
@@ -202,6 +203,27 @@ function App() {
         console.error("Error fetching recent files data: ", error);
         setLoadingSummary(false);
       }
+      // fetch print of the day
+      // try {
+      //   Axios.get(`${serverURL}/api/getDailyPrint`).then((response) => {
+      //     let dailyPrintTemp = response.data.dailyPrint;
+      //     console.log('Fetched daily print data: ', dailyPrintTemp)
+      //     let newDailyPrint = [];
+      //     for (let fileno in dailyPrintTemp) {
+      //       console.log('daily print file name: ', dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].getLastIndexOf('/')).trim());
+      //       newDailyPrint.push({
+      //         "name": dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].getLastIndexOf('/')).trim(),
+      //         "file": dailyPrintTemp[fileno]
+      //       })
+      //     }
+
+      //     console.log('setting new recent files: ', newDailyPrint)
+      //     setDailyPrint(newDailyPrint)
+      //   });
+      // } catch (error) {
+      //   console.error("Error fetching print of the day: ", error);
+      //   setLoadingSummary(false);
+      // }
 
 
 
@@ -1414,6 +1436,16 @@ function App() {
 
 
         {!loading && <div>
+          {/* Print of the day stl previews*/}
+          {/* <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Print of the Day</b></h1>
+           <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+            {dailyPrint.map((file, index) => {
+              return (
+                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
+              )
+            })
+            }
+          </div> */}
           <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Recently Printed Files</b></h1>
           <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
             {recentFiles.map((file, index) => {

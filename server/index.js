@@ -11,8 +11,12 @@ const { ClientSecretCredential } = require('@azure/identity');
 const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
 const fetch = require('node-fetch');
+const path = require('path');
 
 const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 
 async function getGraphClient() {
     const tokenResponse = await credential.getToken("https://graph.microsoft.com/.default");
@@ -81,7 +85,7 @@ app.post('/api/send-email', async (req, res) => {
     const { to, subject, text } = req.body;
 
     const client = await getGraphClient();
-    
+
     try {
         await client.api(`/users/${process.env.PURDUE_EMAIL}/sendMail`).post({
             message: {
@@ -106,38 +110,164 @@ function getDirectLink(link) {
     const regex = /id=([^/]+)/;
     const match = link.match(regex);
     if (match && match[1]) {
-      return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
     }
     // return the original link if it doesn't match the expected format
     return link;
-  }
-  
-  // Endpoint to stream the STL file
-  app.get('/api/stream-stl', async (req, res) => {
+}
+
+// Endpoint to stream the STL file
+app.get('/api/stream-stl', async (req, res) => {
     const { url } = req.query;
     if (!url) {
-      return res.status(400).send('Missing url parameter');
+        return res.status(400).send('Missing url parameter');
     }
-  
-    const directUrl = getDirectLink(url);
-  
-    try {
-      const response = await fetch(directUrl);
-      if (!response.ok) {
-        return res.status(500).send('Error fetching the STL file from Google Drive');
-      }
-  
-      // Set the appropriate Content-Type header for STL files.
-      res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
-  
-      // Stream the response body directly to the client.
-      response.body.pipe(res);
-    } catch (err) {
-      console.error('Error:', err);
-      res.status(500).send('Server error');
-    }
-  });
 
+    const directUrl = getDirectLink(url);
+
+    try {
+        const response = await fetch(directUrl);
+        if (!response.ok) {
+            return res.status(500).send('Error fetching the STL file from Google Drive');
+        }
+
+        // Set the appropriate Content-Type header for STL files.
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+
+        // Stream the response body directly to the client.
+        response.body.pipe(res);
+    } catch (err) {
+        console.error('Error:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+async function getPrintLinks(browser) {
+    const homePage = await browser.newPage();
+
+    console.log('\nscraper: going to printables..')
+    await homePage.goto('https://www.printables.com', { waitUntil: 'networkidle2' });
+
+    console.log('waiting for card-images to load..')
+    // Wait for the popular items to load. Adjust the selector to one that exists on the page.
+    await homePage.waitForSelector('[class*="card-image"]');
+
+
+    // Evaluate the page to extract information from the first popular STL file.
+    console.log('evaluating page')
+    const printLinks = await homePage.evaluate(() => {
+        const items = document.querySelectorAll('[class*="card-image"]');
+        let tagList = Array.from(items).map(item => item.outerHTML);
+        return tagList.map(htmlString => {
+            const regex = /href="([^"]+)"/;
+            const match = htmlString.match(regex);
+            return match ? ("https://printables.com" + match[1] + "/files") : null;
+        }).filter(id => id !== null);
+    });
+    return printLinks;
+}
+
+async function getDownloadLinks(browser, printLinks) {
+    let dlLinks = []
+    let pageIndex = 0;
+    let cookieClicked = false;
+
+    while (dlLinks.length == 0) {
+        try {
+
+            const printPage = await browser.newPage();
+
+            console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex]}...`)
+            await printPage.goto(printLinks[pageIndex], { waitUntil: 'networkidle2' });
+
+            if (!cookieClicked) {
+                //click the accept cookies button so that it gets out of the way of the download buttons
+                console.log('\nwaiting for cookie btn...')
+                await printPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
+                await printPage.click('[id*="onetrust-accept-btn-handler"]');
+                await new Promise(resolve => setTimeout(resolve, 250));
+                console.log('clicked cookie btn...')
+                cookieClicked = true;
+            }
+
+
+            console.log('\nwaiting for download buttons...')
+            await printPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+            let dlBtns = await printPage.$$('[class*="btn-download"]')
+
+            console.log('buttons:', dlBtns.length);
+            //console.log(dlBtns);
+
+            console.log('\n\n loading new page for each download button')
+            for (btnNum in dlBtns) {
+                console.log('opening page ', btnNum)
+                const printDLPage = await browser.newPage();
+
+                //listen for download requests on this page
+                await printDLPage.setRequestInterception(true);
+                printDLPage.on('request', request => {
+                    if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
+                        console.log('Intercepted download request:', request.url());
+                        dlLinks.push(request.url());
+
+                        request.abort(); // abort the download request, we just want the link actually.
+                    } else {
+                        request.continue();
+                    }
+                });
+
+                console.log('\ngoing to print download page...')
+                await printDLPage.goto(printLinks[pageIndex], { waitUntil: 'networkidle2' });
+
+                // wait for cookie button?
+
+
+                console.log('\nwaiting for download btns...')
+                await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+                let curDLBtns = await printDLPage.$$('[class*="btn-download"]')
+
+                await curDLBtns[btnNum].click();
+            }
+
+            console.log('waiting for timeout...')
+            await new Promise(resolve => setTimeout(resolve, 15000));
+
+            console.log('incrementing page index...')
+            pageIndex++;
+        } catch (error) {
+            if (error.name === 'TimeoutError') {
+                console.log('ERROR: Timeout occurred while getting download links.');
+            } else {
+                throw error;
+            }
+        }
+        pageIndex++;
+    }
+    console.log('done');
+    return (dlLinks);
+}
+
+app.get('/api/getDailyPrint', async (req, res) => {
+    async function getDailyPrint() {
+        try {
+        const browser = await puppeteer.launch({ headless: true });
+        const printLinks = await getPrintLinks(browser);
+
+        //printLinks = ['https://www.printables.com/model/1138664-lumo-headphone-stand/files']
+        console.log('got links: ', printLinks);
+
+        let downloadLinks = await getDownloadLinks(browser, printLinks);
+        await browser.close();
+
+        console.log('Download Links: ', downloadLinks);
+        return downloadLinks;
+    }catch (e){ 
+        console.error('Error in getDailyPrint: ', e);
+        return [];
+    }
+    }
+    res.send({dailyPrint: await getDailyPrint()});
+});
 
 app.get('/api/get', (req, res) => {
 
