@@ -5,13 +5,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink }) => {
   const containerRef = useRef(null);
+  console.log('STLPREVIEW: ', googleDriveLink, name)
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const scene = new THREE.Scene();
-    //scene.background = new THREE.Color(0xf0f0f0);
 
     const width = container.clientWidth;
     const height = container.clientHeight;

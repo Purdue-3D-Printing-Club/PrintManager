@@ -70,7 +70,7 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
 
         <div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large', marginBottom: '2px' }}><b>Feedback Drop-box</b></div>
-          <div style={{ fontSize: 'medium', marginBottom: '10px', color: 'gray' }}>(Problems or suggestions,  emailed to Andrew Thompson)</div>
+          <div style={{ fontSize: 'medium', marginBottom: '10px', color: 'gray' }}>(Problems or suggestions,  emailed to print3d@purdue.edu)</div>
           <input id="subjectInput" type="text" placeholder=" Enter Email Subject..." value={feedbackSubject}
             onChange={handleFeedbackSubjectChange} style={{ width: '500px', fontSize: 'large', marginBottom: '3px' }} />
           <textarea id="feedbackInput" placeholder=" Enter Feedback Here..." value={feedbackText} type="text"

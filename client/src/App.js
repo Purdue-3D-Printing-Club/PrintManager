@@ -9,9 +9,11 @@ import StlPreview from './StlPreview';
 import Settings from './Settings';
 import Sidebar from './Sidebar';
 import PrintForm from './PrintForm';
-import LineChart from './LineChart'
+import LineChart from './LineChart';
+import ErrorBoundary from './ErrorBoundary';
 
 const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
+
 
 function App() {
   const serverURL = isLocal ? "http://localhost:3001" : "https://printmanager-server.onrender.com";
@@ -27,6 +29,7 @@ function App() {
   const [email, setemail] = useState('');
   const [supervisor, setsupervisor] = useState('');
   const [files, setfiles] = useState('');
+  const [filesPlaceholder, setFilesPlaceholder] = useState('Google Drive Links')
   const [notes, setnotes] = useState('');
   const [partNames, setpartnames] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
@@ -72,7 +75,7 @@ function App() {
   //summary page data
   const [recentFiles, setRecentFiles] = useState([]);
   // const [dailyPrint, setDailyPrint] = useState([]);
-  const [showBusyPreviews, setShowBusyPreviews] = useState(true)
+  const [showSTLPreviews, setShowSTLPreviews] = useState(true)
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
   const [supervisorData, setSupervisorData] = useState([]);
@@ -352,6 +355,11 @@ function App() {
     };
   })
 
+  const toggleSTLPreviews = () => {
+    console.log('setting STLPreviews to ', !showSTLPreviews);
+    setShowSTLPreviews(!showSTLPreviews);
+  }
+
   const handleHistorySearch = (e) => {
     const newSearch = e.target.value
     setHistorySearch(newSearch);
@@ -516,8 +524,20 @@ function App() {
     setnotes('');
     setpartnames('');
   }
+  const autofillFields = () => {
+    setname(curJob.name);
+    setemail(curJob.email);
+    setsupervisor(curJob.supervisorName);
+    setpartnames(curJob.partNames);
+    setfiles(curJob.files);
+    setFilamentUsage(curJob.usage_g);
+    setnotes(curJob.notes);
+    setSupervisorPrint(curJob.name === curJob.supervisorName);
+    setPersonalFilament(curJob.personalFilament);
+  }
 
   const cancelPrint = () => {
+    autofillFields();
     fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}`, { method: 'DELETE', }).then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -724,7 +744,7 @@ function App() {
     } else if (feedbackText.length <= 0) {
       showMsgForDuration("No Feedback Text! Not sent.", 'err', popupTime)
     } else {
-      sendMail('PrintManager Feedback - ' + feedbackSubject, feedbackText, "thomp907@purdue.edu")
+      sendMail('PrintManager Feedback - ' + feedbackSubject, feedbackText, "print3d@purdue.edu")
       setFeedbackSubject('')
       setFeedbackText('')
     }
@@ -859,13 +879,13 @@ function App() {
       } else if ((supervisor.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no supervisor");
         showMsgForDuration("No Supervisor! Print not started.", 'err', popupTime);
-      } else if ((partNames.length === 0) && !supervisorPrint) {
+      } else if ((partNames.length === 0)) {// && !supervisorPrint) {
         console.log("startPrintClick: err: no partNames");
         showMsgForDuration("No Part Names! Print not started.", 'err', popupTime);
-      }// else if (files.length === 0) {
-      //   console.log("startPrintClick: err: no files");
-      //   showErrForDuration("No Files! Print not started.", popupTime);
-      // }
+      } else if (files.length === 0) {
+        console.log("startPrintClick: err: no files");
+        showMsgForDuration("No Files! Print not started.", 'err', popupTime);
+      }
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
         showMsgForDuration("No Filament Usage! Print not started.", 'err', popupTime);
@@ -877,16 +897,16 @@ function App() {
         return false;
       })) {
         console.log("startPrintClick: warn: duplicate name entry in queue");
-        showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 2000, matchingJob);
+        showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 5)) {
         console.log("startPrintClick: warn: already 5 queued resin prints");
         showMsgForDuration("Resin queue is full! Print not queued.", 'err', popupTime);
       } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
         console.log("startPrintClick: warn: filament type not PLA");
-        showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 2000);
+        showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         console.log("startPrintClick: warn: filamentUsage > 1000g");
-        showMsgForDuration("Warning: Filament Usage Exceeds 1kg\nContinue anyway?", 'warn', popupTime);
+        showMsgForDuration("Warning: Filament Usage Exceeds 1kg\nContinue anyway?", 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
         //clear all warning popups 
@@ -1132,15 +1152,7 @@ function App() {
 
     // if the print failed, fill in the print form data with the job's data
     if (statusArg === 'failed') {
-      setname(curJob.name);
-      setemail(curJob.email);
-      setsupervisor(curJob.supervisorName);
-      setpartnames(curJob.partNames);
-      setfiles(curJob.files);
-      setFilamentUsage(curJob.usage_g);
-      setnotes(curJob.notes);
-      setSupervisorPrint(curJob.name === curJob.supervisorName);
-      setPersonalFilament(curJob.personalFilament);
+      autofillFields();
     }
   };
 
@@ -1258,28 +1270,52 @@ function App() {
     console.log("set notes to " + notes);
   };
 
-  const handleFileUpload = (e) => {
-    let filesList = Array.from(e.target.files).map((file) => {
-      return (file.name)
-    })
-    const file = filesList.join(', ');
-    if (file) {
-      setfiles(file);
-      console.log("set file to: " + file)
-    }
-  };
-
-  const handlePartsUpload = (e) => {
-    let filesList = Array.from(e.target.files).map((file) => {
+  const handleUpload = async (e) => {
+    // immediately clear the files state and update the placeholder
+    setfiles('');
+    setFilesPlaceholder('Uploading Parts to Google Drive...');
+  
+    //update the part names
+    const filesList = Array.from(e.target.files).map(file => {
       return file.name.substring(0, file.name.lastIndexOf('.')) || file;
-    })
-    const file = filesList.join(', ');
-    if (file) {
-      setpartnames(file);
-      console.log("set partnames to: " + file)
+    });
+    const fileNames = filesList.join(', ');
+    if (fileNames) {
+      setpartnames(fileNames);
+      console.log('set partnames to: ' + fileNames);
     }
+  
+    // create an array of promises, one for each file
+    const uploadPromises = Array.from(e.target.files).map(async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      // console.log('formData:', formData);
+  
+      try {
+        const response = await fetch(`${serverURL}/api/upload/`, {
+          method: 'POST',
+          body: formData
+        });
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+        const data = await response.json();
+        // console.log('Upload response data:', data);
+        return data.fileLink;
+      } catch (error) {
+        console.error('Error during upload:', error);
+        return '';
+      }
+    });
+  
+    // wait for all uploads to finish before setting the files to the google drive links returned by the server
+    const newFileLinks = await Promise.all(uploadPromises);
+    // console.log('NEW FILE LINKS:', newFileLinks);
+  
+    setfiles(newFileLinks.join(', '));
+    setFilesPlaceholder('Google Drive Links');
   };
-
+  
   const handlename = (e) => {
     const name = e.target.value;
     setname(name);
@@ -1409,8 +1445,9 @@ function App() {
 
   const printFormArgs = {
     setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
-    handlesupervisor, handlePartsUpload, partNames, handlePartNames, handleFileUpload, handleFilamentUsage, selectedPrinter,
-    filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading
+    handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
+    filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
+    filesPlaceholder
   }
 
 
@@ -1448,12 +1485,14 @@ function App() {
           </div> */}
           <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Recently Printed Files</b></h1>
           <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-            {recentFiles.map((file, index) => {
-              return (
-                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
-              )
-            })
-            }
+            <ErrorBoundary>
+              {recentFiles.map((file, index) => {
+                return (
+                  <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
+                )
+              })
+              }
+            </ErrorBoundary>
           </div>
         </div>}
 
@@ -1500,11 +1539,8 @@ function App() {
               </div>}
 
               <div className='chart-wrapper'>
-
-
                 <LineChart argsObject={{ filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0], dateWindow: lineDateWindow }} index={1} />
                 <LineChart argsObject={{ filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1], dateWindow: lineDateWindow }} index={2} />
-
               </div>
 
               {!loading && <div className="pie">
@@ -1576,11 +1612,11 @@ function App() {
                 <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left' }}>
                   {
                     curJob.name === curJob.supervisorName ? <>
-                      <span>&nbsp;<b>Name:</b> {curJob.name}</span>
+                      <span>&nbsp;<b>Supervisor Name:</b> {curJob.name}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Files:</b> {curJob.files.replace(/,/g, ',\n')}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Supervisor Print</b> -- No more data</span>
                     </> : <>
                       <span>&nbsp;<b>Name:</b> {curJob.name}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
@@ -1596,23 +1632,13 @@ function App() {
                 </div>
                 <div>
                   {/* Checkbox to toggle email sending */}
-                    <label
-                      className={`checkbox-container ${sendEmail ? 'active' : ''}`}>
-                      <input type="checkbox" checked={sendEmail} onChange={handleSendEmailChange} />
-                      <span className="custom-checkbox"></span>
-                      <span style={{ userSelect: 'none' }} className="checkbox-label">Send Email</span>
-                    </label>
+                  <FormCheckbox activeCheckVal={sendEmail} handleChangeFunc={handleSendEmailChange} text={"Send Email"}></FormCheckbox>
+
                   {/* Checkbox to toggle stl previews */}
-                    <label
-                      className={`checkbox-container ${showBusyPreviews ? 'active' : ''}`}>
-                      <input type="checkbox" checked={showBusyPreviews} onChange={() => { setShowBusyPreviews(!showBusyPreviews) }} />
-                      <span className="custom-checkbox"></span>
-                      <span style={{ userSelect: 'none' }} className="checkbox-label">STL Previews</span>
-                    </label>
+                  <FormCheckbox activeCheckVal={showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
                 </div>
               </div>
             }
-
 
 
             {/* Printer status pages: busy, available, admin, admin-busy, broken, and testing */}
@@ -1636,20 +1662,13 @@ function App() {
                   <br />
 
                   {/* Checkbox to toggle supervisor print */}
-                  <label
-                    className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
-                    <input type="checkbox" checked={supervisorPrint} onChange={handleSupervisorPrintChange} />
-                    <span className="custom-checkbox"></span>
-                    <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
-                  </label>
+                  <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
 
                   {/* Checkbox to toggle personal filament */}
-                  {(selectedPrinter.filamentType !== 'Resin') && <label
-                    className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
-                    <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
-                    <span className="custom-checkbox"></span>
-                    <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
-                  </label>}
+
+                  {(selectedPrinter.filamentType !== 'Resin') &&
+                    <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
+                  }
 
                   <br />
                   <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
@@ -1658,32 +1677,16 @@ function App() {
               }
             </div>}
 
-            {/* Add file previews for the current print */}
-            {
-              showBusyPreviews ?
-                ((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && <div className={'stl-previews'}>
-                  {curJob && curJob.files.split(',').map((link, index) => {
-                    return (
-                      <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={link} name={'File ' + (index + 1)} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
-                    )
-                  })
-                  }
-                </div>
-                :
-                <>
-                  {
-                    curJob && curJob.files.split(',').map((link, index) => {
-                      if (link.trim().startsWith('https://')) {
-                        return (<button className='printer-btn' key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
-                          Download File {index + 1}
-                        </button>)
-                      } else {
-                        return ('');
-                      }
-                    })
-                  }
-                </>
-            }
+            {((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && <>
+              <StlPreviewSection
+                showSTLPreviews={showSTLPreviews}
+                selectedPrinter={selectedPrinter}
+                curJob={curJob}
+                getDirectDownloadLink={getDirectDownloadLink}
+              />
+            </>}
+
+
 
             {selectedPrinter && (selectedPrinter.status === "available") && <div>
               <div>
@@ -1691,20 +1694,15 @@ function App() {
                 <br />
 
                 {/* Checkbox to toggle supervisor print */}
-                <label
-                  className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
-                  <input type="checkbox" checked={supervisorPrint} onChange={handleSupervisorPrintChange} />
-                  <span className="custom-checkbox"></span>
-                  <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
-                </label>
+                <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
+
+                {/* Checkbox to toggle stl previews */}
+                <FormCheckbox activeCheckVal={showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
 
                 {/* Checkbox to toggle personal filament */}
-                {(selectedPrinter.filamentType !== 'Resin') && <label
-                  className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
-                  <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
-                  <span className="custom-checkbox"></span>
-                  <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
-                </label>}
+                {(selectedPrinter.filamentType !== 'Resin') &&
+                  <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
+                }
 
                 <br />
                 <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
@@ -1716,18 +1714,12 @@ function App() {
                 </div>}
                 <br />
 
-
-                {
-                  files && files.split(',').map((link, index) => {
-                    if (link.trim().startsWith('https://')) {
-                      return (<button className='printer-btn' key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
-                        Download File {index + 1}
-                      </button>)
-                    } else {
-                      return ('')
-                    }
-                  })
-                }
+                <StlPreviewSection
+                  showSTLPreviews={showSTLPreviews}
+                  selectedPrinter={selectedPrinter}
+                  curJob={{ 'files': files }}
+                  getDirectDownloadLink={getDirectDownloadLink}
+                />
               </div>
 
             </div>}
@@ -1737,19 +1729,12 @@ function App() {
               <br />
 
               {/* Checkbox to toggle supervisor print */}
-              <label
-                className={`checkbox-container ${supervisorPrint ? 'active' : ''}`}>
-                <input type="checkbox" checked={supervisorPrint} onChange={handleSupervisorPrintChange} />
-                <span className="custom-checkbox"></span>
-                <span style={{ userSelect: 'none' }} className="checkbox-label">Supervisor Print</span>
-              </label>
+              <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
+
               {/* Checkbox to toggle personal filament */}
-              {(selectedPrinter.filamentType !== 'Resin') && <label
-                className={`checkbox-container ${personalFilament ? 'active' : ''}`}>
-                <input type="checkbox" checked={personalFilament} onChange={handlePersonalFilamentChange} />
-                <span className="custom-checkbox"></span>
-                <span style={{ userSelect: 'none' }} className="checkbox-label">Personal Filament</span>
-              </label>}
+              {(selectedPrinter.filamentType !== 'Resin') &&
+                <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
+              }
 
               <br />
               <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
@@ -1762,17 +1747,12 @@ function App() {
 
               <br />
 
-              {
-                files && files.split(',').map((link, index) => {
-                  if (link.trim().startsWith('https://')) {
-                    return (<button className='printer-btn' key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
-                      Download File {index + 1}
-                    </button>)
-                  } else {
-                    return ('')
-                  }
-                })
-              }
+              <StlPreviewSection
+                showSTLPreviews={showSTLPreviews}
+                selectedPrinter={selectedPrinter}
+                curJob={{ 'files': files }}
+                getDirectDownloadLink={getDirectDownloadLink}
+              />
             </div>}
 
             {selectedPrinter && (selectedPrinter.status === "broken") && isAdmin && <div>
@@ -1973,5 +1953,59 @@ function App() {
   );
 
 }
+
+function StlPreviewSection({ showSTLPreviews, selectedPrinter, curJob, getDirectDownloadLink }) {
+  console.log('---- curJob:',curJob)
+  return (
+    <>
+      {showSTLPreviews ? (
+        <ErrorBoundary>
+          <div className="stl-previews">
+            {curJob && curJob.files.split(',').map((link, index) => {
+              if (link.trim().startsWith('https://')) {
+
+                return (
+                  <div className="stl-preview" key={index}>
+                    <StlPreview googleDriveLink={link} name={'File ' + (index + 1)} getDirectDownloadLink={getDirectDownloadLink} />
+                  </div>
+                );
+              } else {
+                return null;
+              }
+            })}
+          </div>
+        </ErrorBoundary>
+      ) : (
+        <>
+          {curJob && curJob.files.split(',').map((link, index) => {
+            if (link.trim().startsWith('https://')) {
+              return (
+                <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
+                  Download File {index + 1}
+                </button>
+              );
+            } else {
+              return null;
+            }
+          })}
+        </>
+      )}
+    </>
+  );
+}
+
+function FormCheckbox({ activeCheckVal, handleChangeFunc, text }) {
+  return (
+    <>
+      <label
+        className={`checkbox-container ${activeCheckVal ? 'active' : ''}`}>
+        <input type="checkbox" checked={activeCheckVal} onChange={handleChangeFunc} />
+        <span className="custom-checkbox"></span>
+        <span style={{ userSelect: 'none' }} className="checkbox-label">{text}</span>
+      </label>
+    </>
+  );
+}
+
 
 export default App;

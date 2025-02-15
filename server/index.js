@@ -6,17 +6,42 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
 const isLocal = process.env.ISLOCAL == 'true';
-//const nodemailer = require('nodemailer');
 const { ClientSecretCredential } = require('@azure/identity');
+const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
+
 const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
 const fetch = require('node-fetch');
 const path = require('path');
 
-const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
+//google drive / file system
+const fs = require('fs-extra');
+const { google } = require('googleapis');
+
+const temp_folder = 'gdrive_uploads';
+const keyPath = process.env.GDRIVE_KEY_PATH;
+const gdriveFolderID = process.env.GDRIVE_FOLDER_ID;
+let drive = createGdriveAuth(keyPath);
+
+const multer = require('multer');
+const upload = multer({ dest: `${temp_folder}/` });
+
+// puppeteer web scraping
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
+
+
+function createGdriveAuth(keyPath) {
+    //console.log('keyPath: ', keyPath)
+    const auth = new google.auth.GoogleAuth({
+        credentials: require(keyPath),
+        scopes: ['https://www.googleapis.com/auth/drive.file'],
+    });
+
+    return google.drive({ version: 'v3', auth });
+}
+
 
 async function getGraphClient() {
     const tokenResponse = await credential.getToken("https://graph.microsoft.com/.default");
@@ -50,35 +75,6 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// const transporter = nodemailer.createTransport({
-//     host: 'smtp.gmail.com',
-//     port: 587,
-//     secure: false,
-//     auth: {
-//         user: 'purdue3dpcprintjobs@gmail.com',
-//         pass: process.env.EMAIL_PSWD
-//     }
-// });
-
-// Old Gmail endpoint to automatically send emails
-// app.post('/api/send-email', (req, res) => {
-//     const b = req.body;
-//     try {
-//         transporter.sendMail({
-//             from: 'purdue3dpcprintjobs@gmail.com',
-//             to: b.to,
-//             subject: b.subject,
-//             text: b.text
-//         }, (error, info) => {
-//             if (error) {
-//                 return res.status(500).send(error.toString());
-//             }
-//             res.send('Email sent: ' + info.response);
-//         });
-//     } catch (e) {
-//         console.log(e);
-//     }
-// });
 
 // Sends an email from purdue graph api when called
 app.post('/api/send-email', async (req, res) => {
@@ -105,6 +101,57 @@ app.post('/api/send-email', async (req, res) => {
         res.status(500).send(error.toString());
     }
 });
+
+// function to upload a file to Google Drive
+async function uploadFile(filePath, fileName, drive) {
+    try {
+        const response = await drive.files.create({
+            resource: {
+                name: fileName,
+                parents: [gdriveFolderID] // Ensure gdriveFolderID is in scope or passed as a parameter
+            },
+            media: {
+                mimeType: 'application/octet-stream',
+                body: fs.createReadStream(filePath)
+            },
+            fields: 'id'
+        });
+
+        //console.log(`File '${fileName}' uploaded successfully to the downloads folder!`);
+
+        // Return the file ID from the response
+        return response.data.id;
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        throw error;
+    }
+}
+
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+    //console.log('\nnew upload request detected')
+    const { file } = req;
+    if (!file) {
+        return res.status(400).json({ error: 'No file provided' });
+    }
+
+    try {
+        const driveResponse = await uploadFile(file.path, file.originalname, drive);
+        // construct the shareable link
+        const fileLink = `https://drive.google.com/open?id=${driveResponse}`;
+
+        res.send({ fileLink: fileLink });
+    } catch (error) {
+        console.error('error:',error)
+        res.status(500).json({ success: false, error: error.message });
+    } finally {
+        // delete the temporary file
+        fs.unlink(file.path, (err) => {
+            if (err) console.error(`Error deleting temp file ${file.path}:`, err);
+        });
+    }
+});
+
+
 
 function getDirectLink(link) {
     const regex = /id=([^/]+)/;
@@ -250,23 +297,23 @@ async function getDownloadLinks(browser, printLinks) {
 app.get('/api/getDailyPrint', async (req, res) => {
     async function getDailyPrint() {
         try {
-        const browser = await puppeteer.launch({ headless: true });
-        const printLinks = await getPrintLinks(browser);
+            const browser = await puppeteer.launch({ headless: true });
+            const printLinks = await getPrintLinks(browser);
 
-        //printLinks = ['https://www.printables.com/model/1138664-lumo-headphone-stand/files']
-        console.log('got links: ', printLinks);
+            //printLinks = ['https://www.printables.com/model/1138664-lumo-headphone-stand/files']
+            console.log('got links: ', printLinks);
 
-        let downloadLinks = await getDownloadLinks(browser, printLinks);
-        await browser.close();
+            let downloadLinks = await getDownloadLinks(browser, printLinks);
+            await browser.close();
 
-        console.log('Download Links: ', downloadLinks);
-        return downloadLinks;
-    }catch (e){ 
-        console.error('Error in getDailyPrint: ', e);
-        return [];
+            console.log('Download Links: ', downloadLinks);
+            return downloadLinks;
+        } catch (e) {
+            console.error('Error in getDailyPrint: ', e);
+            return [];
+        }
     }
-    }
-    res.send({dailyPrint: await getDailyPrint()});
+    res.send({ dailyPrint: await getDailyPrint() });
 });
 
 app.get('/api/get', (req, res) => {

@@ -71,7 +71,7 @@ html::-webkit-scrollbar {
   margin-top: 20px;
   margin-bottom: 10px;
   display: flex;
-  overflow: scroll;
+  overflow-x: auto;
   overflow-y:hidden;
   column-gap: 10px;
   padding-bottom: 15px;
