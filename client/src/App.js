@@ -90,6 +90,19 @@ function App() {
 
   const popupTime = 8000;
 
+  // const getFilenameFromLink = async (link) => {
+  //   try {
+  //     Axios.get(`${serverURL}/api/getFileName?link=${link}`).then((response) => {
+  //       console.log('Got filename from server:', response);
+  //       return response.filename;
+  //     }).catch(error => {
+  //       console.error("Error getting filename from: ", error);
+  //     });
+  //   } catch (error) {
+  //     console.error("Error getting filename from: ", error);
+  //   }
+  // }
+
   const getStatMsgColor = () => {
     if (selectedPrinter.status === 'busy') {
       return 'rgb(249, 249, 202)';
@@ -194,8 +207,8 @@ function App() {
           let newRecentFiles = [];
           for (let fileno in recentFilesTemp) {
             newRecentFiles.push({
-              "file": recentFilesTemp[fileno].files.split(',')[0].trim(),
-              "name": recentFilesTemp[fileno].partNames.split(',')[0].trim()
+              "file": recentFilesTemp[fileno].files?.split(',')[0]?.trim(),
+              "name": recentFilesTemp[fileno].partNames?.split(',')[0]?.trim()
             })
           }
 
@@ -1274,7 +1287,7 @@ function App() {
     // immediately clear the files state and update the placeholder
     setfiles('');
     setFilesPlaceholder('Uploading Parts to Google Drive...');
-  
+
     //update the part names
     const filesList = Array.from(e.target.files).map(file => {
       return file.name.substring(0, file.name.lastIndexOf('.')) || file;
@@ -1284,13 +1297,13 @@ function App() {
       setpartnames(fileNames);
       console.log('set partnames to: ' + fileNames);
     }
-  
+
     // create an array of promises, one for each file
     const uploadPromises = Array.from(e.target.files).map(async (file) => {
       const formData = new FormData();
       formData.append('file', file);
       // console.log('formData:', formData);
-  
+
       try {
         const response = await fetch(`${serverURL}/api/upload/`, {
           method: 'POST',
@@ -1307,15 +1320,14 @@ function App() {
         return '';
       }
     });
-  
+
     // wait for all uploads to finish before setting the files to the google drive links returned by the server
     const newFileLinks = await Promise.all(uploadPromises);
-    // console.log('NEW FILE LINKS:', newFileLinks);
-  
+
     setfiles(newFileLinks.join(', '));
     setFilesPlaceholder('Google Drive Links');
   };
-  
+
   const handlename = (e) => {
     const name = e.target.value;
     setname(name);
@@ -1488,7 +1500,7 @@ function App() {
             <ErrorBoundary>
               {recentFiles.map((file, index) => {
                 return (
-                  <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
+                  <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
                 )
               })
               }
@@ -1680,7 +1692,6 @@ function App() {
             {((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && <>
               <StlPreviewSection
                 showSTLPreviews={showSTLPreviews}
-                selectedPrinter={selectedPrinter}
                 curJob={curJob}
                 getDirectDownloadLink={getDirectDownloadLink}
               />
@@ -1716,8 +1727,7 @@ function App() {
 
                 <StlPreviewSection
                   showSTLPreviews={showSTLPreviews}
-                  selectedPrinter={selectedPrinter}
-                  curJob={{ 'files': files }}
+                  curJob={{ 'files': files, 'partNames': partNames }}
                   getDirectDownloadLink={getDirectDownloadLink}
                 />
               </div>
@@ -1749,8 +1759,7 @@ function App() {
 
               <StlPreviewSection
                 showSTLPreviews={showSTLPreviews}
-                selectedPrinter={selectedPrinter}
-                curJob={{ 'files': files }}
+                curJob={{ 'files': files, 'partNames': partNames  }}
                 getDirectDownloadLink={getDirectDownloadLink}
               />
             </div>}
@@ -1954,8 +1963,8 @@ function App() {
 
 }
 
-function StlPreviewSection({ showSTLPreviews, selectedPrinter, curJob, getDirectDownloadLink }) {
-  console.log('---- curJob:',curJob)
+function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink }) {
+  console.log('---- curJob:', curJob)
   return (
     <>
       {showSTLPreviews ? (
@@ -1963,10 +1972,11 @@ function StlPreviewSection({ showSTLPreviews, selectedPrinter, curJob, getDirect
           <div className="stl-previews">
             {curJob && curJob.files.split(',').map((link, index) => {
               if (link.trim().startsWith('https://')) {
+                let partname = curJob.partNames?.split(',')[index]
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={'File ' + (index + 1)} getDirectDownloadLink={getDirectDownloadLink} />
+                    <StlPreview googleDriveLink={link} name={partname ? partname.trim() : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} />
                   </div>
                 );
               } else {

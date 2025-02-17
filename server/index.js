@@ -76,6 +76,33 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 
+
+// Endpoint to stream the STL file
+// app.get('/api/getFilename', async (req, res) => {
+//     try{
+
+//     const { link } = req.query;
+//     if (!link) {
+//         return res.status(400).send('Missing url parameter');
+//     }
+
+//     const fileId = getFileID(link);
+//     console.log('fileID:',fileId);
+//     const response = await drive.files.get({
+//         fileId,
+//         fields: 'name'
+//       });
+
+//       console.log('got filename:',response.data.name)
+//       res.send({filename:response.data.name});
+//     }catch(e){
+//         console.error('ERROR in getFilename:',e);
+//         return res.status(400).send('Error getting filename');
+//     }
+// });
+
+
+
 // Sends an email from purdue graph api when called
 app.post('/api/send-email', async (req, res) => {
     const { to, subject, text } = req.body;
@@ -141,7 +168,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
         res.send({ fileLink: fileLink });
     } catch (error) {
-        console.error('error:',error)
+        console.error('error:', error)
         res.status(500).json({ success: false, error: error.message });
     } finally {
         // delete the temporary file
@@ -152,16 +179,23 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 });
 
 
-
-function getDirectLink(link) {
+function getFileID(link) {
     const regex = /id=([^/]+)/;
     const match = link.match(regex);
     if (match && match[1]) {
-        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+        return match[1];
     }
-    // return the original link if it doesn't match the expected format
+    return null;
+}
+
+function getDirectLink(link) {
+    const id = getFileID(link);
+    if (id) {
+        return `https://drive.google.com/uc?export=download&id=${id}`;
+    }
     return link;
 }
+
 
 // Endpoint to stream the STL file
 app.get('/api/stream-stl', async (req, res) => {
@@ -171,7 +205,7 @@ app.get('/api/stream-stl', async (req, res) => {
     }
 
     const directUrl = getDirectLink(url);
-
+    console.log('directUrl:',directUrl)
     try {
         const response = await fetch(directUrl);
         if (!response.ok) {
