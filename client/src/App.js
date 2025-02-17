@@ -1694,6 +1694,7 @@ function App() {
                 showSTLPreviews={showSTLPreviews}
                 curJob={curJob}
                 getDirectDownloadLink={getDirectDownloadLink}
+                truncateString={truncateString}
               />
             </>}
 
@@ -1729,6 +1730,7 @@ function App() {
                   showSTLPreviews={showSTLPreviews}
                   curJob={{ 'files': files, 'partNames': partNames }}
                   getDirectDownloadLink={getDirectDownloadLink}
+                  truncateString={truncateString}
                 />
               </div>
 
@@ -1759,8 +1761,9 @@ function App() {
 
               <StlPreviewSection
                 showSTLPreviews={showSTLPreviews}
-                curJob={{ 'files': files, 'partNames': partNames  }}
+                curJob={{ 'files': files, 'partNames': partNames }}
                 getDirectDownloadLink={getDirectDownloadLink}
+                truncateString={truncateString}
               />
             </div>}
 
@@ -1963,7 +1966,7 @@ function App() {
 
 }
 
-function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink }) {
+function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, truncateString }) {
   console.log('---- curJob:', curJob)
   return (
     <>
@@ -1976,7 +1979,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink }) {
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={partname ? partname.trim() : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} />
+                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 16) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} />
                   </div>
                 );
               } else {
@@ -1989,9 +1992,11 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink }) {
         <>
           {curJob && curJob.files.split(',').map((link, index) => {
             if (link.trim().startsWith('https://')) {
+              let partname = curJob.partNames?.split(',')[index]
+
               return (
                 <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
-                  Download File {index + 1}
+                  {partname ? truncateString(partname.trim(), 24) : 'Download File ' + index}
                 </button>
               );
             } else {

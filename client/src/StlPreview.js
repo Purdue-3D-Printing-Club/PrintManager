@@ -47,7 +47,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink }) => {
         geometry.center();
 
         const material = new THREE.MeshPhongMaterial({
-          color: 0x00ffff,
+          color: 0x33ff88,
           specular: 0x111111,
           shininess: 200,
         });
