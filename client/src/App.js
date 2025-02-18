@@ -74,7 +74,10 @@ function App() {
 
   //summary page data
   const [recentFiles, setRecentFiles] = useState([]);
-  // const [dailyPrint, setDailyPrint] = useState([]);
+  //const [dailyPrint, setDailyPrint] = useState([]);
+  //const [dailyPrintLink, setDailyPrintLink] = useState('')
+  const hasFetchedDailyPrint = useRef(false);
+
   const [showSTLPreviews, setShowSTLPreviews] = useState(true)
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
@@ -172,7 +175,10 @@ function App() {
   useEffect(() => {
 
     console.log('updating printer screen')
-    console.log('selectedPrinter: ' + selectedPrinter)
+    console.log('selectedPrinter: ', selectedPrinter)
+    console.log('printerList: ', printerList)
+    console.log('menuOpen: ', menuOpen)
+
 
     //Update the data that is shown
     if (selectedPrinter !== null && selectedPrinter !== undefined) {
@@ -200,17 +206,23 @@ function App() {
         console.error("Error fetching printer data: ", error);
       }
     } else {
+      console.log('PRINTER LIST LENGTH: ', printerList.length)
+      if (printerList.length === 0) {
+        return;
+      }
+
       // fetch recent files
       try {
         Axios.get(`${serverURL}/api/getRecentFiles`).then((response) => {
           let recentFilesTemp = response.data.recentFiles;
-          let newRecentFiles = [];
-          for (let fileno in recentFilesTemp) {
-            newRecentFiles.push({
-              "file": recentFilesTemp[fileno].files?.split(',')[0]?.trim(),
-              "name": recentFilesTemp[fileno].partNames?.split(',')[0]?.trim()
-            })
-          }
+          recentFilesTemp.files = recentFilesTemp.files.split(',').map(file => file.trim())
+          recentFilesTemp.partNames = recentFilesTemp.partNames.split(',').map(name => name.trim())
+
+          console.log('recentFilesTemp:', recentFilesTemp)
+          const newRecentFiles = recentFilesTemp.files.map((file, index) => ({
+            file: file,
+            name: recentFilesTemp.partNames[index] || ""
+          }));
 
           console.log('setting new recent files: ', newRecentFiles)
           setRecentFiles(newRecentFiles)
@@ -219,28 +231,34 @@ function App() {
         console.error("Error fetching recent files data: ", error);
         setLoadingSummary(false);
       }
-      // fetch print of the day
-      // try {
-      //   Axios.get(`${serverURL}/api/getDailyPrint`).then((response) => {
-      //     let dailyPrintTemp = response.data.dailyPrint;
-      //     console.log('Fetched daily print data: ', dailyPrintTemp)
-      //     let newDailyPrint = [];
-      //     for (let fileno in dailyPrintTemp) {
-      //       console.log('daily print file name: ', dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].getLastIndexOf('/')).trim());
-      //       newDailyPrint.push({
-      //         "name": dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].getLastIndexOf('/')).trim(),
-      //         "file": dailyPrintTemp[fileno]
-      //       })
-      //     }
 
-      //     console.log('setting new recent files: ', newDailyPrint)
-      //     setDailyPrint(newDailyPrint)
-      //   });
-      // } catch (error) {
-      //   console.error("Error fetching print of the day: ", error);
-      //   setLoadingSummary(false);
-      // }
+      // fetch print of the day, but only once per page refresh!
+      if (!hasFetchedDailyPrint.current) {
+        hasFetchedDailyPrint.current = true;
 
+        // try {
+        //   Axios.get(`${serverURL}/api/getDailyPrint`, { timeout: 180000 }).then((response) => {
+        //     let dailyPrintTemp = response.data.dailyPrint;
+        //     console.log('Fetched daily print data: ', dailyPrintTemp)
+        //     let newDailyPrint = [];
+        //     for (let fileno in dailyPrintTemp) {
+        //       console.log('daily print file name: ', dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('_') + 1).trim());
+        //       newDailyPrint.push({
+        //         "name": dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('_') + 1).trim(),
+        //         "file": dailyPrintTemp[fileno]
+        //       });
+        //     }
+
+        //     console.log('setting new recent files: ', newDailyPrint);
+        //     setDailyPrint(newDailyPrint);
+        //     setDailyPrintLink(response.data.pageLink);
+        //   });
+        // } catch (error) {
+        //   console.error("Error fetching print of the day: ", error);
+        //   setLoadingSummary(false);
+        // }
+
+      }
 
 
       const generateDateRange = (startDate, endDate) => {
@@ -911,7 +929,7 @@ function App() {
       })) {
         console.log("startPrintClick: warn: duplicate name entry in queue");
         showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
-      } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 5)) {
+      } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
         console.log("startPrintClick: warn: already 5 queued resin prints");
         showMsgForDuration("Resin queue is full! Print not queued.", 'err', popupTime);
       } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
@@ -1487,14 +1505,18 @@ function App() {
         {!loading && <div>
           {/* Print of the day stl previews*/}
           {/* <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Print of the Day</b></h1>
-           <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+          <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
             {dailyPrint.map((file, index) => {
               return (
                 <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
               )
             })
             }
-          </div> */}
+          </div>
+          {(dailyPrintLink !== '') && <>
+            <h3> <b>Click <a target="_blank" rel="noreferrer" href={dailyPrintLink}>here</a> to go to the source page on printables</b></h3>
+          </>} */}
+
           <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Recently Printed Files</b></h1>
           <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
             <ErrorBoundary>
@@ -1966,6 +1988,7 @@ function App() {
 
 }
 
+
 function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, truncateString }) {
   console.log('---- curJob:', curJob)
   return (
@@ -1979,7 +2002,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 16) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} />
+                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 24) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} />
                   </div>
                 );
               } else {

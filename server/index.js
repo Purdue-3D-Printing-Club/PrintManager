@@ -77,7 +77,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 
 
-// Endpoint to stream the STL file
+// Endpoint to get the STL file name using the google drive API
 // app.get('/api/getFilename', async (req, res) => {
 //     try{
 
@@ -205,7 +205,7 @@ app.get('/api/stream-stl', async (req, res) => {
     }
 
     const directUrl = getDirectLink(url);
-    console.log('directUrl:',directUrl)
+    console.log('directUrl:', directUrl)
     try {
         const response = await fetch(directUrl);
         if (!response.ok) {
@@ -253,9 +253,8 @@ async function getDownloadLinks(browser, printLinks) {
     let pageIndex = 0;
     let cookieClicked = false;
 
-    while (dlLinks.length == 0) {
+    while (dlLinks.length === 0) {
         try {
-
             const printPage = await browser.newPage();
 
             console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex]}...`)
@@ -279,42 +278,98 @@ async function getDownloadLinks(browser, printLinks) {
             console.log('buttons:', dlBtns.length);
             //console.log(dlBtns);
 
-            console.log('\n\n loading new page for each download button')
-            for (btnNum in dlBtns) {
-                console.log('opening page ', btnNum)
-                const printDLPage = await browser.newPage();
+            // console.log('\n\n loading new page for each download button')
+            // for (btnNum in dlBtns) {
+            //     if (btnNum >= 2) {
+            //         break;
+            //     }
 
-                //listen for download requests on this page
-                await printDLPage.setRequestInterception(true);
-                printDLPage.on('request', request => {
-                    if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
-                        console.log('Intercepted download request:', request.url());
-                        dlLinks.push(request.url());
+            //     console.log('opening page ', btnNum)
+            //     const printDLPage = await browser.newPage();
 
-                        request.abort(); // abort the download request, we just want the link actually.
-                    } else {
-                        request.continue();
-                    }
-                });
+            //     //listen for download requests on this page
+            //     await printDLPage.setRequestInterception(true);
+            //     printDLPage.on('request', request => {
+            //         if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
+            //             console.log('Intercepted download request:', request.url());
+            //             dlLinks.push(request.url());
 
-                console.log('\ngoing to print download page...')
-                await printDLPage.goto(printLinks[pageIndex], { waitUntil: 'networkidle2' });
+            //             request.abort(); // abort the download request, we just want the link actually.
+            //         } else {
+            //             request.continue();
+            //         }
+            //     });
 
-                // wait for cookie button?
+            //     console.log('\ngoing to print download page...')
+            //     await printDLPage.goto(printLinks[pageIndex], { waitUntil: 'networkidle2' });
+
+            //     // wait for cookie button?
 
 
-                console.log('\nwaiting for download btns...')
-                await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
-                let curDLBtns = await printDLPage.$$('[class*="btn-download"]')
+            //     console.log('\nwaiting for download btns...')
+            //     await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+            //     let curDLBtns = await printDLPage.$$('[class*="btn-download"]')
 
-                await curDLBtns[btnNum].click();
+            //     await curDLBtns[btnNum].click();
+            // }
+
+            console.log('\n\n Loading new page for each download button');
+            const promises = [];
+
+            // Assuming dlBtns is an array or iterable with buttons to click
+            for (let btnNum = 0; btnNum < dlBtns.length && btnNum < 5; btnNum++) {
+                promises.push((async (btnNum) => {
+                    console.log('Opening page ', btnNum);
+
+                    // create a new browser for each download
+                    const browser = await puppeteer.launch({ headless: true });
+                    const printDLPage = await browser.newPage();
+
+                    // const printDLPage = await browser.newPage();
+
+
+                    // Listen for download requests on this page
+                    await printDLPage.setRequestInterception(true);
+                    printDLPage.on('request', request => {
+                        if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
+                            console.log('Intercepted download request:', request.url());
+                            dlLinks.push(request.url());
+                            request.abort(); // Abort the download request, we just want the link.
+                        } else {
+                            request.continue();
+                        }
+                    });
+
+                    console.log('Going to print download page...');
+                    await printDLPage.goto(printLinks[pageIndex], { waitUntil: 'networkidle2' });
+
+
+                    //click the accept cookies button so that it gets out of the way of the download buttons
+                    console.log('\nwaiting for cookie btn...')
+                    await printDLPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
+                    await printDLPage.click('[id*="onetrust-accept-btn-handler"]');
+                    await new Promise(resolve => setTimeout(resolve, 250));
+                    console.log('clicked cookie btn...')
+                    cookieClicked = true;
+
+
+                    console.log('Waiting for download buttons...');
+                    await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+                    const curDLBtns = await printDLPage.$$('[class*="btn-download"]');
+
+                    // Click the appropriate download button
+                    await curDLBtns[btnNum].click();
+                })(btnNum));
             }
 
-            console.log('waiting for timeout...')
-            await new Promise(resolve => setTimeout(resolve, 15000));
+            // Execute all promises concurrently
+            await Promise.all(promises);
 
-            console.log('incrementing page index...')
-            pageIndex++;
+
+            console.log('waiting for timeout...')
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+
         } catch (error) {
             if (error.name === 'TimeoutError') {
                 console.log('ERROR: Timeout occurred while getting download links.');
@@ -322,10 +377,13 @@ async function getDownloadLinks(browser, printLinks) {
                 throw error;
             }
         }
-        pageIndex++;
+        if (dlLinks.length === 0) {
+            console.log('incrementing page index...')
+            pageIndex++;
+        }
     }
     console.log('done');
-    return (dlLinks);
+    return ({ 'dlLinks': dlLinks, 'pageLink': printLinks[pageIndex] });
 }
 
 app.get('/api/getDailyPrint', async (req, res) => {
@@ -337,17 +395,20 @@ app.get('/api/getDailyPrint', async (req, res) => {
             //printLinks = ['https://www.printables.com/model/1138664-lumo-headphone-stand/files']
             console.log('got links: ', printLinks);
 
-            let downloadLinks = await getDownloadLinks(browser, printLinks);
+            let linkObj = await getDownloadLinks(browser, printLinks);
+            let downloadLinks = linkObj.dlLinks;
+
             await browser.close();
 
             console.log('Download Links: ', downloadLinks);
-            return downloadLinks;
+            return { 'dlLinks': downloadLinks, 'pageLink': linkObj.pageLink };
         } catch (e) {
             console.error('Error in getDailyPrint: ', e);
             return [];
         }
     }
-    res.send({ dailyPrint: await getDailyPrint() });
+    let retObj = await getDailyPrint();
+    res.send({ 'dailyPrint': retObj.dlLinks, 'pageLink': retObj.pageLink });
 });
 
 app.get('/api/get', (req, res) => {
@@ -403,8 +464,7 @@ app.get('/api/get', (req, res) => {
 });
 
 app.get('/api/getRecentFiles', (req, res) => {
-    const printerName = req.query.printerName;
-    const sqlSelectRecentFiles = `SELECT files, partNames FROM printmanagerdb2.printjob WHERE name <> superVisorName ORDER BY timeStarted DESC LIMIT 5`;
+    const sqlSelectRecentFiles = `SELECT files, partNames FROM printmanagerdb2.printjob WHERE files IS NOT NULL AND TRIM(files) <> '' ORDER BY timeStarted DESC LIMIT 5`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -421,7 +481,25 @@ app.get('/api/getRecentFiles', (req, res) => {
                     connection.release();
                     return;
                 }
-                res.send({ recentFiles: result });
+
+                retFiles = result.map(res => {
+                    // Split and trim both files and partNames
+                    const files = res.files.split(',').map(str => str.trim());
+                    const partNames = res.partNames.split(',').map(str => str.trim());
+
+                    // Pair files with their corresponding partNames
+                    return files.map((file, index) => ({
+                        file,
+                        partName: partNames[index] || ("File " + index)  // default name is "File {index}"
+                    }));
+                }).flat().slice(0, 5).reduce((acc, obj) => {
+                    acc.files.push(obj.file);
+                    acc.partNames.push(obj.partName);
+                    return acc;
+                }, { files: [], partNames: [] }); // Initialize with empty arrays
+
+                // console.log('retFiles: ', retFiles)
+                res.send({ recentFiles: { "files": retFiles.files.join(','), "partNames": retFiles.partNames.join(',') } });
                 connection.release();
             });
         });
