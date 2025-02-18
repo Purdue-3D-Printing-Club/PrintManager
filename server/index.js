@@ -276,42 +276,6 @@ async function getDownloadLinks(browser, printLinks) {
             let dlBtns = await printPage.$$('[class*="btn-download"]')
 
             console.log('buttons:', dlBtns.length);
-            //console.log(dlBtns);
-
-            // console.log('\n\n loading new page for each download button')
-            // for (btnNum in dlBtns) {
-            //     if (btnNum >= 2) {
-            //         break;
-            //     }
-
-            //     console.log('opening page ', btnNum)
-            //     const printDLPage = await browser.newPage();
-
-            //     //listen for download requests on this page
-            //     await printDLPage.setRequestInterception(true);
-            //     printDLPage.on('request', request => {
-            //         if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
-            //             console.log('Intercepted download request:', request.url());
-            //             dlLinks.push(request.url());
-
-            //             request.abort(); // abort the download request, we just want the link actually.
-            //         } else {
-            //             request.continue();
-            //         }
-            //     });
-
-            //     console.log('\ngoing to print download page...')
-            //     await printDLPage.goto(printLinks[pageIndex], { waitUntil: 'networkidle2' });
-
-            //     // wait for cookie button?
-
-
-            //     console.log('\nwaiting for download btns...')
-            //     await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
-            //     let curDLBtns = await printDLPage.$$('[class*="btn-download"]')
-
-            //     await curDLBtns[btnNum].click();
-            // }
 
             console.log('\n\n Loading new page for each download button');
             const promises = [];
