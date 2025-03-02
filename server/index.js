@@ -135,7 +135,7 @@ async function uploadFile(filePath, fileName, drive) {
         const response = await drive.files.create({
             resource: {
                 name: fileName,
-                parents: [gdriveFolderID] // Ensure gdriveFolderID is in scope or passed as a parameter
+                parents: [gdriveFolderID]
             },
             media: {
                 mimeType: 'application/octet-stream',
@@ -400,26 +400,6 @@ app.get('/api/get', (req, res) => {
                     connection.release();
                     return;
                 }
-                /*connection.query(sqlSelectFilament, (errFilament, resultFilament) => {
-                    if (errFilament) {
-                        console.log(errFilament);
-                        res.status(500).send("Error accessing filament data");
-                        connection.release();
-                        return;
-                    }
-
-                    connection.query(sqlUsingFilament, (errUsingFilament, resultUsingFilament) => {
-                        if (errUsingFilament) {
-                            console.log(errUsingFilament);
-                            res.status(500).send("Error accessing usingFilament data");
-                            connection.release();
-                            return;
-                        }
-                        res.send({ printers: resultPrinters, filament: resultFilament, usingFilament: resultUsingFilament });
-                        connection.release();
-                    });
-                });*/
-
                 res.send({ printers: resultPrinters });
                 connection.release();
             });
