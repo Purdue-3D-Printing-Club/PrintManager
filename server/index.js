@@ -198,30 +198,71 @@ function getDirectLink(link) {
 
 
 // Endpoint to stream the STL file
+// app.get('/api/stream-stl', async (req, res) => {
+//     const { url } = req.query;
+//     res.setHeader('Access-Control-Allow-Origin', '*');
+//     if (!url) {
+//         return res.status(400).send('Missing url parameter');
+//     }
+
+//     const directUrl = getDirectLink(url);
+//     console.log('directUrl:', directUrl)
+//     try {
+//         const response = await fetch(directUrl);
+//         if (!response.ok) {
+//             return res.status(500).send('Error fetching the STL file from Google Drive');
+//         }
+
+//         // Set the appropriate Content-Type header for STL files.
+//         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+
+//         // Stream the response body directly to the client.
+//         response.body.pipe(res);
+//     } catch (err) {
+//         console.error('Error:', err);
+//         res.status(500).send('Server error');
+//     }
+// });
+
 app.get('/api/stream-stl', async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
     const { url } = req.query;
     if (!url) {
-        return res.status(400).send('Missing url parameter');
+      return res.status(400).send('Missing url parameter');
     }
-
+    
     const directUrl = getDirectLink(url);
-    console.log('directUrl:', directUrl)
+    console.log('directUrl:', directUrl);
     try {
-        const response = await fetch(directUrl);
-        if (!response.ok) {
-            return res.status(500).send('Error fetching the STL file from Google Drive');
-        }
-
-        // Set the appropriate Content-Type header for STL files.
-        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
-
-        // Stream the response body directly to the client.
-        response.body.pipe(res);
+      const response = await fetch(directUrl);
+      if (!response.ok) {
+        return res.status(500).send('Error fetching the STL file from Google Drive');
+      }
+  
+      // Option 1: Buffer the response, then send it:
+      const buffer = await response.buffer();
+  
+      // Set the Content-Type header explicitly
+      res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+      res.send(buffer);
+  
+      // Option 2: If the file is too large to buffer entirely,
+      // you may need to pipe the stream and ensure no conflicting headers are included.
+      // In that case, you might want to remove or override any headers from Google Drive's response.
+      // For example:
+      // res.setHeader('Content-Type', 'application/octet-stream');
+      // response.body.on('data', chunk => res.write(chunk));
+      // response.body.on('end', () => res.end());
+      
     } catch (err) {
-        console.error('Error:', err);
-        res.status(500).send('Server error');
+      console.error('Error:', err);
+      res.status(500).send('Server error');
     }
-});
+  });
+  
 
 async function getPrintLinks(browser) {
     const homePage = await browser.newPage();
@@ -881,6 +922,6 @@ app.put('/api/updateJob', (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });

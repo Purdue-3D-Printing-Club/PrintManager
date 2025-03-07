@@ -12,11 +12,9 @@ import PrintForm from './PrintForm';
 import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
 
-const isLocal = process.env.REACT_APP_ISLOCAL === 'true';
-
 
 function App() {
-  const serverURL = isLocal ? "http://localhost:3001" : "https://printmanager-server.onrender.com";
+  const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
 
   const [sidebarWidth, setSidebarWidth] = useState(225); // Initial sidebar width set to 225
   const minSidebarWidth = 180;
@@ -763,6 +761,8 @@ function App() {
     if (menuOpen && (e.key === 'Enter')) {
       if (e.target.id === "adminInput") {
         checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD)
+      } else if (e.target.id === 'URLInput') {
+        setServerURL(e.target.value)
       } else if (e.target.id === "subjectInput" || e.target.id === "feedbackInput") {
         handleFeedbackClick();
       }
@@ -1239,7 +1239,7 @@ function App() {
 
     // Set a timeout to remove the message after its duration
     setTimeout(() => {
-      console.log('removing ' + msg + 'from the queue...')
+      console.log('removing [' + msg + '] from the queue...')
 
       setMessageQueue(prevQueue => prevQueue.filter(message => message.id !== id))
     }, duration);
@@ -1947,19 +1947,21 @@ function App() {
         {menuOpen ? (
           <div className='menuBG visible' style={{ left: `${sidebarOpen ? sidebarWidth + 2 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)` }}>
             {
-              <Settings sidebarWidth={sidebarOpen ? sidebarWidth : 0} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
+              <Settings adminPswd={adminPswd} handlePswdChange={handlePswdChange}
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
+                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} 
+                serverURL={serverURL} setServerURL={setServerURL}/>
             }
           </div>
         ) :
           (
             <div className='menuBG hidden' style={{ left: `${sidebarOpen ? sidebarWidth + 2 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)` }}>
-              <Settings sidebarWidth={sidebarOpen ? sidebarWidth : 0} adminPswd={adminPswd} handlePswdChange={handlePswdChange}
+              <Settings adminPswd={adminPswd} handlePswdChange={handlePswdChange}
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} />
+                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
+                serverURL={serverURL} setServerURL={setServerURL}/>
             </div>
           )}
 

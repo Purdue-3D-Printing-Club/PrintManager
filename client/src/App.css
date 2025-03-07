@@ -504,6 +504,7 @@ td {
   border-radius: 10px;
   outline: 2px solid black;
   width: 80%;
+  max-width:700px;
   margin: auto;
 }
 

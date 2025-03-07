@@ -5,15 +5,14 @@ import eyeSlash from './images/eye_slash.svg'
 
 import discord_qr from './images/3dpc_discord.png'
 
-function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
-  handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange }) {
+function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
+  handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL }) {
 
   const [loginTextVisible, setLoginTextVisible] = useState(false)
+  const [tempServerURL, setTempServerURL] = useState(serverURL)
 
   return (
-    <div className='settings' style={{
-      width: `95%`
-    }}>
+    <div className='settings'>
       <div className='content-wrapper'>
         <div style={{ height: '75px' }}></div>
 
@@ -21,12 +20,11 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
           {!isAdmin ? <div>
             <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>Admin Login</b></div>
             <span id="login-wrapper">
-
               <span onClick={() => { setLoginTextVisible(!loginTextVisible) }} >
-              {loginTextVisible ?
-                <img src={eye} alt="visible" className='visibility-icon no-select'></img> :
-                <img src={eyeSlash} alt="invisible" className='visibility-icon no-select'></img>
-              }
+                {loginTextVisible ?
+                  <img src={eye} alt="visible" className='visibility-icon no-select'></img> :
+                  <img src={eyeSlash} alt="invisible" className='visibility-icon no-select'></img>
+                }
               </span>
               <input id="adminInput" type="text" autoComplete='off' placeholder=" Enter Admin Password..." value={adminPswd} onChange={handlePswdChange} style={{ width: '250px', fontSize: 'large' }} className={loginTextVisible ? "" : "customMasked"}></input> &nbsp;
               <button onClick={() => { checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Login</button>
@@ -36,9 +34,23 @@ function Settings({ sidebarWidth, adminPswd, handlePswdChange, isAdmin, checkPsw
             <div>
               <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>Admin Logout</b></div>
               <button onClick={() => { handleIsAdminChange(false) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Logout</button>
-            </div>}
 
+
+            </div>}
         </div>
+        {/* Admin-only settings */}
+        {isAdmin && <div className='settings-wrapper'>
+          <div style={{ fontSize: 'x-large' }}><b>Admin-Only Settings</b></div>
+          <div style={{ fontSize: 'large', color: 'gray', marginBottom: '5px' }}><b>Proceed With Caution</b></div>
+
+          {/* <input id="serverURLInput" type="text" placeholder="Server URL" value={serverURL}
+            onChange={(e) => setServerURL(e.target.value)} style={{ width: '500px', fontSize: 'large', marginBottom: '3px' }} /> */}
+          <span id='login-wrapper'>
+            <b>Server URL:</b>&nbsp;&nbsp;
+            <input id="URLInput" type="text" autoComplete='off' placeholder=" Server URL" value={tempServerURL} onChange={(e) => setTempServerURL(e.target.value)} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
+            <button onClick={(e) => {setServerURL(tempServerURL)}} style={{ fontSize: 'large', cursor: 'pointer' }}>Update</button>
+          </span>
+        </div>}
 
         <div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large', marginBottom: '2px' }}><b>Hotkeys</b></div>
