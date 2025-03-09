@@ -5,6 +5,9 @@ import { Pie } from 'react-chartjs-2';
 import './App.css';
 import { ReactComponent as ExitIcon } from './images/exit.svg';
 
+import loadingGif from './images/loading.gif'
+import xIcon from './images/x.png'
+
 import StlPreview from './StlPreview';
 import Settings from './Settings';
 import Sidebar from './Sidebar';
@@ -73,7 +76,6 @@ function App() {
   //summary page data
   const [recentFiles, setRecentFiles] = useState([]);
   const [dailyPrint, setDailyPrint] = useState([]);
-  const [dailyPrintLink, setDailyPrintLink] = useState('')
   const hasFetchedDailyPrint = useRef(false);
 
   const [showSTLPreviews, setShowSTLPreviews] = useState(true)
@@ -83,7 +85,7 @@ function App() {
   const [nameFilamentData, setNameFilamentData] = useState([]);
   const [filamentSum, setFilamentSum] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(true);
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState('loading')
 
   const [linePersonalData, setLinePersonalData] = useState([]);
   const [lineClubData, setLineClubData] = useState([]);
@@ -139,6 +141,8 @@ function App() {
         const sorted = sortPrinterList(response.data.printers, printerSort)
         setPrinterList(sorted);
         console.log("setting printers to data: ", sorted);
+      }).catch(e=>{
+        setLoading('error')
       });
     } catch (error) {
       console.error("Error fetching printer data: ", error);
@@ -171,7 +175,6 @@ function App() {
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
-
     console.log('updating printer screen')
     console.log('selectedPrinter: ', selectedPrinter)
     console.log('printerList: ', printerList)
@@ -236,26 +239,25 @@ function App() {
 
         try {
           Axios.get(`${serverURL}/api/getDailyPrint`, { timeout: 180000 }).then((response) => {
-            let dailyPrintTemp = response.data.dailyPrint;
+            let dailyPrintTemp = response.data.partLinks;
             console.log('Fetched daily print data: ', dailyPrintTemp)
             let newDailyPrint = [];
             for (let fileno in dailyPrintTemp) {
-              console.log('daily print file name: ', dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('_') + 1).trim());
+              let fileName = dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('/') + 1).trim();
+              console.log('daily print file name: ', fileName);
               newDailyPrint.push({
-                "name": dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('_') + 1).trim(),
+                "name": fileName,
                 "file": dailyPrintTemp[fileno]
               });
             }
 
-            console.log('setting new recent files: ', newDailyPrint);
-            setDailyPrint(newDailyPrint);
-            setDailyPrintLink(response.data.pageLink);
+            console.log('setting daily print: ', newDailyPrint);
+            setDailyPrint({ 'parts': newDailyPrint, 'pageLink': response.data.pageLink, 'pageName': response.data.pageName });
           });
         } catch (error) {
           console.error("Error fetching print of the day: ", error);
           setLoadingSummary(false);
         }
-
       }
 
 
@@ -339,18 +341,20 @@ function App() {
                       // console.log('lineDateWindow: ', allDates)
                     }
                   }
-                  setLoading(false);
+                  setLoading('done');
                 });
               });
             });
           } catch (error) {
             console.error("Error getting daily stats: ", error);
+            setLoading('error');
           }
           setLoadingSummary(false);
         });
 
       } catch (error) {
         console.error("Error fetching printer data: ", error);
+        setLoading('error');
         setLoadingSummary(false);
       }
     }
@@ -1502,33 +1506,47 @@ function App() {
         </div>}
 
 
-        {!loading && <div>
-          {/* Print of the day stl previews*/}
-          <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Print of the Day</b></h1>
-          <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-            {dailyPrint.map((file, index) => {
-              return (
-                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
-              )
-            })
-            }
-          </div>
-          {(dailyPrintLink !== '') && <div className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}>
-            <h3> <b>Click <a target="_blank" rel="noreferrer" href={dailyPrintLink}>here</a> to go to the source page on printables</b></h3>
-          </div>}
-
-          <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Recently Printed Files</b></h1>
-          <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-            <ErrorBoundary>
-              {recentFiles.map((file, index) => {
-                return (
-                  <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} getDirectDownloadLink={getDirectDownloadLink}></StlPreview></div>
-                )
-              })
-              }
-            </ErrorBoundary>
-          </div>
+        {(loading === 'loading') && <div>
+          <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
         </div>}
+        {(loading === 'error') && <div>
+          <h1><b>Server Connection Failed</b></h1>
+          <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
+          
+        </div>}
+        {loading === 'done' &&
+          <div>
+            {/* Print of the day stl previews*/}
+            <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Print of the Day</b></h1>
+            {(dailyPrint.length === 0) ? <div>
+              <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
+            </div> :
+              <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+                {dailyPrint.map((file, index) => {
+                  return (
+                    <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
+                  )
+                })
+                }
+              </div>
+            }
+
+            {(dailyPrint.pageLink !== '') && <div className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}>
+              <h3> <b>Click <a target="_blank" rel="noreferrer" href={dailyPrint.pageLink}>here</a> to go to the source page on printables</b></h3>
+            </div>}
+
+            <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Recently Printed Files</b></h1>
+            <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+              <ErrorBoundary>
+                {recentFiles.map((file, index) => {
+                  return (
+                    <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
+                  )
+                })
+                }
+              </ErrorBoundary>
+            </div>
+          </div>}
 
 
         <div className="printer-screen">
@@ -1717,6 +1735,7 @@ function App() {
                 curJob={curJob}
                 getDirectDownloadLink={getDirectDownloadLink}
                 truncateString={truncateString}
+                serverURL={serverURL}
               />
             </>}
 
@@ -1753,9 +1772,9 @@ function App() {
                   curJob={{ 'files': files, 'partNames': partNames }}
                   getDirectDownloadLink={getDirectDownloadLink}
                   truncateString={truncateString}
+                  serverURL={serverURL}
                 />
               </div>
-
             </div>}
 
             {selectedPrinter && (selectedPrinter.status === "admin") && isAdmin && <div>
@@ -1786,6 +1805,7 @@ function App() {
                 curJob={{ 'files': files, 'partNames': partNames }}
                 getDirectDownloadLink={getDirectDownloadLink}
                 truncateString={truncateString}
+                serverURL={serverURL}
               />
             </div>}
 
@@ -1950,8 +1970,8 @@ function App() {
               <Settings adminPswd={adminPswd} handlePswdChange={handlePswdChange}
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange} 
-                serverURL={serverURL} setServerURL={setServerURL}/>
+                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
+                serverURL={serverURL} setServerURL={setServerURL} />
             }
           </div>
         ) :
@@ -1961,11 +1981,11 @@ function App() {
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
-                serverURL={serverURL} setServerURL={setServerURL}/>
+                serverURL={serverURL} setServerURL={setServerURL} />
             </div>
           )}
 
-        <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, }}>
+        <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, backgroundColor: `${isAdmin ? 'rgba(2550, 2550, 255, 0.6)' : 'rgba(180, 180, 180, 0.6)'}` }}>
           <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
         </div>
         {
@@ -1991,7 +2011,7 @@ function App() {
 }
 
 
-function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, truncateString }) {
+function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, truncateString, serverURL }) {
   console.log('---- curJob:', curJob)
   return (
     <>
@@ -2004,7 +2024,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 24) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} />
+                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 24) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} />
                   </div>
                 );
               } else {

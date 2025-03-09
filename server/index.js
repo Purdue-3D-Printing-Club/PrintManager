@@ -197,33 +197,6 @@ function getDirectLink(link) {
 }
 
 
-// Endpoint to stream the STL file
-// app.get('/api/stream-stl', async (req, res) => {
-//     const { url } = req.query;
-//     res.setHeader('Access-Control-Allow-Origin', '*');
-//     if (!url) {
-//         return res.status(400).send('Missing url parameter');
-//     }
-
-//     const directUrl = getDirectLink(url);
-//     console.log('directUrl:', directUrl)
-//     try {
-//         const response = await fetch(directUrl);
-//         if (!response.ok) {
-//             return res.status(500).send('Error fetching the STL file from Google Drive');
-//         }
-
-//         // Set the appropriate Content-Type header for STL files.
-//         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
-
-//         // Stream the response body directly to the client.
-//         response.body.pipe(res);
-//     } catch (err) {
-//         console.error('Error:', err);
-//         res.status(500).send('Server error');
-//     }
-// });
-
 app.get('/api/stream-stl', async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -268,7 +241,7 @@ async function getPrintLinks(browser) {
     const homePage = await browser.newPage();
 
     console.log('\nscraper: going to printables..')
-    await homePage.goto('https://www.printables.com', { waitUntil: 'networkidle2' });
+    await homePage.goto('https://www.printables.com/model', { waitUntil: 'networkidle2' });
 
     console.log('waiting for card-images to load..')
     // Wait for the popular items to load. Adjust the selector to one that exists on the page.
@@ -278,12 +251,16 @@ async function getPrintLinks(browser) {
     // Evaluate the page to extract information from the first popular STL file.
     console.log('evaluating page')
     const printLinks = await homePage.evaluate(() => {
-        const items = document.querySelectorAll('[class*="card-image"]');
+        const items = document.querySelectorAll('[class*="h clamp-two-lines"]');
         let tagList = Array.from(items).map(item => item.outerHTML);
+
         return tagList.map(htmlString => {
+            const regexName = />([^<]+)</;
+            const matchName = htmlString.match(regexName);
+
             const regex = /href="([^"]+)"/;
             const match = htmlString.match(regex);
-            return match ? ("https://printables.com" + match[1] + "/files") : null;
+            return {'link': match ? ("https://printables.com" + match[1] + "/files") : null, 'name': matchName[1]};
         }).filter(id => id !== null);
     });
     return printLinks;
@@ -298,8 +275,8 @@ async function getDownloadLinks(browser, printLinks) {
         try {
             const printPage = await browser.newPage();
 
-            console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex]}...`)
-            await printPage.goto(printLinks[pageIndex], { waitUntil: 'networkidle2' });
+            console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex].link}...`)
+            await printPage.goto(printLinks[pageIndex].link, { waitUntil: 'networkidle2' });
 
             if (!cookieClicked) {
                 //click the accept cookies button so that it gets out of the way of the download buttons
@@ -346,7 +323,7 @@ async function getDownloadLinks(browser, printLinks) {
                     });
 
                     console.log('Going to print download page...');
-                    await printDLPage.goto(printLinks[pageIndex], { waitUntil: 'networkidle2' });
+                    await printDLPage.goto(printLinks[pageIndex].link, { waitUntil: 'networkidle2' });
 
 
                     //click the accept cookies button so that it gets out of the way of the download buttons
@@ -361,13 +338,14 @@ async function getDownloadLinks(browser, printLinks) {
                     console.log('Waiting for download buttons...');
                     await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
                     const curDLBtns = await printDLPage.$$('[class*="btn-download"]');
-
+                    
+                    
                     // Click the appropriate download button
                     await curDLBtns[btnNum].click();
                 })(btnNum));
             }
 
-            // Execute all promises concurrently
+            // Execute all promises concurrently, wait for them all to finish here
             await Promise.all(promises);
 
 
@@ -388,7 +366,7 @@ async function getDownloadLinks(browser, printLinks) {
         }
     }
     console.log('done');
-    return ({ 'dlLinks': dlLinks, 'pageLink': printLinks[pageIndex] });
+    return ({ 'partLinks': dlLinks, 'pageLink': printLinks[pageIndex].link, 'pageName': printLinks[pageIndex].name });
 }
 
 app.get('/api/getDailyPrint', async (req, res) => {
@@ -401,19 +379,18 @@ app.get('/api/getDailyPrint', async (req, res) => {
             console.log('got links: ', printLinks);
 
             let linkObj = await getDownloadLinks(browser, printLinks);
-            let downloadLinks = linkObj.dlLinks;
 
             await browser.close();
 
-            console.log('Download Links: ', downloadLinks);
-            return { 'dlLinks': downloadLinks, 'pageLink': linkObj.pageLink };
+            console.log('Part Links: ', linkObj.partLinks);
+            return linkObj;
         } catch (e) {
             console.error('Error in getDailyPrint: ', e);
             return [];
         }
     }
     let retObj = await getDailyPrint();
-    res.send({ 'dailyPrint': retObj.dlLinks, 'pageLink': retObj.pageLink });
+    res.send(retObj);
 });
 
 app.get('/api/get', (req, res) => {

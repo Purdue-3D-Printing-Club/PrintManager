@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink }) => {
+const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL }) => {
   const containerRef = useRef(null);
   //console.log('STLPREVIEW: ', googleDriveLink, name)
 
@@ -35,9 +35,15 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink }) => {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+    controls.minPolarAngle = -Infinity;
+    controls.maxPolarAngle = Infinity;
 
-    // Use the Node server's proxy endpoint to fetch the STL file.
-    const stlResource = `http://localhost:3001/api/stream-stl?url=${encodeURIComponent(googleDriveLink)}`;
+
+    // Use the Node server's proxy endpoint to fetch the STL file
+    const stlResource = `${serverURL}/api/stream-stl?url=${encodeURIComponent(googleDriveLink)}`;
 
     const loader = new STLLoader();
 
@@ -68,27 +74,19 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink }) => {
         camera.position.copy(center);
         camera.position.z += cameraDistance;
         camera.position.y -= cameraDistance;
-        camera.position.x += cameraDistance/4;
-        
+        camera.position.x += cameraDistance / 4;
 
-        // Adjust the near and far clipping planes relative to the camera distance.
+
+        // Adjust the near and far clipping planes relative to the camera distance
         camera.near = cameraDistance / 100;
         camera.far = cameraDistance * 100;
         camera.updateProjectionMatrix();
 
-        // Update OrbitControls to center on the model.
+        // Update OrbitControls to center on the model
         controls.target.copy(center);
         controls.update();
 
 
-        // geometry.computeBoundingBox();
-        // const bbox = geometry.boundingBox;
-        // const size = new THREE.Vector3();
-        // bbox.getSize(size);
-        // const maxDim = Math.max(size.x, size.y, size.z);
-        // camera.position.set(0, 0, maxDim * 2);
-        // camera.lookAt(new THREE.Vector3(0, 0, 0));
-        // controls.update();
       },
       (xhr) => {
         //console.log(`Loading: ${Math.round((xhr.loaded / xhr.total) * 100)}%`);
@@ -123,14 +121,14 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink }) => {
       }
       renderer.dispose();
     };
-  }, [googleDriveLink]);
+  }, [googleDriveLink, serverURL]);
 
 
   return <>
     <div>
       <span>{name}</span>
       <div ref={containerRef} style={{ width: '400px', height: '400px' }} />
-      <button onClick={() => {window.location.href = getDirectDownloadLink(googleDriveLink)}} style={{marginBottom:'2px'}}>Download</button>
+      <button onClick={() => { window.location.href = getDirectDownloadLink(googleDriveLink) }} style={{ marginBottom: '2px' }}>Download</button>
     </div>
 
   </>;

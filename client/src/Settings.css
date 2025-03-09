@@ -6,7 +6,7 @@
   margin: calc(50px + 2vh) auto 0px auto;
   position:relative;
   min-width:450px;
-  max-width:min(1300px, 95%);
+  max-width:min(1100px, 95%);
 }
 
 /* Displays the characters as bullets */
