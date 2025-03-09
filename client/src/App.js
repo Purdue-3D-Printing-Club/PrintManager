@@ -2034,7 +2034,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
         <ErrorBoundary>
           <div className="stl-previews">
             {curJob && curJob.files.split(',').map((link, index) => {
-              trimmedLink = link.trim();
+              let trimmedLink = link.trim();
 
               if (trimmedLink.startsWith('https://')) {
                 let partname = curJob.partNames?.split(',')[index]
