@@ -269,108 +269,108 @@ async function getPrintLinks(browser) {
 
 async function getDownloadLinks(browser, printLinks) {
     let dlLinks = []
-    let pageIndex = randomInt(0,printLinks.length);
+    let pageIndex = randomInt(0, printLinks.length);
     let cookieClicked = false;
 
     // while (dlLinks.length === 0) {
-        try {
-            const printPage = await browser.newPage();
+    try {
+        const printPage = await browser.newPage();
 
-            console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex].link}...`)
-            await printPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
+        console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex].link}...`)
+        await printPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
 
-            if (!cookieClicked) {
-                //click the accept cookies button so that it gets out of the way of the download buttons
-                console.log('\nwaiting for cookie btn...')
-                await printPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
-                await printPage.click('[id*="onetrust-accept-btn-handler"]');
-                await new Promise(resolve => setTimeout(resolve, 250));
-                console.log('clicked cookie btn...')
-                cookieClicked = true;
-            }
-
-
-            console.log('\nwaiting for download buttons...')
-            await printPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
-            let dlBtns = await printPage.$$('[class*="btn-download"]')
-
-            console.log('buttons:', dlBtns.length);
-
-            console.log('\n\n Loading new page for each download button');
-            const promises = [];
-
-            // Assuming dlBtns is an array or iterable with buttons to click
-            for (let btnNum = 0; btnNum < dlBtns.length && btnNum < 6; btnNum++) {
-                promises.push((async (btnNum) => {
-                    try {
-                        console.log('Opening page ', btnNum);
-
-                        // create a new browser for each download 
-                        // TODO: Make this more efficient!
-                        const browser = await puppeteer.launch({ headless: true });
-                        const printDLPage = await browser.newPage();
-
-                        // const printDLPage = await browser.newPage();
-
-
-                        // Listen for download requests on this page
-                        await printDLPage.setRequestInterception(true);
-                        printDLPage.on('request', request => {
-                            if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
-                                console.log('Intercepted download request:', request.url());
-                                dlLinks.push(request.url());
-                                request.abort(); // Abort the download request, we just want the link.
-                            } else {
-                                request.continue();
-                            }
-                        });
-
-                        console.log('Going to print download page...');
-                        await printDLPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
-
-
-                        //click the accept cookies button so that it gets out of the way of the download buttons
-                        console.log('\nwaiting for cookie btn...')
-                        await printDLPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
-                        await printDLPage.click('[id*="onetrust-accept-btn-handler"]');
-                        await new Promise(resolve => setTimeout(resolve, 250));
-                        console.log('clicked cookie btn...')
-                        cookieClicked = true;
-
-
-                        console.log('Waiting for download buttons...');
-                        await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
-                        const curDLBtns = await printDLPage.$$('[class*="btn-download"]');
-
-
-                        // Click the appropriate download button
-                        await curDLBtns[btnNum].click();
-
-                    } catch (error) {
-                        if (error.name === 'TimeoutError') {
-                            console.log('ERROR: Timeout occurred while getting handling print download button.');
-                        } else {
-                            throw error;
-                        }
-                    }
-                })(btnNum));
-            }
-
-            // Execute all promises concurrently, wait for them all to finish here
-            await Promise.all(promises);
-
-
-            console.log('waiting for timeout...')
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-
-        } catch (error) {
-            if (error.name === 'TimeoutError') {
-                console.log('ERROR: Timeout occurred while getting download links.');
-            } else {
-                throw error;
-            }
+        if (!cookieClicked) {
+            //click the accept cookies button so that it gets out of the way of the download buttons
+            console.log('\nwaiting for cookie btn...')
+            await printPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
+            await printPage.click('[id*="onetrust-accept-btn-handler"]');
+            await new Promise(resolve => setTimeout(resolve, 250));
+            console.log('clicked cookie btn...')
+            cookieClicked = true;
         }
+
+
+        console.log('\nwaiting for download buttons...')
+        await printPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+        let dlBtns = await printPage.$$('[class*="btn-download"]')
+
+        console.log('buttons:', dlBtns.length);
+
+        console.log('\n\n Loading new page for each download button');
+        const promises = [];
+
+        // Assuming dlBtns is an array or iterable with buttons to click
+        for (let btnNum = 0; btnNum < dlBtns.length && btnNum < 6; btnNum++) {
+            promises.push((async (btnNum) => {
+                try {
+                    console.log('Opening page ', btnNum);
+
+                    // create a new browser for each download 
+                    // TODO: Make this more efficient!
+                    const browser = await puppeteer.launch({ headless: true });
+                    const printDLPage = await browser.newPage();
+
+                    // const printDLPage = await browser.newPage();
+
+
+                    // Listen for download requests on this page
+                    await printDLPage.setRequestInterception(true);
+                    printDLPage.on('request', request => {
+                        if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
+                            console.log('Intercepted download request:', request.url());
+                            dlLinks.push(request.url());
+                            request.abort(); // Abort the download request, we just want the link.
+                        } else {
+                            request.continue();
+                        }
+                    });
+
+                    console.log('Going to print download page...');
+                    await printDLPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
+
+
+                    //click the accept cookies button so that it gets out of the way of the download buttons
+                    console.log('\nwaiting for cookie btn...')
+                    await printDLPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
+                    await printDLPage.click('[id*="onetrust-accept-btn-handler"]');
+                    await new Promise(resolve => setTimeout(resolve, 250));
+                    console.log('clicked cookie btn...')
+                    cookieClicked = true;
+
+
+                    console.log('Waiting for download buttons...');
+                    await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+                    const curDLBtns = await printDLPage.$$('[class*="btn-download"]');
+
+
+                    // Click the appropriate download button
+                    await curDLBtns[btnNum].click();
+
+                } catch (error) {
+                    if (error.name === 'TimeoutError') {
+                        console.log('ERROR: Timeout occurred while getting handling print download button.');
+                    } else {
+                        throw error;
+                    }
+                }
+            })(btnNum));
+        }
+
+        // Execute all promises concurrently, wait for them all to finish here
+        await Promise.all(promises);
+
+
+        console.log('waiting for timeout...')
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+
+    } catch (error) {
+        if (error.name === 'TimeoutError') {
+            console.log('ERROR: Timeout occurred while getting download links.');
+        } else {
+            throw error;
+        }
+    }
     //     if (dlLinks.length === 0) {
     //         console.log('incrementing page index...')
     //         pageIndex++;
@@ -831,8 +831,13 @@ app.get('/api/getdailyprints', (req, res) => {
 
 app.get('/api/getHistory', (req, res) => {
     const value = req.query.value;
-    const field = req.query.field
-    const sqlSelectHistory = `SELECT * FROM printjob WHERE ${field} = ?`
+    const field = req.query.field;
+    console.log('value:', value, '  field:', field)
+
+    let sqlSelectHistory = `SELECT * FROM printjob WHERE ${field} = ?`;
+    if (value === 'undefined') {
+        sqlSelectHistory = 'SELECT * FROM printjob';
+    }
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting connection from pool:', err);
@@ -841,17 +846,19 @@ app.get('/api/getHistory', (req, res) => {
         }
         //transaction with no isolation level: reads only (transaction ensures consistency)
         connection.beginTransaction(function (err) {
-            connection.query(sqlSelectHistory, [value], (errHistory, resultHistory) => {
+            const queryParams = value === 'undefined' ? [] : [value];
+
+            connection.query(sqlSelectHistory, queryParams, (errHistory, resultHistory) => {
                 if (errHistory) {
-                    console.log(errHistory);
+                    console.error(errHistory);
                     res.status(500).send("Error accessing printjob files data");
-                    connection.release();
-                    return;
+                } else {
+                    res.send({ historyList: resultHistory });
                 }
-                res.send({ historyList: resultHistory });
                 connection.release();
             });
         });
+
     });
 });
 

@@ -181,6 +181,13 @@ function App() {
     console.log('printerList: ', printerList)
     console.log('menuOpen: ', menuOpen)
 
+    // fetch the printer history or, if its null, get the comprehensive history
+    Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter?.printerName}&field=printerName`).then((response) => {
+      const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
+      setHistoryList(newHistory);
+      console.log('Got history list:')
+      console.log(newHistory);
+    });
 
     //Update the data that is shown
     if (selectedPrinter !== null && selectedPrinter !== undefined) {
@@ -198,12 +205,12 @@ function App() {
         } else {
           setCurJob(null)
         }
-        Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
-          const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
-          setHistoryList(newHistory);
-          console.log('Got history list:')
-          console.log(newHistory);
-        });
+        // Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
+        //   const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
+        //   setHistoryList(newHistory);
+        //   console.log('Got history list:')
+        //   console.log(newHistory);
+        // });
       } catch (error) {
         console.error("Error fetching printer data: ", error);
       }
@@ -212,7 +219,7 @@ function App() {
       if (printerList.length === 0) {
         return;
       }
-
+      
       // fetch recent files
       try {
         Axios.get(`${serverURL}/api/getRecentFiles`).then((response) => {
@@ -445,11 +452,14 @@ function App() {
       personalFilament: editingJob.personalFilament,
       notes: truncateString(editingJob.notes, 256)
     }
-
+    if(!selectedPrinter){
+      console.log('No printer selected in saving history job, exiting early...')
+      return;
+    }
     if (editingJobFilt.jobID === job.jobID) {
       if (editingJobFilt.status !== job.status) {
         // if the job was made active again, set printer status to busy
-        if (editingJobFilt.status === 'active') {
+        if ((editingJobFilt.status === 'active')) {
           handlePrinterStatusChange(selectedPrinter.status === 'admin' ? 'admin-busy' : 'busy');
           setCurJob(editingJobFilt);
           selectedPrinter.currentJob = editingJobFilt.jobID;
@@ -1419,7 +1429,7 @@ function App() {
     return time ? `${mm}/${dd}/${yyyy} ${hh}:${min} ${amOrPm}` : `${mm}/${dd}/${yyyy}`;
   }
 
-  const createHistoryRow = (job, queue = false) => {
+  const createHistoryRow = (job, isComprehensive, queue) => {
     return (
       <>
         {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
@@ -1440,6 +1450,7 @@ function App() {
                   <option value="failed">failed</option>
                 </select>
               </td>}
+              {isComprehensive && <td><input type="text" className="history-edit" value={editingJob.printerName} onChange={(e) => handleJobEdit(e, "printerName")}></input></td>}
               <td><input type="text" className="history-edit" value={editingJob.partNames} onChange={(e) => handleJobEdit(e, "partNames")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.name} onChange={(e) => handleJobEdit(e, "name")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.email} onChange={(e) => handleJobEdit(e, "email")}></input></td>
@@ -1457,6 +1468,7 @@ function App() {
             :
             <>
               {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, queue, 40) }} />}
+              {isComprehensive && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.printerName, queue, 40) }} />}
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, queue, 40) }} />
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, queue, 20) }} />
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, queue, 30) }} />
@@ -1647,7 +1659,13 @@ function App() {
                   }} />
                 </div>
               </div>}
+
               <div style={{ height: '80px' }} />
+
+              {/* Comprehensive print history here */}
+              <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch} 
+              createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}></PrintHistoryTable>
+
             </div>}
           </div>}
 
@@ -1892,7 +1910,7 @@ function App() {
                         }
 
                         return <tr className={`${job.status} history-row`} key={job.jobID}>
-                          {createHistoryRow(job, true)}
+                          {createHistoryRow(job, false, true)}
                         </tr>
                       })}
                     </tbody>
@@ -1906,61 +1924,10 @@ function App() {
 
             <div style={{ height: "100px" }}></div>
 
-            <div className="print-history">
-              <div style={{ margin: '0px', padding: '0px' }}>Print History [{historyList.length - historyList.filter(item => item.status === 'queued').length}]</div>
-              <div className="search-bar">
-                Search:&nbsp;
-                <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
-                <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>
-              </div>
-            </div>
-            <div style={{ height: 'calc(85vh - 90px)', overflow: 'hidden' }}>
-              <div className='wrapper-wrapper'>
-                <table className='history-wrapper'>
-                  <thead>
-                    <tr>
-                      {isAdmin && <th>Delete</th>}
-                      {isAdmin && <th>Edit</th>}
-                      <th>Time Started</th>
-                      <th>Status</th>
-                      <th>Parts</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Supervisor</th>
-                      <th>Filament</th>
-                      <th>Used {selectedPrinter.filamentType === 'Resin' ? '(ml)' : '(g)'}</th>
-                      <th>Notes</th>
-                      <th>Files</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {historyList.map((job) => {
-                      const containsSearch = Object.keys(job).some(key => {
-                        let value = job[key]
-                        if (key === 'timeStarted') {
-                          value = formatDate(value, true)
-                        } else if (key === 'personalFilament') {
-                          value = value ? 'personal' : 'club'
-                        } else if (key === 'usage_g') {
-                          value = value.toString()
-                          console.log(value)
-                        }
-                        return (typeof value === 'string' && value.toLowerCase().includes(historySearch.toLowerCase()))
-                      }
-                      );
-                      if (!containsSearch || job.status === 'queued') {
-                        return null;
-                      }
+            {/* print history table */}
+            <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch} 
+              createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}></PrintHistoryTable>
 
-                      return <tr className={`${job.status} history-row`} key={job.jobID}>
-                        {createHistoryRow(job)}
-                      </tr>
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div style={{ height: '3vh' }} />
 
             <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
               <div className='printer-header' style={{
@@ -2069,6 +2036,67 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
       )}
     </>
   );
+}
+
+function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, setHistorySearch, createHistoryRow, selectedPrinter, isAdmin, formatDate }) {
+  let isComprehensive = !selectedPrinter;
+  return (<>
+    <div className="print-history">
+      <div style={{ margin: '0px', padding: '0px' }}>{selectedPrinter ? 'Print History' : 'Comprehensive Print History'} [{historyList.length - historyList.filter(item => item.status === 'queued').length}]</div>
+      <div className="search-bar">
+        Search:&nbsp;
+        <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
+        <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>
+      </div>
+    </div>
+    <div style={{ height: 'calc(85vh - 90px)', overflow: 'hidden' }}>
+      <div className='wrapper-wrapper'>
+        <table className='history-wrapper'>
+          <thead>
+            <tr>
+              {isAdmin && <th>Delete</th>}
+              {isAdmin && <th>Edit</th>}
+              <th>Time Started</th>
+              <th>Status</th>
+              {isComprehensive && <th>Printer</th>}
+              <th>Parts</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Supervisor</th>
+              <th>Filament</th>
+              <th>Used {selectedPrinter?.filamentType === 'Resin' ? '(ml)' : '(g)'}</th>
+              <th>Notes</th>
+              <th>Files</th>
+            </tr>
+          </thead>
+          <tbody>
+            {historyList.map((job) => {
+              const containsSearch = Object.keys(job).some(key => {
+                let value = job[key]
+                if (key === 'timeStarted') {
+                  value = formatDate(value, true)
+                } else if (key === 'personalFilament') {
+                  value = value ? 'personal' : 'club'
+                } else if (key === 'usage_g') {
+                  value = value.toString()
+                }
+                return (typeof value === 'string' && value.toLowerCase().includes(historySearch.toLowerCase()))
+              }
+              );
+              if (!containsSearch || job.status === 'queued') {
+                return null;
+              }
+
+              return <tr className={`${job.status} history-row`} key={job.jobID}>
+                {createHistoryRow(job, isComprehensive, false)}
+              </tr>
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div style={{ height: '3vh' }} />
+  </>)
 }
 
 function FormCheckbox({ activeCheckVal, handleChangeFunc, text }) {
