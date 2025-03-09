@@ -76,6 +76,7 @@ function App() {
   //summary page data
   const [recentFiles, setRecentFiles] = useState([]);
   const [dailyPrint, setDailyPrint] = useState([]);
+  const [potdStatus, setPotdStatus] = useState('loading')
   const hasFetchedDailyPrint = useRef(false);
 
   const [showSTLPreviews, setShowSTLPreviews] = useState(true)
@@ -141,7 +142,7 @@ function App() {
         const sorted = sortPrinterList(response.data.printers, printerSort)
         setPrinterList(sorted);
         console.log("setting printers to data: ", sorted);
-      }).catch(e=>{
+      }).catch(e => {
         setLoading('error')
       });
     } catch (error) {
@@ -252,11 +253,15 @@ function App() {
             }
 
             console.log('setting daily print: ', newDailyPrint);
+            setPotdStatus('done')
             setDailyPrint({ 'parts': newDailyPrint, 'pageLink': response.data.pageLink, 'pageName': response.data.pageName });
+          }).catch(e => {
+            setPotdStatus('error')
           });
         } catch (error) {
           console.error("Error fetching print of the day: ", error);
           setLoadingSummary(false);
+          setPotdStatus('error')
         }
       }
 
@@ -936,6 +941,9 @@ function App() {
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
         console.log("startPrintClick: warn: already 5 queued resin prints");
         showMsgForDuration("Resin queue is full! Print not queued.", 'err', popupTime);
+      } else if (queue) {
+        console.log("startPrintClick: warn: resin print costs $0.10 / ml");
+        showMsgForDuration(`Warning: Resin prints cost $0.15 / ml, even for members.`, 'warn', popupTime + 5000);
       } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
         console.log("startPrintClick: warn: filament type not PLA");
         showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
@@ -1500,62 +1508,66 @@ function App() {
 
       <div className='main-content' style={{ marginLeft: `${sidebarOpen ? sidebarWidth : 0}px` }}>
         <div style={{ height: selectedPrinter ? '85px' : '55px' }}></div>
+        {(!selectedPrinter && !menuOpen) && <div>
+          <div className='null'>
+            No printer selected! <br /> Choose one from the printer list on the left.
+          </div>
 
-        {(!selectedPrinter && !menuOpen) && <div className='null'>
-          No printer selected! <br /> Choose one from the printer list on the left.
-        </div>}
 
-
-        {(loading === 'loading') && <div>
-          <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
-        </div>}
-        {(loading === 'error') && <div>
-          <h1><b>Server Connection Failed</b></h1>
-          <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
-          
-        </div>}
-        {loading === 'done' &&
-          <div>
-            {/* Print of the day stl previews*/}
-            <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Print of the Day</b></h1>
-            {(dailyPrint.length === 0) ? <div>
-              <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
-            </div> :
-              <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-                {dailyPrint.map((file, index) => {
-                  return (
-                    <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
-                  )
-                })
-                }
-              </div>
-            }
-
-            {(dailyPrint.pageLink !== '') && <div className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}>
-              <h3> <b>Click <a target="_blank" rel="noreferrer" href={dailyPrint.pageLink}>here</a> to go to the source page on printables</b></h3>
-            </div>}
-
-            <h1 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>Recently Printed Files</b></h1>
-            <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-              <ErrorBoundary>
-                {recentFiles.map((file, index) => {
-                  return (
-                    <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
-                  )
-                })
-                }
-              </ErrorBoundary>
-            </div>
+          {(loading === 'loading') && <div>
+            <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
           </div>}
+          {(loading === 'error') && <div>
+            <h1><b>Server Connection Failed</b></h1>
+            <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
+
+          </div>}
+          {loading === 'done' &&
+            <div>
+              {/* Print of the day stl previews*/}
+              <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🔥 Trending Print</b></h1>
+              {(potdStatus === 'done') && <div>
+                <h2 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>{dailyPrint.pageName} - &nbsp;
+                  <a target="_blank" rel="noreferrer" href={dailyPrint?.pageLink}>Source</a></b></h2>
+                <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+                  {dailyPrint?.parts?.map((file, index) => {
+                    return (
+                      <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
+                    )
+                  })
+                  }
+                </div>
+              </div>
+              }
+              {(potdStatus === 'loading') && <div>
+                <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
+              </div>}
+              {(potdStatus === 'error') && <div>
+                <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
+              </div>}
+
+              <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🕜 Recently Printed Files</b></h1>
+              <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+                <ErrorBoundary>
+                  {recentFiles.map((file, index) => {
+                    return (
+                      <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
+                    )
+                  })
+                  }
+                </ErrorBoundary>
+              </div>
+            </div>}
+        </div>}
 
 
         <div className="printer-screen">
           {(!selectedPrinter && !menuOpen) && <div>
 
-            {!loadingSummary && <div>
+            {!loadingSummary && (loading === 'done') && <div>
               <h2 style={{ fontSize: "xx-large" }}>Lab Summary</h2>
 
-              {!loading && <div className='pie'>
+              {(loading === 'done') && <div className='pie'>
                 <div className='pie-chart'>
                   <h2>Total Number of Jobs Per Printer</h2>
                   <Pie data={{
@@ -1589,13 +1601,13 @@ function App() {
                     }} />
                 </div>
               </div>}
+              {loading === 'done' &&
+                <div className='chart-wrapper'>
+                  <LineChart argsObject={{ filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0], dateWindow: lineDateWindow }} index={1} />
+                  <LineChart argsObject={{ filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1], dateWindow: lineDateWindow }} index={2} />
+                </div>}
 
-              <div className='chart-wrapper'>
-                <LineChart argsObject={{ filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0], dateWindow: lineDateWindow }} index={1} />
-                <LineChart argsObject={{ filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1], dateWindow: lineDateWindow }} index={2} />
-              </div>
-
-              {!loading && <div className="pie">
+              {(loading === 'done') && <div className="pie">
                 <div className='pie-chart'>
                   <h2>Number of Prints By Supervisor</h2>
                   <Pie data={{
@@ -1695,15 +1707,17 @@ function App() {
 
             {/* Printer status pages: busy, available, admin, admin-busy, broken, and testing */}
 
-            {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy") && isAdmin)) && <div>
+            {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy"))) && <div>
               <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
-              <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
-              <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Cancel Print</button>
-              {isAdmin && <div>
-                <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
-                <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
-                {selectedPrinter.status === 'busy' && <button onClick={() => { printerChangeWhileBusy("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>}
-              </div>}
+              {isAdmin && <>
+                <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
+                <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Cancel Print</button>
+                <div>
+                  <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
+                  <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
+                  {selectedPrinter.status === 'busy' && <button onClick={() => { printerChangeWhileBusy("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>}
+                </div>
+              </>}
               <br />
 
               {/* If the printer is a resin printer, then also include the option to queue up a new print */}
@@ -1964,6 +1978,7 @@ function App() {
 
 
         </div>
+
         {menuOpen ? (
           <div className='menuBG visible' style={{ left: `${sidebarOpen ? sidebarWidth + 2 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)` }}>
             {
@@ -2019,12 +2034,14 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
         <ErrorBoundary>
           <div className="stl-previews">
             {curJob && curJob.files.split(',').map((link, index) => {
-              if (link.trim().startsWith('https://')) {
+              trimmedLink = link.trim();
+
+              if (trimmedLink.startsWith('https://')) {
                 let partname = curJob.partNames?.split(',')[index]
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 24) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} />
+                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 32) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} />
                   </div>
                 );
               } else {

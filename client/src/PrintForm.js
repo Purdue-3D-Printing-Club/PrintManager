@@ -36,7 +36,6 @@ const PrintForm = ({ printFormArgs }) => {
                         })}
                     </tbody>
                 </table>
-
             </div>}
             <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
             <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
@@ -44,7 +43,7 @@ const PrintForm = ({ printFormArgs }) => {
             <input type="file" multiple onChange={handleUpload} style={{ display: 'none' }} id="upload" />
             <div> Parts:&nbsp;
                 <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                <input  placeholder="part1, part2, part3" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                <input  placeholder="part1.stl, part2.stl" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
 
             <div> Files:&nbsp;&nbsp;
                 <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>

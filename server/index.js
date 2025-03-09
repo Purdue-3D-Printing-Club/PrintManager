@@ -29,6 +29,7 @@ const upload = multer({ dest: `${temp_folder}/` });
 // puppeteer web scraping
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const { randomInt } = require('crypto');
 puppeteer.use(StealthPlugin());
 
 
@@ -201,47 +202,47 @@ app.get('/api/stream-stl', async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+
     const { url } = req.query;
     if (!url) {
-      return res.status(400).send('Missing url parameter');
+        return res.status(400).send('Missing url parameter');
     }
-    
+
     const directUrl = getDirectLink(url);
     console.log('directUrl:', directUrl);
     try {
-      const response = await fetch(directUrl);
-      if (!response.ok) {
-        return res.status(500).send('Error fetching the STL file from Google Drive');
-      }
-  
-      // Option 1: Buffer the response, then send it:
-      const buffer = await response.buffer();
-  
-      // Set the Content-Type header explicitly
-      res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
-      res.send(buffer);
-  
-      // Option 2: If the file is too large to buffer entirely,
-      // you may need to pipe the stream and ensure no conflicting headers are included.
-      // In that case, you might want to remove or override any headers from Google Drive's response.
-      // For example:
-      // res.setHeader('Content-Type', 'application/octet-stream');
-      // response.body.on('data', chunk => res.write(chunk));
-      // response.body.on('end', () => res.end());
-      
+        const response = await fetch(directUrl);
+        if (!response.ok) {
+            return res.status(500).send('Error fetching the STL file from Google Drive');
+        }
+
+        // Option 1: Buffer the response, then send it:
+        const buffer = await response.buffer();
+
+        // Set the Content-Type header explicitly
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+        res.send(buffer);
+
+        // Option 2: If the file is too large to buffer entirely,
+        // you may need to pipe the stream and ensure no conflicting headers are included.
+        // In that case, you might want to remove or override any headers from Google Drive's response.
+        // For example:
+        // res.setHeader('Content-Type', 'application/octet-stream');
+        // response.body.on('data', chunk => res.write(chunk));
+        // response.body.on('end', () => res.end());
+
     } catch (err) {
-      console.error('Error:', err);
-      res.status(500).send('Server error');
+        console.error('Error:', err);
+        res.status(500).send('Server error');
     }
-  });
-  
+});
+
 
 async function getPrintLinks(browser) {
     const homePage = await browser.newPage();
 
     console.log('\nscraper: going to printables..')
-    await homePage.goto('https://www.printables.com/model', { waitUntil: 'networkidle2' });
+    await homePage.goto('https://www.printables.com/model', { waitUntil: 'domcontentloaded' });
 
     console.log('waiting for card-images to load..')
     // Wait for the popular items to load. Adjust the selector to one that exists on the page.
@@ -260,7 +261,7 @@ async function getPrintLinks(browser) {
 
             const regex = /href="([^"]+)"/;
             const match = htmlString.match(regex);
-            return {'link': match ? ("https://printables.com" + match[1] + "/files") : null, 'name': matchName[1]};
+            return { 'link': match ? ("https://printables.com" + match[1] + "/files") : null, 'name': matchName[1] };
         }).filter(id => id !== null);
     });
     return printLinks;
@@ -268,15 +269,15 @@ async function getPrintLinks(browser) {
 
 async function getDownloadLinks(browser, printLinks) {
     let dlLinks = []
-    let pageIndex = 0;
+    let pageIndex = randomInt(0,printLinks.length);
     let cookieClicked = false;
 
-    while (dlLinks.length === 0) {
+    // while (dlLinks.length === 0) {
         try {
             const printPage = await browser.newPage();
 
             console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex].link}...`)
-            await printPage.goto(printLinks[pageIndex].link, { waitUntil: 'networkidle2' });
+            await printPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
 
             if (!cookieClicked) {
                 //click the accept cookies button so that it gets out of the way of the download buttons
@@ -299,49 +300,59 @@ async function getDownloadLinks(browser, printLinks) {
             const promises = [];
 
             // Assuming dlBtns is an array or iterable with buttons to click
-            for (let btnNum = 0; btnNum < dlBtns.length && btnNum < 5; btnNum++) {
+            for (let btnNum = 0; btnNum < dlBtns.length && btnNum < 6; btnNum++) {
                 promises.push((async (btnNum) => {
-                    console.log('Opening page ', btnNum);
+                    try {
+                        console.log('Opening page ', btnNum);
 
-                    // create a new browser for each download
-                    const browser = await puppeteer.launch({ headless: true });
-                    const printDLPage = await browser.newPage();
+                        // create a new browser for each download 
+                        // TODO: Make this more efficient!
+                        const browser = await puppeteer.launch({ headless: true });
+                        const printDLPage = await browser.newPage();
 
-                    // const printDLPage = await browser.newPage();
+                        // const printDLPage = await browser.newPage();
 
 
-                    // Listen for download requests on this page
-                    await printDLPage.setRequestInterception(true);
-                    printDLPage.on('request', request => {
-                        if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
-                            console.log('Intercepted download request:', request.url());
-                            dlLinks.push(request.url());
-                            request.abort(); // Abort the download request, we just want the link.
+                        // Listen for download requests on this page
+                        await printDLPage.setRequestInterception(true);
+                        printDLPage.on('request', request => {
+                            if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
+                                console.log('Intercepted download request:', request.url());
+                                dlLinks.push(request.url());
+                                request.abort(); // Abort the download request, we just want the link.
+                            } else {
+                                request.continue();
+                            }
+                        });
+
+                        console.log('Going to print download page...');
+                        await printDLPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
+
+
+                        //click the accept cookies button so that it gets out of the way of the download buttons
+                        console.log('\nwaiting for cookie btn...')
+                        await printDLPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
+                        await printDLPage.click('[id*="onetrust-accept-btn-handler"]');
+                        await new Promise(resolve => setTimeout(resolve, 250));
+                        console.log('clicked cookie btn...')
+                        cookieClicked = true;
+
+
+                        console.log('Waiting for download buttons...');
+                        await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+                        const curDLBtns = await printDLPage.$$('[class*="btn-download"]');
+
+
+                        // Click the appropriate download button
+                        await curDLBtns[btnNum].click();
+
+                    } catch (error) {
+                        if (error.name === 'TimeoutError') {
+                            console.log('ERROR: Timeout occurred while getting handling print download button.');
                         } else {
-                            request.continue();
+                            throw error;
                         }
-                    });
-
-                    console.log('Going to print download page...');
-                    await printDLPage.goto(printLinks[pageIndex].link, { waitUntil: 'networkidle2' });
-
-
-                    //click the accept cookies button so that it gets out of the way of the download buttons
-                    console.log('\nwaiting for cookie btn...')
-                    await printDLPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
-                    await printDLPage.click('[id*="onetrust-accept-btn-handler"]');
-                    await new Promise(resolve => setTimeout(resolve, 250));
-                    console.log('clicked cookie btn...')
-                    cookieClicked = true;
-
-
-                    console.log('Waiting for download buttons...');
-                    await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
-                    const curDLBtns = await printDLPage.$$('[class*="btn-download"]');
-                    
-                    
-                    // Click the appropriate download button
-                    await curDLBtns[btnNum].click();
+                    }
                 })(btnNum));
             }
 
@@ -360,14 +371,130 @@ async function getDownloadLinks(browser, printLinks) {
                 throw error;
             }
         }
-        if (dlLinks.length === 0) {
-            console.log('incrementing page index...')
-            pageIndex++;
-        }
-    }
+    //     if (dlLinks.length === 0) {
+    //         console.log('incrementing page index...')
+    //         pageIndex++;
+    //     }
+    // }
     console.log('done');
     return ({ 'partLinks': dlLinks, 'pageLink': printLinks[pageIndex].link, 'pageName': printLinks[pageIndex].name });
 }
+
+// async function getDownloadLinks(browser, printLinks) {
+//     let dlLinks = []
+//     let pageIndex = 0;
+//     let cookieClicked = false;
+
+//     while (dlLinks.length === 0) {
+//         try {
+//             const printPage = await browser.newPage();
+
+//             console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex].link}...`)
+//             await printPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
+
+//             if (!cookieClicked) {
+//                 //click the accept cookies button so that it gets out of the way of the download buttons
+//                 console.log('\nwaiting for cookie btn...')
+//                 await printPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
+//                 await printPage.click('[id*="onetrust-accept-btn-handler"]');
+//                 await new Promise(resolve => setTimeout(resolve, 250));
+//                 console.log('clicked cookie btn...')
+//                 cookieClicked = true;
+//             }
+
+
+//             console.log('\nwaiting for download buttons...')
+//             await printPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+//             let dlBtns = await printPage.$$('[class*="btn-download"]')
+
+//             console.log('buttons:', dlBtns.length);
+
+//             console.log('\n\n Loading new page for each download button');
+//             const promises = [];
+
+//             // Assuming dlBtns is an array or iterable with buttons to click
+//             for (let btnNum = 0; btnNum < dlBtns.length && btnNum < 6; btnNum++) {
+//                 promises.push((async (btnNum) => {
+//                     try {
+//                         console.log('Opening page ', btnNum);
+
+//                         // create a new browser for each download
+//                         // const browser = await puppeteer.launch({ headless: true });
+//                         // const printDLPage = await browser.newPage();
+
+//                         const printDLPage = await browser.newPage();
+
+//                         // Listen for download requests on this page
+//                         await printDLPage.setRequestInterception(true);
+//                         printDLPage.on('request', request => {
+//                             if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
+//                                 console.log('Intercepted download request:', request.url());
+//                                 dlLinks.push(request.url());
+//                                 request.abort(); // Abort the download request, we just want the link.
+//                             } else {
+//                                 request.continue();
+//                             }
+//                         });
+
+//                         console.log('Going to print download page...');
+//                         await printDLPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
+
+
+//                         //click the accept cookies button so that it gets out of the way of the download buttons
+//                         console.log('\nwaiting for cookie btn...')
+//                         // await printDLPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
+//                         // await printDLPage.click('[id*="onetrust-accept-btn-handler"]');
+//                         // await new Promise(resolve => setTimeout(resolve, 250));
+//                         console.log('clicked cookie btn...')
+//                         cookieClicked = true;
+
+
+//                         console.log('Waiting for download buttons...');
+//                         await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
+//                         const curDLBtns = await printDLPage.$$('[class*="btn-download"]');
+//                         if (curDLBtns) {
+//                             console.log('clicking the dl button...')
+//                             // Click the appropriate download button
+//                             await curDLBtns[btnNum].click();
+//                         } else {
+//                             console.log('ERR: no dl buttons found on dl page')
+//                         }
+
+
+
+//                     } catch (error) {
+//                         if (error.name === 'TimeoutError') {
+//                             console.log('ERROR: Timeout occurred while getting handlig print download button.');
+//                         } else {
+//                             throw error;
+//                         }
+//                     }
+//                 })(btnNum));
+//             }
+
+//             // Execute all promises concurrently, wait for them all to finish here
+//             await Promise.all(promises);
+
+
+//             console.log('waiting for timeout...')
+//             await new Promise(resolve => setTimeout(resolve, 1000));
+
+
+//         } catch (error) {
+//             if (error.name === 'TimeoutError') {
+//                 console.log('ERROR: Timeout occurred while getting download links.');
+//             } else {
+//                 throw error;
+//             }
+//         }
+//         if (dlLinks.length === 0) {
+//             console.log('incrementing page index...')
+//             pageIndex++;
+//         }
+//     }
+//     console.log('done');
+//     return ({ 'partLinks': dlLinks, 'pageLink': printLinks[pageIndex].link, 'pageName': printLinks[pageIndex].name });
+// }
 
 app.get('/api/getDailyPrint', async (req, res) => {
     async function getDailyPrint() {

@@ -24,11 +24,10 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
 
     container.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0x404040, 2);
+    const ambientLight = new THREE.AmbientLight(0x606060, 2);
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(0, 0, 1);
-    //scene.add(directionalLight);  
+    directionalLight.position.set(2, 5, 3);
     camera.add(directionalLight);
     scene.add(camera);
 
@@ -53,8 +52,8 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
         geometry.center();
 
         const material = new THREE.MeshPhongMaterial({
-          color: 0x33ff88,
-          specular: 0x111111,
+          color: 0x55ee88,
+          specular: 0x333333,
           shininess: 200,
         });
         const mesh = new THREE.Mesh(geometry, material);
