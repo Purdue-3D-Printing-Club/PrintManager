@@ -219,7 +219,7 @@ function App() {
       if (printerList.length === 0) {
         return;
       }
-      
+
       // fetch recent files
       try {
         Axios.get(`${serverURL}/api/getRecentFiles`).then((response) => {
@@ -452,7 +452,7 @@ function App() {
       personalFilament: editingJob.personalFilament,
       notes: truncateString(editingJob.notes, 256)
     }
-    if(!selectedPrinter){
+    if (!selectedPrinter) {
       console.log('No printer selected in saving history job, exiting early...')
       return;
     }
@@ -1663,8 +1663,8 @@ function App() {
               <div style={{ height: '80px' }} />
 
               {/* Comprehensive print history here */}
-              <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch} 
-              createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}></PrintHistoryTable>
+              <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
+                createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}></PrintHistoryTable>
 
             </div>}
           </div>}
@@ -1727,9 +1727,11 @@ function App() {
 
             {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy"))) && <div>
               <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
-              {isAdmin && <>
+              {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy") && isAdmin)) && <>
                 <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
                 <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Cancel Print</button>
+              </>}
+              {isAdmin && <>
                 <div>
                   <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
                   <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
@@ -1925,7 +1927,7 @@ function App() {
             <div style={{ height: "100px" }}></div>
 
             {/* print history table */}
-            <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch} 
+            <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
               createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}></PrintHistoryTable>
 
 
