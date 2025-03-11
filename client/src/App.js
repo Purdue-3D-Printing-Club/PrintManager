@@ -418,7 +418,7 @@ function App() {
   }
 
   const refreshHistory = () => {
-    Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
+    Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter?.printerName}&field=printerName`).then((response) => {
       const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
       setHistoryList(newHistory);
       console.log('Got history list:')
@@ -439,6 +439,36 @@ function App() {
     }
   }
 
+  // update the printer's status from active to inactive
+  const activeToInactive = (refPrinter) => {
+    console.log('Changing', refPrinter.printerName, 'status to inactive')
+
+    updateTable("printer", "currentJob", refPrinter.printerName, '', () => {
+      handlePrinterStatusChange(refPrinter.status === 'admin-busy' ? 'admin' : 'available', refPrinter);
+      saveJob();
+    })
+    refPrinter.currentJob = ''
+  }
+
+  const inactiveToActive = (refPrinter, editingJobFilt) => {
+    console.log('Changing', refPrinter.printerName, 'status to active')
+    handlePrinterStatusChange(refPrinter.status === 'admin' ? 'admin-busy' : 'busy', refPrinter);
+    setCurJob(editingJobFilt);
+    refPrinter.currentJob = editingJobFilt.jobID;
+
+    //set all other active jobs to completed, then update this job to be active
+    Axios.put(`${serverURL}/api/update`, {
+      table: "printjob",
+      column: "status",
+      id: refPrinter.printerName,
+      val: 'completed'
+    }).then(() => {
+      updateTable("printer", "currentJob", refPrinter.printerName, editingJobFilt.jobID, () => {
+        saveJob();
+      });
+    });
+  }
+
   const handleEditClick = (job) => {
     const editingJobFilt = {
       jobID: editingJob.jobID,
@@ -452,46 +482,82 @@ function App() {
       personalFilament: editingJob.personalFilament,
       notes: truncateString(editingJob.notes, 256)
     }
-    if (!selectedPrinter) {
-      console.log('No printer selected in saving history job, exiting early...')
-      return;
-    }
-    if (editingJobFilt.jobID === job.jobID) {
-      if (editingJobFilt.status !== job.status) {
-        // if the job was made active again, set printer status to busy
-        if ((editingJobFilt.status === 'active')) {
-          handlePrinterStatusChange(selectedPrinter.status === 'admin' ? 'admin-busy' : 'busy');
-          setCurJob(editingJobFilt);
-          selectedPrinter.currentJob = editingJobFilt.jobID;
 
-          //set all other active jobs to completed, then update this job to be active
-          Axios.put(`${serverURL}/api/update`, {
-            table: "printjob",
-            column: "status",
-            id: selectedPrinter.printerName,
-            val: 'completed'
-          }).then(() => {
-            updateTable("printer", "currentJob", selectedPrinter.printerName, editingJobFilt.jobID, () => {
-              saveJob();
-            });
-          });
-        }
-        // if the job status was changed from active, set the printer status to available or admin and reset currentJob
-        else if (job.status === 'active') {
-          updateTable("printer", "currentJob", selectedPrinter.printerName, '', () => {
-            handlePrinterStatusChange(selectedPrinter.status === 'admin-busy' ? 'admin' : 'available');
+    let refPrinter = selectedPrinter;
+
+    // This is the comprehensive history table in the lab summary page
+    if (!refPrinter) {
+      console.log('No referencedPrinter, searching in printerList...')
+      // look up the printer name in the printer list to use it later
+      refPrinter = printerList.find(printer => printer.printerName === job.printerName);
+      console.log('Found printer: ', refPrinter)
+
+      if (!refPrinter) {
+        console.log('Could not find the reference printer in printerList, edit not allowed.')
+        return;
+      }
+    }
+
+    // save the edits
+    if (editingJobFilt.jobID === job.jobID) {
+      if (!printerList.map(printer => printer.printerName).includes(editingJob.printerName)) {
+        console.log('Cannot set new printer name: Printer does not exist!')
+        showMsgForDuration(`Cannot save job: Printer "${editingJob.printerName}" doesn't exist!`, 'err');
+        setEditingJob({ ...editingJob, jobID: -1 });
+        return;
+      }
+
+      if (editingJobFilt.status !== job.status) {
+        // handle different cases where the printer name was changed too, so we need different behavior
+        if (job.printerName !== editingJob.printerName) {
+          let destPrinter = printerList.find(printer => printer.printerName === editingJob.printerName)
+
+          // job changed from inactive to active
+          if ((editingJobFilt.status === 'active')) {
+            // change only the destination printer to active
+            inactiveToActive(destPrinter, editingJobFilt);
+          }
+          // job changed from active to inactive
+          else if (job.status === 'active') {
+            // change only the destination printer to inactive
+            activeToInactive(refPrinter);
+          } else {
+            // otherwise, just save the job (no active status was changed)
             saveJob();
-          })
-          selectedPrinter.currentJob = ''
+          }
+        } else {
+          // if the job was made active again, set printer status to busy
+          if ((editingJobFilt.status === 'active')) {
+            inactiveToActive(refPrinter, editingJobFilt);
+          }
+          // if the job status was changed from active, set the printer status to available or admin and reset currentJob
+          else if (job.status === 'active') {
+            activeToInactive(refPrinter);
+          } else {
+            // otherwise, just save the job (no active status was changed)
+            saveJob();
+          }
+        }
+      } else {
+        console.log('status did not change')
+        console.log('editingJob name: ', editingJob.printerName, ' | job name: ', job.printerName)
+        // if the printer was changed, and the status is active, then we need to update the printer status of both printers
+        // source -- busy to inactive   |   destination -- inactive to busy
+        if ((job.printerName !== editingJob.printerName) && (job.status === 'active')) {
+          console.log('active to active printer name change detected')
+          let destPrinter = printerList.find(printer => printer.printerName === editingJob.printerName)
+          // set the source printer to inactive
+          activeToInactive(refPrinter);
+          //set the destination printer to active
+          inactiveToActive(destPrinter, editingJobFilt);
         } else {
           saveJob();
         }
-      } else {
-        saveJob();
       }
     } else {
+      // change the job to edit, discard previous changes
       setEditingJob(job);
-      console.log('Editing job: ' + job.jobID);
+      console.log('Editing job: ', job);
     }
   }
 
@@ -722,10 +788,10 @@ function App() {
     console.log('given pswd: ' + hash)
     console.log('actual pswd: ' + actual)
     if (hash === actual) {
-      showMsgForDuration("Logged in as Admin!", 'msg', popupTime);
+      showMsgForDuration("Logged in as Admin!", 'msg');
       handleIsAdminChange(true)
     } else {
-      showMsgForDuration("Incorrect Password.", 'err', popupTime);
+      showMsgForDuration("Incorrect Password.", 'err');
     }
     setAdminPswd('')
   }
@@ -790,9 +856,9 @@ function App() {
 
   const handleFeedbackClick = () => {
     if (feedbackSubject.length <= 0) {
-      showMsgForDuration("No Feedback Subject! Not sent.", 'err', popupTime)
+      showMsgForDuration("No Feedback Subject! Not sent.", 'err')
     } else if (feedbackText.length <= 0) {
-      showMsgForDuration("No Feedback Text! Not sent.", 'err', popupTime)
+      showMsgForDuration("No Feedback Text! Not sent.", 'err')
     } else {
       sendMail('PrintManager Feedback - ' + feedbackSubject, feedbackText, "print3d@purdue.edu")
       setFeedbackSubject('')
@@ -842,19 +908,19 @@ function App() {
     }
   };
 
-  const handlePrinterStatusChange = (statusArg) => {
-    console.log('changing printer ' + selectedPrinter.printerName + '\'s status to ' + statusArg)
+  const handlePrinterStatusChange = (statusArg, refPrinter = selectedPrinter) => {
+    console.log('changing printer ' + refPrinter.printerName + '\'s status to ' + statusArg)
     //first, update the database to have the new printer status
-    updateTable("printer", "status", selectedPrinter.printerName, statusArg, () => {
+    updateTable("printer", "status", refPrinter.printerName, statusArg, () => {
       //then, update the local printer array to reflect this change
       const updatedPrinterList = printerList.map(printer => {
-        if (printer.printerName === selectedPrinter.printerName) {
+        if (printer.printerName === refPrinter.printerName) {
           return { ...printer, status: statusArg };
         }
         return printer;
       });
       setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
-      selectedPrinter.status = statusArg;
+      refPrinter.status = statusArg;
     });
   };
 
@@ -873,11 +939,11 @@ function App() {
     console.log(toRelease)
     // edge case handling
     if ((queue.length <= 0) || !toRelease) {
-      showMsgForDuration('No jobs in queue! Print not started.', 'err', popupTime);
+      showMsgForDuration('No jobs in queue! Print not started.', 'err');
       return;
     }
     if (!((selectedPrinter.status === 'available') || (selectedPrinter.status === 'admin'))) {
-      showMsgForDuration('Printer is busy! Finish current job first.', 'err', popupTime);
+      showMsgForDuration('Printer is busy! Finish current job first.', 'err');
       return;
     }
 
@@ -904,7 +970,7 @@ function App() {
             return printer;
           });
           setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
-          showMsgForDuration('Resin print successfully started!', 'msg', popupTime)
+          showMsgForDuration('Resin print successfully started!', 'msg')
         })
       });
     });
@@ -917,28 +983,28 @@ function App() {
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' && selectedPrinter.filamentType !== 'Resin') {
-        showMsgForDuration("This printer is not available!", 'err', popupTime);
+        showMsgForDuration("This printer is not available!", 'err');
       } else if (selectedPrinter.status === 'admin' && !isAdmin) {
-        showMsgForDuration("This printer is not available!", 'err', popupTime);
+        showMsgForDuration("This printer is not available!", 'err');
       } else if (name.length === 0) {
         console.log("startPrintClick: err: no name");
-        showMsgForDuration("No Name! Print not started.", 'err', popupTime);
+        showMsgForDuration("No Name! Print not started.", 'err');
       } else if ((email.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no email");
-        showMsgForDuration("No Email! Print not started.", 'err', popupTime);
+        showMsgForDuration("No Email! Print not started.", 'err');
       } else if ((supervisor.length === 0) && !supervisorPrint) {
         console.log("startPrintClick: err: no supervisor");
-        showMsgForDuration("No Supervisor! Print not started.", 'err', popupTime);
+        showMsgForDuration("No Supervisor! Print not started.", 'err');
       } else if ((partNames.length === 0)) {// && !supervisorPrint) {
         console.log("startPrintClick: err: no partNames");
-        showMsgForDuration("No Part Names! Print not started.", 'err', popupTime);
+        showMsgForDuration("No Part Names! Print not started.", 'err');
       } else if (files.length === 0) {
         console.log("startPrintClick: err: no files");
-        showMsgForDuration("No Files! Print not started.", 'err', popupTime);
+        showMsgForDuration("No Files! Print not started.", 'err');
       }
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
-        showMsgForDuration("No Filament Usage! Print not started.", 'err', popupTime);
+        showMsgForDuration("No Filament Usage! Print not started.", 'err');
       } else if (historyList.filter(item => item.status === 'queued').some(job => {
         if (job.name.toLowerCase() === name.toLowerCase()) {
           matchingJob = job;
@@ -950,16 +1016,16 @@ function App() {
         showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
         console.log("startPrintClick: warn: already 5 queued resin prints");
-        showMsgForDuration("Resin queue is full! Print not queued.", 'err', popupTime);
-      } else if (queue) {
-        console.log("startPrintClick: warn: resin print costs $0.10 / ml");
-        showMsgForDuration(`Warning: Resin prints cost $0.15 / ml, even for members.`, 'warn', popupTime + 5000);
+        showMsgForDuration("Resin queue is full! Print not queued.", 'err');
       } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
         console.log("startPrintClick: warn: filament type not PLA");
         showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         console.log("startPrintClick: warn: filamentUsage > 1000g");
-        showMsgForDuration("Warning: Filament Usage Exceeds 1kg\nContinue anyway?", 'warn', popupTime + 5000);
+        showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
+      } else if (queue) {
+        console.log("startPrintClick: warn: resin print costs $0.10 / ml");
+        showMsgForDuration(`Warning: Resin prints cost $0.15 / ml,\nEven for club members.`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
         //clear all warning popups 
@@ -1071,22 +1137,22 @@ function App() {
       console.error('Error submitting printJob: ', error);
     }
 
-    showMsgForDuration(queue ? 'Print job queued!' : `Print job successfully started!`, 'msg', popupTime);
+    showMsgForDuration(queue ? 'Print job queued!' : `Print job successfully started!`, 'msg');
   };
 
 
   const sendMail = (subject, text, target = curJob.email,) => {
     if (target.length === 0) {
-      showMsgForDuration('Email not sent: No target', 'err', popupTime);
+      showMsgForDuration('Email not sent: No target', 'err');
     } else {
       Axios.post(`${serverURL}/api/send-email`, {
         to: target,
         subject: subject,
         text: text
       }).then(() => {
-        showMsgForDuration('Email Sent Successfully', 'msg', popupTime);
+        showMsgForDuration('Email Sent Successfully', 'msg');
       }).catch((error) => {
-        showMsgForDuration('Error Sending Email', popupTime);
+        showMsgForDuration('Error Sending Email');
         console.error('Error sending email:', error.response ? error.response.data : error.message);
       });
 
@@ -1169,7 +1235,7 @@ function App() {
                       if (failureCount >= 3) {
                         sendMail("3DPC: Print Failed", text);
                       } else {
-                        showMsgForDuration(`Email not sent. Failures: ${failureCount}`, 'msg', popupTime);
+                        showMsgForDuration(`Email not sent. Failures: ${failureCount}`, 'msg');
                       }
                     });
                   } catch (error) {
@@ -1178,12 +1244,12 @@ function App() {
                 }
 
               } catch (e) {
-                showMsgForDuration('Error Sending Email', 'err', popupTime);
+                showMsgForDuration('Error Sending Email', 'err');
                 console.log('Error sending email:', e);
               }
             } else {
               console.log('not sending email...')
-              showMsgForDuration('No Email Sent. (Disabled)', 'err', popupTime);
+              showMsgForDuration('No Email Sent. (Disabled)', 'err');
             }
 
             selectedPrinter.status = selectedPrinter.status === 'admin-busy' ? 'admin' : 'available';
@@ -1223,7 +1289,7 @@ function App() {
         if (data !== null && data.length > 0) {
           console.log('fetched form data: ');
           console.log(data)
-          showMsgForDuration('Form Data Retrieved Successfully!', 'msg', popupTime);
+          showMsgForDuration('Form Data Retrieved Successfully!', 'msg');
           setFormDataLoading(false);
 
 
@@ -1240,11 +1306,11 @@ function App() {
           setFormData(formattedData)
 
         } else {
-          showMsgForDuration('Error Filling Form...', 'err', popupTime);
+          showMsgForDuration('Error Filling Form...', 'err');
         }
       });
     } catch (e) {
-      showMsgForDuration('Error Filling Form...', 'err', popupTime);
+      showMsgForDuration('Error Filling Form...', 'err');
     }
   };
 
@@ -1253,7 +1319,7 @@ function App() {
     console.log("Updated messageQueue:", messageQueue);
   }, [messageQueue]);
 
-  const showMsgForDuration = (msg, type, duration, replaceJob = null) => {
+  const showMsgForDuration = (msg, type, duration = popupTime, replaceJob = null) => {
     console.log('adding ' + msg + 'to the queue...')
     const id = Date.now(); // Unique ID for each message
 
@@ -1996,7 +2062,6 @@ function App() {
 
 
 function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, truncateString, serverURL }) {
-  console.log('---- curJob:', curJob)
   return (
     <>
       {showSTLPreviews ? (

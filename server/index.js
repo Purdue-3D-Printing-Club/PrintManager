@@ -718,7 +718,7 @@ app.get('/api/getdailyprints', (req, res) => {
 app.get('/api/getHistory', (req, res) => {
     const value = req.query.value;
     const field = req.query.field;
-    console.log('value:', value, '  field:', field)
+    // console.log('value:', value, '  field:', field)
 
     let sqlSelectHistory = `SELECT * FROM printjob WHERE ${field} = ?`;
     if (value === 'undefined') {
@@ -894,8 +894,8 @@ app.put('/api/update', (req, res) => {
 });
 
 app.put('/api/updateJob', (req, res) => {
-    const { email, files, jobID, name, partNames, personalFilament, status, supervisorName, usage_g, notes } = req.body;
-    let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, name = ?, partNames = ?, personalFilament = ?, status = ?, supervisorName = ?, usage_g = ?, notes=? WHERE jobID = ?`;
+    const { email, files, printerName, jobID, name, partNames, personalFilament, status, supervisorName, usage_g, notes } = req.body;
+    let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, printerName = ?, name = ?, partNames = ?, personalFilament = ?, status = ?, supervisorName = ?, usage_g = ?, notes=? WHERE jobID = ?`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -904,7 +904,7 @@ app.put('/api/updateJob', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlUpdate, [email, files, name, partNames, personalFilament, status, supervisorName, usage_g, notes, jobID], (err, result) => {
+            connection.query(sqlUpdate, [email, files, printerName, name, partNames, personalFilament, status, supervisorName, usage_g, notes, jobID], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error updating database");

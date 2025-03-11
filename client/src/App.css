@@ -147,11 +147,11 @@ html::-webkit-scrollbar {
   width: 100px;
   top: -29px;
   right: -29px;
-  transition: stroke 0.2s ease;
+  transition: scale 0.2s ease;
 }
 
 .msg-exit:hover {
-  stroke: rgb(120, 90, 255);
+  scale: 1.1;
   cursor: pointer;
 }
 
