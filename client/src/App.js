@@ -3,10 +3,10 @@ import CryptoJS from 'crypto-js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import './App.css';
-import { ReactComponent as ExitIcon } from './images/exit.svg';
+import ExitIcon from '/images/exit.svg';
 
-import loadingGif from './images/loading.gif'
-import xIcon from './images/x.png'
+import loadingGif from '/images/loading.gif'
+import xIcon from '/images/x.png'
 
 import StlPreview from './StlPreview';
 import Settings from './Settings';

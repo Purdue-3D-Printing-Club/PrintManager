@@ -1,10 +1,10 @@
 import React from 'react';
 import './Sidebar.css';
 
-import clubIcon from './images/favicon.ico'
-import settingsIcon from './images/settings.png'
-import sheetsIcon from './images/sheets_icon.png'
-import formIcon from './images/form_icon.png'
+import clubIcon from '/images/favicon.ico'
+import settingsIcon from '/images/settings.png'
+import sheetsIcon from '/images/sheets_icon.png'
+import formIcon from '/images/form_icon.png'
 
 
 const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width,

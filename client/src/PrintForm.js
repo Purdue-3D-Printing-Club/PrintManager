@@ -1,4 +1,4 @@
-import loading from './images/loading.gif'
+import loading from '/images/loading.gif'
 
 const PrintForm = ({ printFormArgs }) => {
     const { setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,

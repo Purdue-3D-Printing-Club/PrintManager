@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import './Settings.css';
-import eye from './images/eye.svg';
-import eyeSlash from './images/eye_slash.svg'
+import eye from '/images/eye.svg';
+import eyeSlash from '/images/eye_slash.svg'
 
-import discord_qr from './images/3dpc_discord.png'
+import discord_qr from '/images/3dpc_discord.png'
 
 function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
   handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL }) {
