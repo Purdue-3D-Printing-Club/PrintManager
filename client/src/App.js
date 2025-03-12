@@ -3,7 +3,7 @@ import CryptoJS from 'crypto-js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import './App.css';
-import ExitIcon from '/images/exit.svg';
+import exitIcon from '/images/exit.svg';
 
 import loadingGif from '/images/loading.gif'
 import xIcon from '/images/x.png'
@@ -845,7 +845,7 @@ function App() {
 
     if (menuOpen && (e.key === 'Enter')) {
       if (e.target.id === "adminInput") {
-        checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD)
+        checkPswd(adminPswd, import.meta.env.VITE_ADMIN_PSWD)
       } else if (e.target.id === 'URLInput') {
         setServerURL(e.target.value)
       } else if (e.target.id === "subjectInput" || e.target.id === "feedbackInput") {
@@ -1281,6 +1281,7 @@ function App() {
 
   const pullFormData = (e) => {
     try {
+      console.log('pulling form data')
       // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
       const url = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec';
 
@@ -1303,6 +1304,8 @@ function App() {
               notes: job[10]
             })
           })
+
+
           setFormData(formattedData)
 
         } else {
@@ -1320,7 +1323,7 @@ function App() {
   }, [messageQueue]);
 
   const showMsgForDuration = (msg, type, duration = popupTime, replaceJob = null) => {
-    console.log('adding ' + msg + 'to the queue...')
+    console.log('adding [' + msg + '] to the queue...')
     const id = Date.now(); // Unique ID for each message
 
     setMessageQueue(prevQueue => [...prevQueue, { id, msg, type, replaceJob }]);
@@ -2041,7 +2044,7 @@ function App() {
         {
           messageQueue.map(({ id, msg, type, replaceJob }, index) => {
             return (
-              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line', zIndex: 11 }} key={id} className={`${type}-msg`}>{msg}<ExitIcon className="msg-exit" onClick={() => handleMsgExit(id)}></ExitIcon>
+              <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line', zIndex: 11 }} key={id} className={`${type}-msg`}>{msg}<img src={exitIcon} className="msg-exit" onClick={() => handleMsgExit(id)}></img>
                 {(type === 'warn') && <div className="warning-content">
                   <div onClick={() => { handleWarningClick(id, replaceJob) }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
                 </div>}

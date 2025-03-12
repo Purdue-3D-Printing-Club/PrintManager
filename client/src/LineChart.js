@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 import ReactSlider from 'react-slider';
 import './LineChart.css';
+import ErrorBoundary from './ErrorBoundary';
+
 
 const LineChart = ({ argsObject, index }) => {
     const { filledPersonalData, filledClubData, dateWindow } = argsObject;
@@ -11,7 +13,7 @@ const LineChart = ({ argsObject, index }) => {
 
     const [dateRange, setDateRange] = useState("Past 3 Months");
     const [sliderRange, setSliderRange] = useState({ min: 0, max: dateLen ? Math.min(90, dateLen) : 90 });
-    const [sliderValues, setSliderValues] = useState([0, dateLen? Math.min(90, dateLen) : 90]);
+    const [sliderValues, setSliderValues] = useState([0, dateLen ? Math.min(90, dateLen) : 90]);
 
 
     const handleDropdownChange = (event) => {
@@ -179,24 +181,26 @@ const LineChart = ({ argsObject, index }) => {
                         <canvas ref={lineRef} width="400" height="300"></canvas>
                         <div className="line-options">
                             <div className="slider-container">
-                                <ReactSlider
-                                    min={sliderRange.min}
-                                    max={sliderRange.max}
-                                    markClassName='custom-mark'
-                                    className="custom-slider"
-                                    trackClassName="custom-track"
-                                    marks
-                                    thumbClassName="custom-thumb"
-                                    pearling
-                                    minDistance={3}
-                                    value={sliderValues}
-                                    onChange={handleSliderChange}
-                                    invert={true}
-                                    renderThumb={(props, state) => <div {...props}>
-                                        {state.valueNow}
-                                    </div>} 
+                                <ErrorBoundary>
+                                    <ReactSlider
+                                        min={sliderRange.min}
+                                        max={sliderRange.max}
+                                        markClassName='custom-mark'
+                                        className="custom-slider"
+                                        trackClassName="custom-track"
+                                        marks
+                                        thumbClassName="custom-thumb"
+                                        pearling
+                                        minDistance={3}
+                                        value={sliderValues}
+                                        onChange={handleSliderChange}
+                                        invert={true}
+                                        renderThumb={(props, state) => <div {...props}>
+                                            {state.valueNow}
+                                        </div>}
                                     />
-                                    
+                                </ErrorBoundary>
+
                             </div>
 
                             <select className='line-window-select' value={dateRange} onChange={handleDropdownChange}>
@@ -217,22 +221,25 @@ const LineChart = ({ argsObject, index }) => {
                             <canvas ref={lineRef} width="400" height="300"></canvas>
                             <div className="line-options">
                                 <div className="slider-container">
-                                    <ReactSlider
-                                        min={sliderRange.min}
-                                        max={sliderRange.max}
-                                        markClassName='custom-mark'
-                                        className="custom-slider"
-                                        trackClassName="custom-track"
-                                        marks
-                                        thumbClassName="custom-thumb"
-                                        pearling
-                                        minDistance={3}
-                                        value={sliderValues}
-                                        onChange={handleSliderChange}
-                                        invert={true}
-                                        renderThumb={(props, state) => <div {...props}>
-                                            {state.valueNow}
-                                        </div>} />
+                                    <ErrorBoundary>
+                                        <ReactSlider
+                                            min={sliderRange.min}
+                                            max={sliderRange.max}
+                                            markClassName='custom-mark'
+                                            className="custom-slider"
+                                            trackClassName="custom-track"
+                                            marks
+                                            thumbClassName="custom-thumb"
+                                            pearling
+                                            minDistance={3}
+                                            value={sliderValues}
+                                            onChange={handleSliderChange}
+                                            invert={true}
+                                            renderThumb={(props, state) => <div {...props}>
+                                                {state.valueNow}
+                                            </div>} />
+                                    </ErrorBoundary>
+
                                 </div>
 
                                 <select className='line-window-select' value={dateRange} onChange={handleDropdownChange}>

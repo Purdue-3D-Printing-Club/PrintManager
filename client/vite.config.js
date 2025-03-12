@@ -29,8 +29,15 @@ export default defineConfig({
       },
     },
   },
-  server: {
+  server: {  // Development build
     port: 3000, 
     open: true, 
   },
+  preview: {  // Production build
+    port: 3000,  
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  }
 })

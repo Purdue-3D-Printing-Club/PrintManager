@@ -27,7 +27,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
                 }
               </span>
               <input id="adminInput" type="text" autoComplete='off' placeholder=" Enter Admin Password..." value={adminPswd} onChange={handlePswdChange} style={{ width: '250px', fontSize: 'large' }} className={loginTextVisible ? "" : "customMasked"}></input> &nbsp;
-              <button onClick={() => { checkPswd(adminPswd, process.env.REACT_APP_ADMIN_PSWD) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Login</button>
+              <button onClick={() => { checkPswd(adminPswd, import.meta.env.VITE_ADMIN_PSWD) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Login</button>
             </span>
           </div>
             :

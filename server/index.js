@@ -5,16 +5,14 @@ const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const mysql = require('mysql2');
-const isLocal = process.env.ISLOCAL == 'true';
 const { ClientSecretCredential } = require('@azure/identity');
 const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
 
 const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
 const fetch = require('node-fetch');
-const path = require('path');
 
-//google drive / file system
+// google drive / file system
 const fs = require('fs-extra');
 const { google } = require('googleapis');
 
@@ -58,49 +56,16 @@ async function getGraphClient() {
     });
 }
 
-
-const pool = isLocal ? mysql.createPool({ // for local development
+const pool = mysql.createPool({
     host: "localhost",
     user: "root",
     password: "rootpassword",
     database: "printmanagerdb2"
-}) :
-    mysql.createPool({ // for the 3DPC lab
-        host: "localhost",
-        user: "root",
-        password: "supervisor",
-        database: "printmanagerdb2"
-    })
+})
 
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-
-
-// Endpoint to get the STL file name using the google drive API
-// app.get('/api/getFilename', async (req, res) => {
-//     try{
-
-//     const { link } = req.query;
-//     if (!link) {
-//         return res.status(400).send('Missing url parameter');
-//     }
-
-//     const fileId = getFileID(link);
-//     console.log('fileID:',fileId);
-//     const response = await drive.files.get({
-//         fileId,
-//         fields: 'name'
-//       });
-
-//       console.log('got filename:',response.data.name)
-//       res.send({filename:response.data.name});
-//     }catch(e){
-//         console.error('ERROR in getFilename:',e);
-//         return res.status(400).send('Error getting filename');
-//     }
-// });
 
 
 
@@ -384,6 +349,7 @@ async function getDownloadLinks(browser, printLinks) {
 
 app.get('/api/getDailyPrint', async (req, res) => {
     async function getDailyPrint() {
+        return {}
         try {
             const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
             const printLinks = await getPrintLinks(browser);
