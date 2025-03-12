@@ -349,7 +349,7 @@ async function getDownloadLinks(browser, printLinks) {
 
 app.get('/api/getDailyPrint', async (req, res) => {
     async function getDailyPrint() {
-        return {}
+        // return {}
         try {
             const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
             const printLinks = await getPrintLinks(browser);

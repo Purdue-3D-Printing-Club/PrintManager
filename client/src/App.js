@@ -1281,7 +1281,6 @@ function App() {
 
   const pullFormData = (e) => {
     try {
-      console.log('pulling form data')
       // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
       const url = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec';
 
@@ -1371,6 +1370,9 @@ function App() {
 
     //clear the form data table
     setFormData(null);
+
+    // make it not a supervisor print
+    setSupervisorPrint(false);
   }
 
 
