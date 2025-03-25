@@ -30,8 +30,10 @@ export default defineConfig({
     },
   },
   server: {  // Development build
+    host: '0.0.0.0',
     port: 3000, 
     open: true, 
+    strictport: true
   },
   preview: {  // Production build
     port: 3000,  

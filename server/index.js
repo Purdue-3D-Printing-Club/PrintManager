@@ -181,20 +181,11 @@ app.get('/api/stream-stl', async (req, res) => {
             return res.status(500).send('Error fetching the STL file from Google Drive');
         }
 
-        // Option 1: Buffer the response, then send it:
         const buffer = await response.buffer();
 
         // Set the Content-Type header explicitly
         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
         res.send(buffer);
-
-        // Option 2: If the file is too large to buffer entirely,
-        // you may need to pipe the stream and ensure no conflicting headers are included.
-        // In that case, you might want to remove or override any headers from Google Drive's response.
-        // For example:
-        // res.setHeader('Content-Type', 'application/octet-stream');
-        // response.body.on('data', chunk => res.write(chunk));
-        // response.body.on('end', () => res.end());
 
     } catch (err) {
         console.error('Error:', err);
