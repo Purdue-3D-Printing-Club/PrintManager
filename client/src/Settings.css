@@ -47,9 +47,18 @@
   margin-bottom: 30px;
   box-shadow: 0 0 3px 2px rgb(175, 175, 175);
 }
-#login-wrapper {
+
+.input-wrapper {
   display: inline-flex;
   align-items:center;
+  margin-bottom: 5px;
+  margin-top: 5px;
+  font-size: large;
+}
+
+.input-label {
+  width: 180px;
+  text-align: right;
 }
 
 .visibility-icon {

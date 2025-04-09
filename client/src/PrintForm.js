@@ -19,6 +19,10 @@ const PrintForm = ({ printFormArgs }) => {
                             <th>Name</th>
                             <th>Email</th>
                             <th>Supervisor</th>
+                            {(selectedPrinter.filamentType !== 'PLA') && <>
+                                <th>Material</th>
+                                <th>Discord Username</th>
+                            </>}
                             <th>Notes</th>
                             <th>Files</th>
                         </tr>
@@ -30,6 +34,10 @@ const PrintForm = ({ printFormArgs }) => {
                                 <td> {truncateString(job.name, 20)} </td>
                                 <td> {truncateString(job.email, 30)} </td>
                                 <td> {truncateString(job.supervisorName, 20)} </td>
+                                {(selectedPrinter.filamentType !== 'PLA') && <>
+                                    <td> {truncateString(job.filamentType, 20)} </td>
+                                    <td> {truncateString(job.supervisorName, 20)} </td>
+                                    </>}
                                 <td> {truncateString(job.notes, 128)} </td>
                                 <td> {truncateString(job.files, 256)} </td>
                             </tr>
@@ -43,11 +51,11 @@ const PrintForm = ({ printFormArgs }) => {
             <input type="file" multiple onChange={handleUpload} style={{ display: 'none' }} id="upload" />
             <div> Parts:&nbsp;
                 <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                <input  placeholder="part1.stl, part2.stl" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                <input placeholder="part1.stl, part2.stl" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
 
             <div> Files:&nbsp;&nbsp;
                 <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                <input  placeholder={filesPlaceholder} value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
+                <input placeholder={filesPlaceholder} value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
             </div>
             <div> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
                 {(selectedPrinter.filamentType !== 'PLA') && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.15 : 0.1)).toFixed(2)}`)} </div>

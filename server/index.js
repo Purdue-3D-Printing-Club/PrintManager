@@ -7,7 +7,6 @@ const cors = require('cors');
 const mysql = require('mysql2');
 const { ClientSecretCredential } = require('@azure/identity');
 const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
-
 const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
 const fetch = require('node-fetch');
@@ -29,6 +28,22 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const { randomInt } = require('crypto');
 puppeteer.use(StealthPlugin());
+
+// json file management
+const path = require('path')
+const localDataPath = path.join(__dirname, 'localData.json')
+
+function loadLocalData() {
+    try{
+        return (JSON.parse(fs.readFileSync(localDataPath, 'utf-8')));
+    } catch(e) {
+        return {}
+    }
+}
+
+function saveLocalData(localData) {
+    fs.writeFileSync(localDataPath, JSON.stringify(localData, null, 2), 'utf-8');
+}
 
 
 function createGdriveAuth(keyPath) {
@@ -67,11 +82,24 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// get the localData
+app.get('/api/getLocalData', (req, res) => {
+    res.send(loadLocalData());
+});
 
+// set the localData
+app.post('/api/setLocalData', (req, res) => {
+    let b = req.body;
+    try {
+        saveLocalData(b.localData)
+        res.send({ success: true, msg: 'localData update successful' });
+    } catch (e) {
+        res.send({ success: false, msg: 'error updating local data: ' + e.toString()})
+    }
+});
 
-// Sends an email from purdue graph api when called
-app.post('/api/send-email', async (req, res) => {
-    const { to, subject, text } = req.body;
+async function sendEmail(paramsObj) {
+    const { to, subject, text } = paramsObj;
 
     const client = await getGraphClient();
 
@@ -88,10 +116,19 @@ app.post('/api/send-email', async (req, res) => {
             saveToSentItems: false
         });
 
-        res.send('Email sent successfully');
+        return { success: true, msg: 'Email sent successfully' }
     } catch (error) {
         console.error("Graph API Error:", error);
-        res.status(500).send(error.toString());
+        return { success: false, msg: error.toString() }
+    }
+}
+// Sends an email from purdue graph api when called
+app.post('/api/send-email', async (req, res) => {
+    let rslt = await sendEmail(req.body)
+    if (rslt.success) {
+        res.send(rslt)
+    } else {
+        res.status(500).send(rslt)
     }
 });
 
@@ -258,13 +295,16 @@ async function getDownloadLinks(browser, printLinks) {
             // Assuming dlBtns is an array or iterable with buttons to click
             for (let btnNum = 0; btnNum < dlBtns.length && btnNum < 6; btnNum++) {
                 promises.push((async (btnNum) => {
+                    let browser;
                     try {
                         console.log('Opening page ', btnNum);
 
                         // create a new browser for each download 
                         // TODO: Make this more efficient!
-                        const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
+                        browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
                         const printDLPage = await browser.newPage();
+
+
 
                         // const printDLPage = await browser.newPage();
 
@@ -272,8 +312,8 @@ async function getDownloadLinks(browser, printLinks) {
                         // Listen for download requests on this page
                         await printDLPage.setRequestInterception(true);
                         printDLPage.on('request', request => {
-                            if(request.url().includes('files.printables.com')) console.log('Intercepted download request:', request.url());
-                                
+                            if (request.url().includes('files.printables.com')) console.log('Intercepted download request:', request.url());
+
                             if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
                                 console.log('Intercepted download request:', request.url());
                                 dlLinks.push(request.url());
@@ -310,6 +350,9 @@ async function getDownloadLinks(browser, printLinks) {
                         } else {
                             throw error;
                         }
+                    } finally {
+                        await new Promise(resolve => setTimeout(resolve, 250));
+                        await browser.close()
                     }
                 })(btnNum));
             }
@@ -340,9 +383,9 @@ async function getDownloadLinks(browser, printLinks) {
 
 app.get('/api/getDailyPrint', async (req, res) => {
     async function getDailyPrint() {
-        // return {}
+        let browser;
         try {
-            const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
+            browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
             const printLinks = await getPrintLinks(browser);
 
             //printLinks = ['https://www.printables.com/model/1138664-lumo-headphone-stand/files']
@@ -350,13 +393,15 @@ app.get('/api/getDailyPrint', async (req, res) => {
 
             let linkObj = await getDownloadLinks(browser, printLinks);
 
-            await browser.close();
 
             console.log('Part Links: ', linkObj.partLinks);
             return linkObj;
         } catch (e) {
             console.error('Error in getDailyPrint: ', e);
             return [];
+        } finally {
+            await new Promise(resolve => setTimeout(resolve, 250));
+            await browser.close();
         }
     }
     let retObj = await getDailyPrint();
@@ -734,8 +779,11 @@ app.get('/api/getFailureCount', (req, res) => {
     });
 });
 
+
 app.post('/api/insert', (req, res) => {
     const b = req.body;
+    console.log('inserting new print job with files: ', b.files)
+
     const dateTime = new Date(b.timeStarted);
     const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted, status, name, supervisorName, " +
         "notes, partNames, email, personalFilament) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
@@ -751,7 +799,7 @@ app.post('/api/insert', (req, res) => {
             b.notes, b.partNames, b.email, b.personalFilament], (err, result) => {
                 if (err) {
                     console.log(err);
-                    res.status(500).send("Error inserting printer");
+                    res.status(500).send("Error inserting printjob");
                     connection.release();
                     return;
                 }
@@ -760,6 +808,24 @@ app.post('/api/insert', (req, res) => {
             });
         });
     });
+
+    // Now save the new filament amount to the file 
+    let localData = loadLocalData()
+    let newStock = localData?.filamentStock - b.usage_g
+    console.log('updated filament supply:', newStock)
+    saveLocalData({ ...localData, filamentStock: newStock })
+
+    // send an email if we just crossed under the threshold
+    if ((localData.filamentStock >= localData.filamentThreshold) && (newStock < localData.filamentThreshold)) {
+        let emailParams = {
+            to: 'print3d@purdue.edu',
+            subject: 'ALERT - Lab Filament Stock Low!',
+            text: `Warning: the lab organizer has detected that our filament stock has `+
+            `just fallen below the minimum threshold of ${parseInt(localData.filamentThreshold).toLocaleString()}g.`+
+            `\n\nPlease consider restocking it soon!`
+        }
+        sendEmail(emailParams)
+    }
 });
 
 app.delete('/api/cancelPrint/:printerName', (req, res) => {

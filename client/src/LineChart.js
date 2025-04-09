@@ -79,7 +79,7 @@ const LineChart = ({ argsObject, index }) => {
                             fill: true,
                             backgroundColor: 'rgba(255,100,100,0.1)',
                             borderColor: 'rgba(255, 100, 100, 1)',
-                            tension: 0.1,
+                            tension: 0.05,
                         },
                         {
                             label: 'Club Filament',
@@ -87,7 +87,7 @@ const LineChart = ({ argsObject, index }) => {
                             fill: true,
                             backgroundColor: 'rgba(75,192,192,0.1)',
                             borderColor: 'rgba(75, 192, 192, 1)',
-                            tension: 0.1,
+                            tension: 0.05,
                         }],
                     },
                     options: {

@@ -8,6 +8,7 @@
     "@testing-library/user-event": "^13.5.0",
     "@vitejs/plugin-react": "^4.3.4",
     "axios": "^1.6.8",
+    "bluebird": "^3.7.2",
     "chart.js": "^4.4.2",
     "chartjs-2": "^0.0.1-security",
     "chartjs-plugin-annotation": "^3.1.0",

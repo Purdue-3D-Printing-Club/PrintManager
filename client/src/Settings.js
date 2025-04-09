@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import Axios from 'axios';
+
 import './Settings.css';
 import eye from '/images/eye.svg';
 import eyeSlash from '/images/eye_slash.svg'
@@ -6,10 +8,55 @@ import eyeSlash from '/images/eye_slash.svg'
 import discord_qr from '/images/3dpc_discord.png'
 
 function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
-  handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL }) {
+  handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen }) {
 
   const [loginTextVisible, setLoginTextVisible] = useState(false)
   const [tempServerURL, setTempServerURL] = useState(serverURL)
+
+
+  const [localData, setLocalData] = useState({ filamentStock: 0, filamentThreshold: 15000 })
+  const [tempLocalData, setTempLocalData] = useState(localData)
+
+  const [editingLocalData, setEditingLocalData] = useState([false, false])
+
+  const saveLocalDataEdits = () => {
+    setEditingLocalData([false, false])
+    setLocalData(tempLocalData)
+
+    // Call the server API to save the changes to disk
+    Axios.post(`${serverURL}/api/setLocalData`, {
+      localData: tempLocalData
+    }).then((res) => {
+      console.log(res.data)
+    })
+  }
+
+  useEffect(() => {
+    try {
+      // get the most recent localData from disk to initialize the settings
+      Axios.get(`${serverURL}/api/getLocalData`).then((response) => {
+        let llocalData = response.data
+        if(Object.keys(llocalData).length == 0) {
+          llocalData = Object.keys(localData).reduce((acc, key) => {
+          acc[key] = 0;
+          return acc;
+        }, {});
+      }
+        console.log('got localData from disk:', response.data)
+        setLocalData(llocalData)
+        setTempLocalData(llocalData)
+      });
+    }catch(e){
+      console.log('error in initializing localData: ', e.toString())
+    }
+   
+  }, [menuOpen])
+
+  const handleFilamentChange = (filament, dataField) => {
+    let cleaned_filament = filament.replace(/\D/g, '')
+    setTempLocalData({ ...tempLocalData, [dataField]: cleaned_filament });
+  }
+
 
   return (
     <div className='settings'>
@@ -19,7 +66,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
         <div className='settings-wrapper'>
           {!isAdmin ? <div>
             <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>Admin Login</b></div>
-            <span id="login-wrapper">
+            <span className="input-wrapper">
               <span onClick={() => { setLoginTextVisible(!loginTextVisible) }} >
                 {loginTextVisible ?
                   <img src={eye} alt="visible" className='visibility-icon no-select'></img> :
@@ -38,17 +85,36 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
 
             </div>}
         </div>
-        {/* Admin-only settings */}
-        {isAdmin && <div className='settings-wrapper'>
+        {/* Admin-only settings isAdmin && */}
+        {<div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large' }}><b>Admin-Only Settings</b></div>
-          <div style={{ fontSize: 'large', color: 'gray', marginBottom: '5px' }}><b>Proceed With Caution</b></div>
+          <div style={{ fontSize: 'large', color: 'gray', marginBottom: '15px' }}><b>Proceed With Caution</b></div>
 
           {/* <input id="serverURLInput" type="text" placeholder="Server URL" value={serverURL}
             onChange={(e) => setServerURL(e.target.value)} style={{ width: '500px', fontSize: 'large', marginBottom: '3px' }} /> */}
-          <span id='login-wrapper'>
+          <span className='input-wrapper'>
             <b>Server URL:</b>&nbsp;&nbsp;
             <input id="URLInput" type="text" autoComplete='off' placeholder=" Server URL" value={tempServerURL} onChange={(e) => setTempServerURL(e.target.value)} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
-            <button onClick={(e) => {setServerURL(tempServerURL)}} style={{ fontSize: 'large', cursor: 'pointer' }}>Update</button>
+            <button onClick={(e) => { setServerURL(tempServerURL) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Update</button>
+          </span>
+          <br /> <br /> <br />
+          <span className='input-wrapper' style={{ height: '25px' }}>
+            <b className='input-label'>Lab Filament Stock:</b>&nbsp;&nbsp;
+            {editingLocalData[0] ? <><input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData.filamentStock} onChange={(e) => handleFilamentChange(e.target.value, 'filamentStock')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g</> :
+              <><p style={{ width: '80px' }}>{parseInt(localData.filamentStock).toLocaleString()}&nbsp;g</p>&nbsp;&nbsp;  </>
+            } &nbsp;
+            <button onClick={(e) => { editingLocalData[0] ? saveLocalDataEdits() : setEditingLocalData([true, false]) }} style={{ cursor: 'pointer' }}>{editingLocalData[0] ? 'Set' : 'Edit'}</button>
+            &nbsp;{editingLocalData[0] && <button onClick={(e) => { setEditingLocalData([false, false]) }} style={{ cursor: 'pointer' }}>{'Cancel'}</button>}
+          </span>
+
+          <br />
+          <span className='input-wrapper' style={{ height: '30px' }}>
+            <b className='input-label'>Filament Threshold:</b>&nbsp;&nbsp;
+            {editingLocalData[1] ? <><input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData.filamentThreshold} onChange={(e) => handleFilamentChange(e.target.value, 'filamentThreshold')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g</> :
+              <><p style={{ width: '80px' }}>{parseInt(localData.filamentThreshold).toLocaleString()}&nbsp;g</p>&nbsp;&nbsp;  </>
+            } &nbsp;
+            <button onClick={(e) => { editingLocalData[1] ? saveLocalDataEdits() : setEditingLocalData([false, true]) }} style={{ cursor: 'pointer' }}>{editingLocalData[1] ? 'Set' : 'Edit'}</button>
+            &nbsp;{editingLocalData[1] && <button onClick={(e) => { setEditingLocalData([false, false]) }} style={{ cursor: 'pointer' }}>{'Cancel'}</button>}
           </span>
         </div>}
 

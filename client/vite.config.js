@@ -37,6 +37,7 @@ export default defineConfig({
   },
   preview: {  // Production build
     port: 3000,  
+    allowedHosts: ['the-3dpc-pc', 'localhost', '100.91.186.68'],
   },
   build: {
     outDir: 'dist',

@@ -24,6 +24,7 @@ function App() {
   const [isResizing, setIsResizing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+
   const [formData, setFormData] = useState(null)
   const [filamentUsage, setFilamentUsage] = useState('');
   const [name, setname] = useState('');
@@ -318,7 +319,7 @@ function App() {
                     const club = dailyData.filter(item => !item.personalFilament)
 
                     const startDate = dailyData.length > 0 ? dailyData[0].date : null;
-                    const endDate = dailyData.length > 0 ? dailyData[dailyData.length - 1].date : null;
+                    const endDate = dailyData.length > 0 ? formatDate(new Date().toISOString(), false) : null; //dailyData[dailyData.length - 1].date
                     if (startDate && endDate) {
                       const allDates = generateDateRange(startDate, endDate);
 
@@ -399,6 +400,10 @@ function App() {
       window.removeEventListener('keydown', handleKeyPress);
     };
   })
+
+
+ 
+
 
   const toggleSTLPreviews = () => {
     console.log('setting STLPreviews to ', !showSTLPreviews);
@@ -1155,9 +1160,9 @@ function App() {
         showMsgForDuration('Error Sending Email');
         console.error('Error sending email:', error.response ? error.response.data : error.message);
       });
-
     }
   }
+
 
   const updatePrinterNotes = () => {
     //set the printJob status to statusArg
@@ -1281,8 +1286,13 @@ function App() {
 
   const pullFormData = (e) => {
     try {
+      let specialFilament = selectedPrinter?.filamentType !== 'PLA';
+
       // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
-      const url = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec';
+      
+      const url = specialFilament ? 
+              'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec' : 
+              'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec';
 
       setFormDataLoading(true);
       fetch(url).then(response => response.json()).then(data => {
@@ -1293,7 +1303,20 @@ function App() {
           setFormDataLoading(false);
 
 
-          let formattedData = data.map((job) => {
+          let formattedData = specialFilament ? 
+          data.map((job) => {
+            return ({
+              name: job[1],
+              email: job[2],
+              supervisorName: job[3],
+              material: job[4],
+              files: job[5],
+              partNames: job[6],
+              notes: job[11],
+              discord: job[12]
+            })
+          }) :
+          data.map((job) => {
             return ({
               name: job[1],
               email: job[2],
@@ -1336,8 +1359,11 @@ function App() {
   };
 
   const handlePrinterClick = (index) => {
+    // reset personal filament and send email to default values when the printer selection changes
     setPersonalFilament(false);
-    setMenuOpen(false)
+    setSendEmail(true);
+
+    setMenuOpen(false);
     if (!index) {
       selectPrinter(null);
     }
@@ -1610,18 +1636,25 @@ function App() {
               {/* Print of the day stl previews*/}
               <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🔥 Trending Print</b></h1>
               {(potdStatus === 'done') && <div>
-                <h2 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>{dailyPrint.pageName} - &nbsp;
-                  <a target="_blank" rel="noreferrer" href={dailyPrint?.pageLink}>Source</a></b></h2>
-                <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-                  {dailyPrint?.parts?.map((file, index) => {
-                    return (
-                      <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
-                    )
-                  })
-                  }
-                </div>
+                {(dailyPrint.parts.length != 0) ? <>
+                  <h2 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>{dailyPrint.pageName} - &nbsp;
+                    <a target="_blank" rel="noreferrer" href={dailyPrint?.pageLink}>Source</a></b></h2>
+                  <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+                    {dailyPrint?.parts?.map((file, index) => {
+                      return (
+                        <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
+                      )
+                    })
+                    }
+                  </div>
+                </> : <>
+                   <h2>No daily print! Check again later.</h2> 
+                </>}
+
               </div>
               }
+
+
               {(potdStatus === 'loading') && <div>
                 <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
               </div>}
@@ -2026,7 +2059,7 @@ function App() {
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
-                serverURL={serverURL} setServerURL={setServerURL} />
+                serverURL={serverURL} setServerURL={setServerURL}  menuOpen={menuOpen}/>
             }
           </div>
         ) :
@@ -2036,7 +2069,7 @@ function App() {
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
-                serverURL={serverURL} setServerURL={setServerURL} />
+                serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen}/>
             </div>
           )}
 
