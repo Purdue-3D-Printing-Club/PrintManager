@@ -85,8 +85,8 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
 
             </div>}
         </div>
-        {/* Admin-only settings isAdmin && */}
-        {<div className='settings-wrapper'>
+        {/* Admin-only settings */}
+        {isAdmin && <div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large' }}><b>Admin-Only Settings</b></div>
           <div style={{ fontSize: 'large', color: 'gray', marginBottom: '15px' }}><b>Proceed With Caution</b></div>
 

@@ -249,18 +249,18 @@ function App() {
         try {
           Axios.get(`${serverURL}/api/getDailyPrint`, { timeout: 180000 }).then((response) => {
             let dailyPrintTemp = response.data.partLinks;
-            console.log('Fetched daily print data: ', dailyPrintTemp)
+            console.log('Fetched trending print data: ', dailyPrintTemp)
             let newDailyPrint = [];
             for (let fileno in dailyPrintTemp) {
               let fileName = dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('/') + 1).trim();
-              console.log('daily print file name: ', fileName);
+              console.log('trending print file name: ', fileName);
               newDailyPrint.push({
                 "name": fileName,
                 "file": dailyPrintTemp[fileno]
               });
             }
 
-            console.log('setting daily print: ', newDailyPrint);
+            console.log('setting trending print: ', newDailyPrint);
             setPotdStatus('done')
             setDailyPrint({ 'parts': newDailyPrint, 'pageLink': response.data.pageLink, 'pageName': response.data.pageName });
           }).catch(e => {
@@ -721,6 +721,10 @@ function App() {
       return driveLink;
     }
   }
+  async function sleep(time) {
+   await new Promise(resolve => setTimeout(resolve, time))
+  }
+
 
   function handleCollapseSidebar() {
     setSidebarOpen(!sidebarOpen);
@@ -760,12 +764,12 @@ function App() {
 
   function getStatusColor(printerStatus) {
     switch (printerStatus) {
-      case "available": return "rgb(80, 210, 100)";
-      case "busy": return "rgb(235, 235, 60)";
-      case "broken": return "rgb(255, 100, 100)";
+      case "available": return "rgb(104, 216, 121)";
+      case "busy": return "rgb(237, 237, 80)";
+      case "broken": return "rgb(255, 138, 138)";
       case "testing": return "rgb(255,255,255)";
-      case "admin": return "rgb(100, 180, 100)";
-      case "admin-busy": return "rgb(220, 200, 70)";
+      case "admin": return "rgb(117, 181, 117)";
+      case "admin-busy": return "rgb(220, 205, 103)";
       default: return "silver";
     }
   }
@@ -1560,6 +1564,7 @@ function App() {
               </td>}
               <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
+              <td>{job.files.split(',').map((link, index) => {return(<button style={{cursor:'pointer'}}onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index+1}</button>)})}</td>
               <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
             </>
             :
@@ -1573,6 +1578,7 @@ function App() {
               {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', queue, 20) }} />}
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), queue, 20) }} />
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, queue, 128) }} />
+              <td>{job.files.split(',').map((link, index) => {return(<button style={{cursor:'pointer'}}onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index+1}</button>)})}</td>
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, queue, 256) }} />
             </>
         }
@@ -1648,7 +1654,7 @@ function App() {
                     }
                   </div>
                 </> : <>
-                   <h2>No daily print! Check again later.</h2> 
+                   <h2>No trending print! Check again later.</h2> 
                 </>}
 
               </div>
@@ -1833,7 +1839,7 @@ function App() {
               <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
               {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy") && isAdmin)) && <>
                 <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
-                <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Cancel Print</button>
+                <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Cancel Print</button>
               </>}
               {isAdmin && <>
                 <div>
@@ -1862,7 +1868,7 @@ function App() {
 
                   <br />
                   <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
-                  <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
+                  <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Clear Form</button>
                 </>
               }
             </div>}
@@ -1897,7 +1903,7 @@ function App() {
 
                 <br />
                 <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
-                <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
+                <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Clear Form</button>
                 {isAdmin && <div style={{ display: 'block' }}>
                   <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
                   <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
@@ -1929,7 +1935,7 @@ function App() {
 
               <br />
               <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
-              <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgba(118, 152, 255,0.8)' }} className='printer-btn'>Clear Form</button>
+              <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Clear Form</button>
               {isAdmin && <div style={{ display: 'block' }}>
                 <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
                 <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
@@ -2006,6 +2012,7 @@ function App() {
                         <th>Supervisor</th>
                         <th>Usage (ml)</th>
                         <th>Notes</th>
+                        <th>Downloads</th>
                         <th>Files</th>
                       </tr>
                     </thead>
@@ -2044,12 +2051,8 @@ function App() {
               }}>
                 {selectedPrinter.printerName} - {selectedPrinter.model}
               </div>
-
             </div>
-
           </div>}
-
-
         </div>
 
         {menuOpen ? (
@@ -2171,6 +2174,7 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
               <th>Filament</th>
               <th>Used {selectedPrinter?.filamentType === 'Resin' ? '(ml)' : '(g)'}</th>
               <th>Notes</th>
+              <th>Downloads</th>
               <th>Files</th>
             </tr>
           </thead>
