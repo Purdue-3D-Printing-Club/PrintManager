@@ -5,6 +5,18 @@ This app is the new lab organizer for the Purdue 3D Printing Club (3DPC). To see
 - The organizer will automatically email members when their print is done, assuming it is turned on and they entered the right address. This now uses the club's official print3d@purdue.edu email to not go to spam. This is done with a service account on microsoft azure's graph API, which I had to get ITAP permission to enable automatic emailing from. The main thing to keep in mind with this is that the certificate will expire in about 2 years, so if the emailing just randomly stops working, then this is probably why.
 
 ## Technical Instructions
+Instruction manual on how to use, maintain, and develop the lab organizer.
+
+## Table of Contents
+- [General Notes](#general-notes)
+- [How to change print submission forms](#how-to-change-print-sumbission-forms)
+- [How to update the lab's filament stock and alert threshold](#how-to-update-the-labs-filament-stock-and-alert-threshold)
+- [General Notes](#general-notes)
+- [General Notes](#general-notes)
+- [General Notes](#general-notes)
+- [General Notes](#general-notes)
+- [General Notes](#general-notes)
+- 
 <br/>
 ### How to change print submission forms
 The organizer connects to print the print submission google forms to retrieve recent form submissions so it can autofill data. If we get a new form, then this will need to be updated to still work. The main idea is that you need to add the app script to the google sheets submissions and then update the link in the organizer's code. Here's how to do it:
