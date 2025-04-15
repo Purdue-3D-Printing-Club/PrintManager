@@ -8,16 +8,19 @@ This app is the new lab organizer for the Purdue 3D Printing Club (3DPC). To see
 Instruction manual on how to use, maintain, and develop the lab organizer.
 
 ## Table of Contents
-- [General Notes](#general-notes)
 - [How to change print submission forms](#how-to-change-print-sumbission-forms)
 - [How to update the lab's filament stock and alert threshold](#how-to-update-the-labs-filament-stock-and-alert-threshold)
-- [General Notes](#general-notes)
-- [General Notes](#general-notes)
-- [General Notes](#general-notes)
-- [General Notes](#general-notes)
-- [General Notes](#general-notes)
-- 
-<br/>
+- [How to connect to the lab's tailnet](#how-to-connect-to-the-labs-tailnet)
+- [How to access the organizer data remotely](#how-to-access-the-organizer-data-remotely)
+- [How to ssh into the lab pc](#how-to-ssh-into-the-lab-pc)
+- [How to change the admin password](#how-to-change-the-admin-password)
+- [How to edit/restart startup scripts (frontend and backend)](#how-to-editrestart-startup-scripts-frontend-and-backend)
+- [How to update the organizer on the lab pc](#how-to-update-the-organizer-on-the-lab-pc)
+- [How to set up a local development environment](#how-to-set-up-a-local-development-environment)
+- [How to add and remove printers (or otherwise directly edit the database)](#how-to-add-and-remove-printers-or-otherwise-directly-edit-the-database)
+
+  
+<br/><br/>
 ### How to change print submission forms
 The organizer connects to print the print submission google forms to retrieve recent form submissions so it can autofill data. If we get a new form, then this will need to be updated to still work. The main idea is that you need to add the app script to the google sheets submissions and then update the link in the organizer's code. Here's how to do it:
 - First, open the google sheet for the new form.
