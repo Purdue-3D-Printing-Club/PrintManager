@@ -8,7 +8,7 @@ This app is the new lab organizer for the Purdue 3D Printing Club (3DPC). To see
 Instruction manual on how to use, maintain, and develop the lab organizer.
 
 ## Table of Contents
-- [How to change print submission forms](#how-to-change-print-sumbission-forms)
+- [How to change print submission forms](#how-to-change-print-submission-forms)
 - [How to update the lab's filament stock and alert threshold](#how-to-update-the-labs-filament-stock-and-alert-threshold)
 - [How to connect to the lab's tailnet](#how-to-connect-to-the-labs-tailnet)
 - [How to access the organizer data remotely](#how-to-access-the-organizer-data-remotely)
