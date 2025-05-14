@@ -17,6 +17,9 @@ import ErrorBoundary from './ErrorBoundary';
 
 
 function App() {
+  const SPECIAL_FILAMENT_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec'
+  const MAIN_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec'
+
   const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
 
   const [sidebarWidth, setSidebarWidth] = useState(225); // Initial sidebar width set to 225
@@ -248,21 +251,21 @@ function App() {
 
         try {
           Axios.get(`${serverURL}/api/getDailyPrint`, { timeout: 180000 }).then((response) => {
-            let dailyPrintTemp = response.data.partLinks;
-            console.log('Fetched trending print data: ', dailyPrintTemp)
-            let newDailyPrint = [];
-            for (let fileno in dailyPrintTemp) {
-              let fileName = dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('/') + 1).trim();
-              console.log('trending print file name: ', fileName);
-              newDailyPrint.push({
-                "name": fileName,
-                "file": dailyPrintTemp[fileno]
-              });
-            }
+            let dailyPrintTemp = response.data;
+            // let newDailyPrint = []; 
+            // for (let fileno in dailyPrintTemp) {
+            //   let fileName = dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('/') + 1).trim();
+            //   console.log('trending print file name: ', fileName);
+            //   newDailyPrint.push({
+            //     "name": fileName,
+            //     "file": dailyPrintTemp[fileno]
+            //   });
+            // }
 
-            console.log('setting trending print: ', newDailyPrint);
+            console.log('setting trending print: ', dailyPrintTemp);
             setPotdStatus('done')
-            setDailyPrint({ 'parts': newDailyPrint, 'pageLink': response.data.pageLink, 'pageName': response.data.pageName });
+            // setDailyPrint({ 'parts': dailyPrintTemp, 'pageLink': response.data.pageLink, 'pageName': response.data.pageName });
+            setDailyPrint(dailyPrintTemp);
           }).catch(e => {
             setPotdStatus('error')
           });
@@ -1295,8 +1298,8 @@ function App() {
       // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
       
       const url = specialFilament ? 
-              'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec' : 
-              'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec';
+              SPECIAL_FILAMENT_APP_SCRIPT_URL : 
+              MAIN_APP_SCRIPT_URL;
 
       setFormDataLoading(true);
       fetch(url).then(response => response.json()).then(data => {
@@ -1640,21 +1643,26 @@ function App() {
           {loading === 'done' &&
             <div>
               {/* Print of the day stl previews*/}
-              <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🔥 Trending Print</b></h1>
+              <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
               {(potdStatus === 'done') && <div>
-                {(dailyPrint.parts.length != 0) ? <>
-                  <h2 className={(!selectedPrinter && !menuOpen) ? '' : 'hidden'}><b>{dailyPrint.pageName} - &nbsp;
-                    <a target="_blank" rel="noreferrer" href={dailyPrint?.pageLink}>Source</a></b></h2>
+                {(dailyPrint.length != 0) ? <>
                   <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-                    {dailyPrint?.parts?.map((file, index) => {
+                    {dailyPrint?.map((item) => {
                       return (
-                        <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
+                            <a target="_blank" rel="noreferrer" className="print-card" href={item.link}>
+                              <div className="image-4-3">
+                                <img src={item.imgLink}></img>
+                              </div>
+                              <h3 style={{marginTop:'5px'}}>{truncateString(item.name,55)}</h3>
+                            </a>
+                          
+                        // <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
                       )
                     })
                     }
                   </div>
                 </> : <>
-                   <h2>No trending print! Check again later.</h2> 
+                   <h2>No trending prints! Check again later.</h2> 
                 </>}
 
               </div>
@@ -2112,7 +2120,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
               let trimmedLink = link.trim();
 
               if (trimmedLink.startsWith('https://')) {
-                let partname = curJob.partNames?.split(',')[index]
+                let partname = String(curJob.partNames)?.split(',')[index]
 
                 return (
                   <div className="stl-preview" key={index}>

@@ -108,6 +108,31 @@ html::-webkit-scrollbar {
   font-size: medium;
 }
 
+.print-card {
+  color:black;
+  min-width:300px;
+  transition: 0.1s scale ease-in-out;
+}
+
+.print-card:hover {
+  scale:1.02;
+}
+
+.image-4-3 {
+  aspect-ratio: 4 / 3;
+  overflow:hidden;
+  border-radius: 8px;
+
+}
+
+.print-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;     /* scale to fill, cropping as needed */
+  object-position: center;
+  display: block;        /* remove inline spacing */
+}
+
 .printForm {
   margin: 5px 5px 0px 5px;
   flex-direction: column;

@@ -34,9 +34,9 @@ const path = require('path')
 const localDataPath = path.join(__dirname, 'localData.json')
 
 function loadLocalData() {
-    try{
+    try {
         return (JSON.parse(fs.readFileSync(localDataPath, 'utf-8')));
-    } catch(e) {
+    } catch (e) {
         return {}
     }
 }
@@ -94,7 +94,7 @@ app.post('/api/setLocalData', (req, res) => {
         saveLocalData(b.localData)
         res.send({ success: true, msg: 'localData update successful' });
     } catch (e) {
-        res.send({ success: false, msg: 'error updating local data: ' + e.toString()})
+        res.send({ success: false, msg: 'error updating local data: ' + e.toString() })
     }
 });
 
@@ -241,21 +241,34 @@ async function getPrintLinks(browser) {
     // Wait for the popular items to load. Adjust the selector to one that exists on the page.
     await homePage.waitForSelector('[class*="card-image"]');
 
+    homePage.on('console', msg => {
+        console.log('PAGE LOG:', msg.text());
+    });
 
-    // Evaluate the page to extract information from the first popular STL file.
+    // Evaluate the page to extract information from the cards
     console.log('evaluating page')
     const printLinks = await homePage.evaluate(() => {
+        const imgItems = document.querySelectorAll('[class*="image-inside"]');
+        imgLinks = Array.from(imgItems, pic => {
+            const img = pic.querySelector('img');
+            return img?.src || null;
+        });
+
         const items = document.querySelectorAll('[class*="h clamp-two-lines"]');
-        let tagList = Array.from(items).map(item => item.outerHTML);
 
-        return tagList.map(htmlString => {
-            const regexName = />([^<]+)</;
-            const matchName = htmlString.match(regexName);
+        const results = Array.from(items, (item, index) => {
+            const html = item.outerHTML;
+            const nameMatch = html.match(/>([^<]+)</);
+            const hrefMatch = html.match(/href="([^"]+)"/);
 
-            const regex = /href="([^"]+)"/;
-            const match = htmlString.match(regex);
-            return { 'link': match ? ("https://printables.com" + match[1] + "/files") : null, 'name': matchName[1] };
-        }).filter(id => id !== null);
+            return {
+                name: nameMatch ? nameMatch[1].trim() : null,
+                link: hrefMatch ? `https://printables.com${hrefMatch[1]}/files` : null,
+                imgLink: imgLinks[index] || null
+            };
+        });
+
+        return results.filter(entry => (entry.link !== null) && (entry.imgLink !== null));
     });
     return printLinks;
 }
@@ -388,14 +401,12 @@ app.get('/api/getDailyPrint', async (req, res) => {
             browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
             const printLinks = await getPrintLinks(browser);
 
-            //printLinks = ['https://www.printables.com/model/1138664-lumo-headphone-stand/files']
-            console.log('got links: ', printLinks);
+            // console.log('got links: ', printLinks);
+            console.log('got links')
 
-            let linkObj = await getDownloadLinks(browser, printLinks);
+            // let linkObj = await getDownloadLinks(browser, printLinks);
 
-
-            console.log('Part Links: ', linkObj.partLinks);
-            return linkObj;
+            return printLinks;
         } catch (e) {
             console.error('Error in getDailyPrint: ', e);
             return [];
@@ -820,9 +831,9 @@ app.post('/api/insert', (req, res) => {
         let emailParams = {
             to: 'print3d@purdue.edu',
             subject: 'ALERT - Lab Filament Stock Low!',
-            text: `Warning: the lab organizer has detected that our filament stock has `+
-            `just fallen below the minimum threshold of ${parseInt(localData.filamentThreshold).toLocaleString()}g.`+
-            `\n\nPlease consider restocking it soon!`
+            text: `Warning: the lab organizer has detected that our filament stock has ` +
+                `just fallen below the minimum threshold of ${parseInt(localData.filamentThreshold).toLocaleString()}g.` +
+                `\n\nPlease consider restocking it soon!`
         }
         sendEmail(emailParams)
     }

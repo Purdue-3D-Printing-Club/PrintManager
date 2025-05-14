@@ -50,7 +50,7 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
             <div id='lowerBar'>
                 <div className={'sidePrinter'}
                     onClick={() => handlePrinterClick(null)}
-                    style={{ backgroundColor: 'rgb(159, 188, 254)' }}> Home </div>
+                    style={{ backgroundColor: 'rgb(133, 169, 255)' }}> Home </div>
                 {printerList.map((printer, index) => {
                     return <div className={`sidePrinter ${(selectedPrinter && (selectedPrinter.printerName === printer.printerName)) ? 'selected' : ''}`}
                         key={index}
