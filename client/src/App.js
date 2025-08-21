@@ -98,6 +98,10 @@ function App() {
 
   const popupTime = 8000;
 
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  context.font = "16pt Trebuchet MS";
+  
   // const getFilenameFromLink = async (link) => {
   //   try {
   //     Axios.get(`${serverURL}/api/getFileName?link=${link}`).then((response) => {
@@ -646,20 +650,20 @@ function App() {
     setnotes('');
     setpartnames('');
   }
-  const autofillFields = () => {
-    setname(curJob.name);
-    setemail(curJob.email);
-    setsupervisor(curJob.supervisorName);
-    setpartnames(curJob.partNames);
-    setfiles(curJob.files);
-    setFilamentUsage(curJob.usage_g);
-    setnotes(curJob.notes);
-    setSupervisorPrint(curJob.name === curJob.supervisorName);
-    setPersonalFilament(curJob.personalFilament);
+  const autofillFields = (job) => {
+    setname(job.name);
+    setFilamentUsage(job.usage_g);
+    setemail(job.email);
+    setsupervisor(job.supervisorName);
+    setpartnames(job.partNames);
+    setfiles(job.files);
+    setnotes(job.notes);
+    setSupervisorPrint(job.name === job.supervisorName);
+    setPersonalFilament(job.personalFilament);
   }
 
   const cancelPrint = () => {
-    autofillFields();
+    autofillFields(curJob);
     fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}`, { method: 'DELETE', }).then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -901,6 +905,21 @@ function App() {
       return str.substring(0, maxLen - 3) + '...';
     }
     return str;
+  }
+
+  function truncateStringWidth(str, maxWidth) {
+    if (!str) return "";
+
+    let truncated = "";
+    for (let i = 0; i < str.length; i++) {
+      const testStr = truncated + str[i];
+      const metrics = context.measureText(testStr + "...");
+      if (metrics.width > maxWidth) {
+        return truncated + "...";
+      }
+      truncated = testStr;
+    }
+    return truncated;
   }
 
   const updateTable = (table, column1, id, val, callback) => {
@@ -1283,7 +1302,7 @@ function App() {
 
     // if the print failed, fill in the print form data with the job's data
     if (statusArg === 'failed') {
-      autofillFields();
+      autofillFields(curJob);
     }
   };
 
@@ -1542,7 +1561,15 @@ function App() {
             {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
           </button></td>
         }
-        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), queue, 40) }} />
+        {!isComprehensive && 
+        <td>
+            <button onClick={() => {autofillFields(job); showMsgForDuration('Autofill Successful', 'msg');}} className='history-btn'>
+              Autofill
+            </button>
+          </td> }
+
+        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), queue, 400) }} />
+
 
         {
           (isAdmin && (editingJob.jobID === job.jobID)) ?
@@ -1572,17 +1599,17 @@ function App() {
             </>
             :
             <>
-              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, queue, 40) }} />}
-              {isComprehensive && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.printerName, queue, 40) }} />}
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, queue, 40) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, queue, 20) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, queue, 30) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName, queue, 20) }} />
-              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', queue, 20) }} />}
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), queue, 20) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, queue, 128) }} />
+              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, queue, 400) }} />}
+              {isComprehensive && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.printerName, queue, 400) }} />}
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, queue, 400) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, queue, 200) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, queue, 300) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName, queue, 200) }} />
+              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', queue, 200) }} />}
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), queue, 200) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, queue, 600) }} />
               <td>{job.files.split(',').map((link, index) => {return(<button style={{cursor:'pointer'}}onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index+1}</button>)})}</td>
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, queue, 256) }} />
+              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, queue, 2560) }} />
             </>
         }
       </>
@@ -1590,9 +1617,10 @@ function App() {
   }
 
   // Highlight the search in the job's fields by wrapping it with <b>
-  const applyHighlight = (text, queue, length = 40) => {
-    if (!text || !historySearch || queue) return truncateString(text, length);
-    const truncatedText = truncateString(text, length);
+  const applyHighlight = (text, queue, pixelWidth = 400) => {
+    const truncatedText = truncateStringWidth(text, pixelWidth);
+
+    if (!text || !historySearch || queue) return truncatedText;
 
     const escapedSearch = historySearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
     const regex = new RegExp(escapedSearch, 'i');
@@ -1780,7 +1808,7 @@ function App() {
 
               <div style={{ height: '80px' }} />
 
-              {/* Comprehensive print history here */}
+              {/* Comprehensive print history */}
               <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
                 createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}></PrintHistoryTable>
 
@@ -2172,6 +2200,7 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
             <tr>
               {isAdmin && <th>Delete</th>}
               {isAdmin && <th>Edit</th>}
+              {!isComprehensive && <th>Autofill</th>}
               <th>Time Started</th>
               <th>Status</th>
               {isComprehensive && <th>Printer</th>}
