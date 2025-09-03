@@ -63,7 +63,7 @@ const PrintForm = ({ printFormArgs }) => {
             <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
             <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style={{'width':'300px', 'position':'relative'}}>
                 <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input>
-                <img src={(isMember | supervisorPrint)?checkCircle:warningTriangle} className='input-icon'  title={isMember ? 'Verified member' : 'Not a member'}></img>
+                <img src={(isMember | supervisorPrint)?checkCircle:warningTriangle} style={{backgroundColor:'#ffffffcc'}} className='input-icon'  title={isMember ? 'Verified member' : 'Not a member'}></img>
                 </span>
             </div>
 

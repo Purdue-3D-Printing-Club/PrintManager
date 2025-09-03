@@ -20,7 +20,6 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
   const [loginTextVisible, setLoginTextVisible] = useState(false)
   const [tempServerURL, setTempServerURL] = useState(serverURL)
 
-
   const [localData, setLocalData] = useState({ filamentStock: 0, filamentThreshold: 15000 })
   const [tempLocalData, setTempLocalData] = useState(localData)
 
@@ -79,14 +78,15 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
 
 
   const saveLocalDataEdits = () => {
-    setEditingLocalData([false, false])
-    setLocalData(tempLocalData)
+    setEditingLocalData([false, false]);
+    setLocalData(tempLocalData);
 
     // Call the server API to save the changes to disk
     Axios.post(`${serverURL}/api/setLocalData`, {
       localData: tempLocalData
     }).then((res) => {
       console.log(res.data)
+      showMsgForDuration(`Successfully Saved Filament.`, 'msg');
     })
   }
 
@@ -205,7 +205,8 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
       if (memberCleanForInsert(member)) {
         //save the member in the database
         try {
-          Axios.put(`${serverURL}/api/updateMember`, editingMember).then(() => {
+          let nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ')
+          Axios.put(`${serverURL}/api/updateMember`, { ...editingMember, lastUpdated: nowStr }).then(() => {
             const newEditingMember = { ...editingMember, memberID: -1 }
             setEditingMember(newEditingMember);
             refreshMembers();
@@ -240,9 +241,6 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     } catch (e) {
       console.log('error in initializing localData: ', e.toString())
     }
-
-
-
   }, [menuOpen])
 
   const handleFilamentChange = (filament, dataField) => {
@@ -274,7 +272,6 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
             <div>
               <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>Admin Logout</b></div>
               <button onClick={() => { handleIsAdminChange(false) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Logout</button>
-
 
             </div>}
         </div>

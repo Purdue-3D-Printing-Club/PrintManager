@@ -42,6 +42,7 @@ function App() {
   const [personalFilament, setPersonalFilament] = useState(false);
 
   const [selectedPrinter, selectPrinter] = useState(null);
+  const [moveSelect, setMoveSelect] = useState("");
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [adminPswd, setAdminPswd] = useState('');
@@ -103,7 +104,7 @@ function App() {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
   context.font = "16pt Trebuchet MS";
-  
+
   // const getFilenameFromLink = async (link) => {
   //   try {
   //     Axios.get(`${serverURL}/api/getFileName?link=${link}`).then((response) => {
@@ -429,7 +430,7 @@ function App() {
   })
 
 
- 
+
 
 
   const toggleSTLPreviews = () => {
@@ -701,6 +702,52 @@ function App() {
     });
   }
 
+  const movePrint = (printerName) => {
+    console.log(`moving current print from ${selectedPrinter.printerName} to ${printerName}...`);
+
+    let newPrinter = printerList.find(p => p.printerName === printerName);
+
+
+   
+
+
+    //update the new printer's status to active    
+    console.log('Changing', newPrinter.printerName, 'status to active')
+    handlePrinterStatusChange(newPrinter.status === 'admin' ? 'admin-busy' : 'busy', newPrinter);
+    newPrinter.currentJob = curJob.jobID;
+
+    //set all other active jobs to completed, then update this job to be active
+    Axios.put(`${serverURL}/api/update`, {
+      table: "printjob",
+      column: "status",
+      id: newPrinter.printerName,
+      val: 'completed'
+    }).then(() => {
+      updateTable("printer", "currentJob", newPrinter.printerName, curJob.jobID, () => {
+        // update the current job to point to the new printer
+        Axios.put(`${serverURL}/api/update`, {
+          table: "queue", // update printJob by jobID
+          column: "printerName",
+          id: curJob.jobID,
+          val: printerName
+        }).then(() => {
+           // update the selected printer's status from active to inactive
+          console.log('Changing', selectedPrinter.printerName, 'status to inactive')
+
+          updateTable("printer", "currentJob", selectedPrinter.printerName, '', () => {
+            handlePrinterStatusChange(selectedPrinter.status === 'admin-busy' ? 'admin' : 'available', selectedPrinter);
+            selectedPrinter.currentJob = ''
+            setCurJob(null);
+          })
+        });
+      });
+    });
+
+
+
+
+  }
+
   const sortPrinterList = (list, by = 'Availability') => {
     let sortedPrinters = []
     const availabilityOrder = ['available', 'admin', 'busy', 'admin-busy', 'testing', 'broken'];
@@ -752,7 +799,7 @@ function App() {
     }
   }
   async function sleep(time) {
-   await new Promise(resolve => setTimeout(resolve, time))
+    await new Promise(resolve => setTimeout(resolve, time))
   }
 
 
@@ -1079,7 +1126,7 @@ function App() {
       } else if (queue) {
         console.log("startPrintClick: warn: resin print costs $0.10 / ml");
         showMsgForDuration(`Warning: Resin prints cost $0.15 / ml,\nEven for club members.`, 'warn', popupTime + 5000);
-      } else if ((selectedPrinter.filamentType === 'PLA') && !memberList.map(m=>m.email).includes(email) && !supervisorPrint) {
+      } else if ((selectedPrinter.filamentType === 'PLA') && !memberList.map(m => m.email).includes(email) && !supervisorPrint) {
         showMsgForDuration(`Warning: Non-member detected. Pay-per-print\nthrough TooCool is required. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
@@ -1122,8 +1169,6 @@ function App() {
       }).catch(error => {
         console.error('Error:', error);
       });
-
-
 
     } else {
       startPrint();
@@ -1304,7 +1349,7 @@ function App() {
               }
             } else {
               console.log('not sending email...')
-              showMsgForDuration('No Email Sent. (Disabled)', 'err');
+              showMsgForDuration('No Email Sent. (Disabled)', 'msg');
             }
 
             selectedPrinter.status = selectedPrinter.status === 'admin-busy' ? 'admin' : 'available';
@@ -1339,10 +1384,10 @@ function App() {
       let specialFilament = selectedPrinter?.filamentType !== 'PLA';
 
       // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
-      
-      const url = specialFilament ? 
-              SPECIAL_FILAMENT_APP_SCRIPT_URL : 
-              MAIN_APP_SCRIPT_URL;
+
+      const url = specialFilament ?
+        SPECIAL_FILAMENT_APP_SCRIPT_URL :
+        MAIN_APP_SCRIPT_URL;
 
       setFormDataLoading(true);
       fetch(url).then(response => response.json()).then(data => {
@@ -1353,29 +1398,29 @@ function App() {
           setFormDataLoading(false);
 
 
-          let formattedData = specialFilament ? 
-          data.map((job) => {
-            return ({
-              name: job[1],
-              email: job[2],
-              supervisorName: job[3],
-              material: job[4],
-              files: job[5],
-              partNames: job[6],
-              notes: job[11],
-              discord: job[12]
+          let formattedData = specialFilament ?
+            data.map((job) => {
+              return ({
+                name: job[1],
+                email: job[2],
+                supervisorName: job[3],
+                material: job[4],
+                files: job[5],
+                partNames: job[6],
+                notes: job[11],
+                discord: job[12]
+              })
+            }) :
+            data.map((job) => {
+              return ({
+                name: job[1],
+                email: job[2],
+                supervisorName: job[3],
+                files: job[4],
+                partNames: job[5],
+                notes: job[10]
+              })
             })
-          }) :
-          data.map((job) => {
-            return ({
-              name: job[1],
-              email: job[2],
-              supervisorName: job[3],
-              files: job[4],
-              partNames: job[5],
-              notes: job[10]
-            })
-          })
 
 
           setFormData(formattedData)
@@ -1586,12 +1631,12 @@ function App() {
             {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
           </button></td>
         }
-        {!isComprehensive && 
-        <td>
-            <button onClick={() => {autofillFields(job); showMsgForDuration('Autofill Successful', 'msg');}} className='history-btn'>
+        {!isComprehensive &&
+          <td>
+            <button onClick={() => { autofillFields(job); showMsgForDuration('Autofill Successful', 'msg'); }} className='history-btn'>
               Autofill
             </button>
-          </td> }
+          </td>}
 
         <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), queue, 400) }} />
 
@@ -1619,7 +1664,7 @@ function App() {
               </td>}
               <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
-              <td>{job.files.split(',').map((link, index) => {return(<button style={{cursor:'pointer'}}onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index+1}</button>)})}</td>
+              <td>{job.files.split(',').map((link, index) => { return (<button style={{ cursor: 'pointer' }} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
               <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
             </>
             :
@@ -1633,7 +1678,7 @@ function App() {
               {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', queue, 200) }} />}
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), queue, 200) }} />
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, queue, 600) }} />
-              <td>{job.files.split(',').map((link, index) => {return(<button style={{cursor:'pointer'}}onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index+1}</button>)})}</td>
+              <td>{job.files.split(',').map((link, index) => { return (<button style={{ cursor: 'pointer' }} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, queue, 2560) }} />
             </>
         }
@@ -1690,7 +1735,7 @@ function App() {
           </div>}
           {(loading === 'error') && <div>
             <h1><b>Server Connection Failed</b></h1>
-            <h3 style={{'fontSize':'22px'}}>Please consider restarting the PC if the issue persists.</h3><br/>
+            <h3 style={{ 'fontSize': '22px' }}>Please consider restarting the PC if the issue persists.</h3><br />
             <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
           </div>}
           {loading === 'done' &&
@@ -1702,20 +1747,20 @@ function App() {
                   <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
                     {dailyPrint?.map((item) => {
                       return (
-                            <a target="_blank" rel="noreferrer" className="print-card" href={item.link}>
-                              <div className="image-4-3">
-                                <img src={item.imgLink}></img>
-                              </div>
-                              <h3 style={{marginTop:'5px'}}>{truncateString(item.name,55)}</h3>
-                            </a>
-                          
+                        <a target="_blank" rel="noreferrer" className="print-card" href={item.link}>
+                          <div className="image-4-3">
+                            <img src={item.imgLink}></img>
+                          </div>
+                          <h3 style={{ marginTop: '5px' }}>{truncateString(item.name, 55)}</h3>
+                        </a>
+
                         // <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
                       )
                     })
                     }
                   </div>
                 </> : <>
-                   <h2>No trending prints! Check again later.</h2> 
+                  <h2>No trending prints! Check again later.</h2>
                 </>}
 
               </div>
@@ -1901,6 +1946,21 @@ function App() {
               {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy") && isAdmin)) && <>
                 <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
                 <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Cancel Print</button>
+                <select className="printer-btn" value={moveSelect} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} onChange={(e) => {
+                  const printer = e.target.value;
+                  if (!printer) return;
+                  movePrint(printer);
+                  setMoveSelect("");
+                }}>
+                  <option value="" disabled hidden>Move Print</option>
+                  {printerList.map((printer) => {
+                    if ((printer.filamentType === selectedPrinter.filamentType) && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {
+                      return <>
+                        <option value={printer.printerName}>{printer.printerName}</option>
+                      </>
+                    }
+                  })}
+                </select>
               </>}
               {isAdmin && <>
                 <div>
@@ -2126,9 +2186,9 @@ function App() {
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
-                serverURL={serverURL} setServerURL={setServerURL}  menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
+                serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
                 memberList={memberList} setMemberList={setMemberList} formatDate={formatDate} truncateString={truncateString}
-                showMsgForDuration={showMsgForDuration}/>
+                showMsgForDuration={showMsgForDuration} />
             }
           </div>
         ) :
@@ -2140,7 +2200,7 @@ function App() {
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
                 serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
                 memberList={memberList} setMemberList={setMemberList} formatDate={formatDate} truncateString={truncateString}
-                showMsgForDuration={showMsgForDuration}/>
+                showMsgForDuration={showMsgForDuration} />
             </div>
           )}
 
@@ -2152,7 +2212,7 @@ function App() {
             return (
               <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line', zIndex: 11 }} key={id} className={`${type}-msg`}>{msg}<img src={exitIcon} className="msg-exit" onClick={() => handleMsgExit(id)}></img>
                 {(type === 'warn') && <div className="warning-content">
-                  <div onClick={() => { handleWarningClick(id, replaceJob) }} style={{ backgroundColor: "rgb(118, 152, 255)" }} className='printer-btn'>Continue</div>
+                  <div onClick={() => { handleWarningClick(id, replaceJob) }} style={{ backgroundColor: "#afc6fa" }} className='printer-btn'>Continue</div>
                 </div>}
               </div>
             )
