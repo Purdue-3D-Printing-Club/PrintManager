@@ -1890,17 +1890,16 @@ function App() {
             <div className='stat-msg' style={{ backgroundColor: getStatMsgColor() }}>
               {getStatMsg()}
               <hr style={{ borderTop: '1px solid black', width: '100%' }} />
-              {selectedPrinter.filamentType !== 'Resin' ? (isAdmin ? <div> {"Use "}
+              {(isAdmin ? <div> {"Use "}
                 <select id="filamentType" value={selectedPrinter.filamentType} onChange={handleFilamentType}>
                   <option value="PLA">PLA</option>
                   <option value="PETG">PETG</option>
                   <option value="TPU">TPU</option>
+                  <option value="Resin">Resin</option>
                 </select>
-                {" filament on this printer."}</div>
+                {" on this printer."}</div>
                 :
-                "Use " + selectedPrinter.filamentType + " filament on this printer.")
-                :
-                "This is a Resin (SLA) Printer."
+                "Use " + selectedPrinter.filamentType + " on this printer.")
               }
             </div>
             <br />

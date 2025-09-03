@@ -826,7 +826,7 @@ app.post('/api/insert', (req, res) => {
 
     // Now save the new filament amount to the file 
     let localData = loadLocalData()
-    let newStock = localData?.filamentStock - b.usage_g
+    let newStock = Math.max(0, localData?.filamentStock - b.usage_g)
     console.log('updated filament supply:', newStock)
     saveLocalData({ ...localData, filamentStock: newStock })
 
