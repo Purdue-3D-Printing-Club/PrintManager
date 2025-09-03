@@ -1,10 +1,25 @@
 import loading from '/images/loading.gif'
+import checkCircle from '/images/check-circle.svg'
+import warningTriangle from '/images/warning-triangle.svg'
+
+
+import React, {useEffect, useState} from 'react'
 
 const PrintForm = ({ printFormArgs }) => {
     const { setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
         handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
         filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
-        filesPlaceholder } = printFormArgs
+        filesPlaceholder, memberList } = printFormArgs
+
+        const [isMember, setIsMember] = useState(false);
+
+        useEffect(() => {
+            if(memberList && (email !== null)) {
+                setIsMember(memberList.map(m=>m.email).includes(email))
+            } else {
+                console.log('Warning in printForm: memberList or formData undefined')
+            }
+        }, [email, memberList])
 
     return (
         <div className='printForm'>
@@ -46,19 +61,24 @@ const PrintForm = ({ printFormArgs }) => {
                 </table>
             </div>}
             <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
-            <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+            <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style={{'width':'300px', 'position':'relative'}}>
+                <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input>
+                <img src={(isMember | supervisorPrint)?checkCircle:warningTriangle} className='input-icon'  title={isMember ? 'Verified member' : 'Not a member'}></img>
+                </span>
+            </div>
+
             <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
             <input type="file" multiple onChange={handleUpload} style={{ display: 'none' }} id="upload" />
             <div> Parts:&nbsp;
                 <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                <input placeholder="part1.stl, part2.stl" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                <input placeholder="part1, part2" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
 
             <div> Files:&nbsp;&nbsp;
                 <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
                 <input placeholder={filesPlaceholder} value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
             </div>
-            <div> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
-                {(selectedPrinter.filamentType !== 'PLA') && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.15 : 0.1)).toFixed(2)}`)} </div>
+            <div style={{height:'30px'}}> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
+                {(((selectedPrinter.filamentType !== 'PLA')) || (!isMember && !supervisorPrint)) && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.15 : 0.1)).toFixed(2)}`)} </div>
 
             <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
                 <br />

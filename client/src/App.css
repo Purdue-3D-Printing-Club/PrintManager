@@ -386,8 +386,8 @@ option {
 
 .printer-btn {
   font-size: x-large;
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 5px;
+  padding: 5px;
   outline: 1px solid black;
   margin-right: 10px;
   margin-top: 10px;
@@ -570,16 +570,26 @@ h2 {
 .enabled,
 .disabled {
   transition: opacity 0.2s ease;
+  position: relative;
 }
 
 .disabled {
   opacity: 0.4;
   pointer-events: none;
+  
 }
 
 /* Hide the default checkbox */
 .checkbox-container input[type="checkbox"] {
   display: none;
+}
+.input-icon{
+  width: 25px;
+  height:25px;
+  margin:auto;
+  position:absolute;
+  right:5px;
+  top:4px;
 }
 
 .checkbox-container {

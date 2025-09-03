@@ -30,7 +30,8 @@ const { randomInt } = require('crypto');
 puppeteer.use(StealthPlugin());
 
 // json file management
-const path = require('path')
+const path = require('path');
+const { type } = require('os');
 const localDataPath = path.join(__dirname, 'localData.json')
 
 function loadLocalData() {
@@ -75,7 +76,9 @@ const pool = mysql.createPool({
     host: "localhost",
     user: "root",
     password: "rootpassword",
-    database: "printmanagerdb2"
+    database: "printmanagerdb2",
+    timezone: '-04:00',
+    dateStrings: true
 })
 
 app.use(cors());
@@ -211,7 +214,7 @@ app.get('/api/stream-stl', async (req, res) => {
     }
 
     const directUrl = getDirectLink(url);
-    console.log('directUrl:', directUrl);
+    // console.log('directUrl:', directUrl);
     try {
         const response = await fetch(directUrl);
         if (!response.ok) {
@@ -234,10 +237,10 @@ app.get('/api/stream-stl', async (req, res) => {
 async function getPrintLinks(browser) {
     const homePage = await browser.newPage();
 
-    console.log('\nscraper: going to printables..')
+    // console.log('\nscraper: going to printables..')
     await homePage.goto('https://www.printables.com/model', { waitUntil: 'domcontentloaded' });
 
-    console.log('waiting for card-images to load..')
+    // console.log('waiting for card-images to load..')
     // Wait for the popular items to load. Adjust the selector to one that exists on the page.
     await homePage.waitForSelector('[class*="card-image"]');
 
@@ -246,7 +249,7 @@ async function getPrintLinks(browser) {
     });
 
     // Evaluate the page to extract information from the cards
-    console.log('evaluating page')
+    // console.log('evaluating page')
     const printLinks = await homePage.evaluate(() => {
         const imgItems = document.querySelectorAll('[class*="image-inside"]');
         imgLinks = Array.from(imgItems, pic => {
@@ -401,8 +404,6 @@ app.get('/api/getDailyPrint', async (req, res) => {
             browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
             const printLinks = await getPrintLinks(browser);
 
-            // console.log('got links: ', printLinks);
-            console.log('got links')
 
             // let linkObj = await getDownloadLinks(browser, printLinks);
 
@@ -420,9 +421,11 @@ app.get('/api/getDailyPrint', async (req, res) => {
 });
 
 app.get('/api/get', (req, res) => {
-
-    const sqlSelectPrinters = "SELECT * FROM printer";
-
+    const sqlSelectPrinters = req.query.query;//"SELECT * FROM printer";
+    if(!(sqlSelectPrinters && (typeof(sqlSelectPrinters) == 'string'))) { 
+        console.error('ERROR in /api/get: query is not present or not correct type (must be string)');
+        return;
+    }
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting connection from pool:', err);
@@ -444,12 +447,13 @@ app.get('/api/get', (req, res) => {
                     connection.release();
                     return;
                 }
-                res.send({ printers: resultPrinters });
+                res.send({ result: resultPrinters });
                 connection.release();
             });
         });
     });
 });
+
 
 app.get('/api/getRecentFiles', (req, res) => {
     const sqlSelectRecentFiles = `SELECT files, partNames FROM printmanagerdb2.printjob WHERE files IS NOT NULL AND TRIM(files) <> '' ORDER BY timeStarted DESC LIMIT 5`;
@@ -839,6 +843,34 @@ app.post('/api/insert', (req, res) => {
     }
 });
 
+
+app.post('/api/insertMember', (req, res) => {
+    const b = req.body;
+
+    const dateTime = new Date(b.lastUpdated);
+    const sqlInsert = "INSERT INTO member (lastUpdated, name, email, discordUsername) VALUES (?,?,?,?)";
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+        connection.beginTransaction(function (err) {
+            connection.query(sqlInsert, [dateTime, b.name, b.email, b.discordUsername], (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error inserting printjob");
+                    connection.release();
+                    return;
+                }
+                res.send(result);
+                connection.release();
+            });
+        });
+    });
+});
+
 app.delete('/api/cancelPrint/:printerName', (req, res) => {
     const printerName = req.params.printerName;
     const sqlDelete = 'DELETE FROM printJob WHERE printerName=? AND status = "active"';
@@ -887,7 +919,29 @@ app.delete('/api/deleteJob/:jobID', (req, res) => {
         });
     });
 });
-
+app.delete('/api/deleteMember/:memberID', (req, res) => {
+    const memberID = req.params.memberID;
+    const sqlDelete = 'DELETE FROM member WHERE memberID=?';
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+        connection.beginTransaction(function (err) {
+            connection.query(sqlDelete, memberID, (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error deleting printJob");
+                    connection.release();
+                    return;
+                }
+                res.send(result);
+                connection.release();
+            });
+        });
+    });
+});
 
 app.put('/api/update', (req, res) => {
     const { table, column, val, id } = req.body;
@@ -946,6 +1000,32 @@ app.put('/api/updateJob', (req, res) => {
                     return;
                 }
 
+                res.send(result);
+                connection.release();
+            });
+        });
+    });
+});
+
+app.put('/api/updateMember', (req, res) => {
+    const { name, email, lastUpdated, memberID, discordUsername } = req.body;
+    let sqlUpdate = `UPDATE member SET name=?, email=?, lastUpdated=?, discordUsername=? WHERE memberID = ?`;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+
+        connection.beginTransaction(function (err) {
+            connection.query(sqlUpdate, [name, email, lastUpdated, discordUsername, memberID], (err, result) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Error updating database");
+                    connection.release();
+                    return;
+                }
                 res.send(result);
                 connection.release();
             });

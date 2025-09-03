@@ -50,6 +50,8 @@ function App() {
   const [feedbackText, setFeedbackText] = useState('');
 
   const [printerList, setPrinterList] = useState([]);
+  const [memberList, setMemberList] = useState([]);
+
   const printerRefs = useRef([]);
 
   const [printerNotes, setPrinterNotes] = useState(null);
@@ -144,13 +146,14 @@ function App() {
   //fill data arrays on the initial render
   useEffect(() => {
     try {
-      Axios.get(`${serverURL}/api/get`).then((response) => {
+      Axios.get(`${serverURL}/api/get?query=${"SELECT * FROM printer"}`).then((response) => {
         console.log(response);
 
-        const sorted = sortPrinterList(response.data.printers, printerSort)
+        const sorted = sortPrinterList(response.data.result, printerSort)
         setPrinterList(sorted);
         console.log("setting printers to data: ", sorted);
       }).catch(e => {
+        console.error("Error fetching printer data: ", e)
         setLoading('error')
       });
     } catch (error) {
@@ -158,6 +161,23 @@ function App() {
     }
 
   }, [serverURL, printerSort, selectedPrinter]);
+
+  // fill member list
+  useEffect(() => {
+    try {
+      Axios.get(`${serverURL}/api/get?query=${"SELECT * FROM member"}`).then((response) => {
+        let members = response.data.result
+        console.log('member list: ', members);
+
+        setMemberList(members);
+      }).catch(e => {
+        console.error('Error in fetching member list: ', e)
+      });
+    } catch (error) {
+      console.error("Error fetching member list: ", error);
+    }
+  }, [serverURL]);
+
 
 
   // update printRefs whenever printerList changes
@@ -481,6 +501,27 @@ function App() {
     });
   }
 
+  const handleDeleteJob = (jobID) => {
+    if (curJob && jobID === curJob.jobID) {
+      cancelPrint()
+      return (null);
+    }
+
+    fetch(`${serverURL}/api/deleteJob/${jobID}`, { method: 'DELETE', }).then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    }).then(data => {
+      refreshHistory();
+      console.log('Deleted job with id ' + jobID);
+    }).catch(error => {
+      console.error('Error:', error);
+    });
+  }
+
+
+
   const handleEditClick = (job) => {
     const editingJobFilt = {
       jobID: editingJob.jobID,
@@ -573,24 +614,6 @@ function App() {
     }
   }
 
-  const handleDeleteJob = (jobID) => {
-    if (curJob && jobID === curJob.jobID) {
-      cancelPrint()
-      return (null);
-    }
-
-    fetch(`${serverURL}/api/deleteJob/${jobID}`, { method: 'DELETE', }).then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    }).then(data => {
-      refreshHistory();
-      console.log('Deleted job with id ' + jobID);
-    }).catch(error => {
-      console.error('Error:', error);
-    });
-  }
 
   const handlePrinterSort = (e) => {
     const newSort = e.target.value;
@@ -663,7 +686,7 @@ function App() {
   }
 
   const cancelPrint = () => {
-    autofillFields(curJob);
+    // autofillFields(curJob);
     fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}`, { method: 'DELETE', }).then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -1057,6 +1080,8 @@ function App() {
       } else if (queue) {
         console.log("startPrintClick: warn: resin print costs $0.10 / ml");
         showMsgForDuration(`Warning: Resin prints cost $0.15 / ml,\nEven for club members.`, 'warn', popupTime + 5000);
+      } else if ((selectedPrinter.filamentType === 'PLA') && !memberList.map(m=>m.email).includes(email) && !supervisorPrint) {
+        showMsgForDuration(`Warning: non-member detected. Pay-per-print\nthrough TooCool is required. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
         //clear all warning popups 
@@ -1499,6 +1524,7 @@ function App() {
 
   const handleemail = (e) => {
     const email = e.target.value;
+
     setemail(email);
     console.log("set email to " + email);
   };
@@ -1635,7 +1661,7 @@ function App() {
     setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
     handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
-    filesPlaceholder
+    filesPlaceholder, memberList
   }
 
 
@@ -1665,8 +1691,8 @@ function App() {
           </div>}
           {(loading === 'error') && <div>
             <h1><b>Server Connection Failed</b></h1>
+            <h3 style={{'fontSize':'22px'}}>Please consider restarting the PC if the issue persists.</h3><br/>
             <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
-
           </div>}
           {loading === 'done' &&
             <div>
@@ -1964,10 +1990,13 @@ function App() {
               {/* Checkbox to toggle supervisor print */}
               <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
 
+              <FormCheckbox activeCheckVal={showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
+
               {/* Checkbox to toggle personal filament */}
               {(selectedPrinter.filamentType !== 'Resin') &&
                 <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
               }
+
 
               <br />
               <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
@@ -2098,7 +2127,9 @@ function App() {
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
-                serverURL={serverURL} setServerURL={setServerURL}  menuOpen={menuOpen}/>
+                serverURL={serverURL} setServerURL={setServerURL}  menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
+                memberList={memberList} setMemberList={setMemberList} formatDate={formatDate} truncateString={truncateString}
+                showMsgForDuration={showMsgForDuration}/>
             }
           </div>
         ) :
@@ -2108,7 +2139,9 @@ function App() {
                 isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
                 handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
-                serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen}/>
+                serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
+                memberList={memberList} setMemberList={setMemberList} formatDate={formatDate} truncateString={truncateString}
+                showMsgForDuration={showMsgForDuration}/>
             </div>
           )}
 
