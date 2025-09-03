@@ -51,7 +51,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     const isInputFocused =
       e.target.tagName === 'INPUT' ||
       e.target.tagName === 'TEXTAREA';
-    if (isInputFocused && (e.key === 'Enter') && isAdmin) {
+    if (isInputFocused && (e.key === 'Enter')) {
       console.log(e.target)
       if (e.target.id === 'edit') {
         handleEditClick(editingMember);
@@ -97,7 +97,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
 
 
   const sortMemberList = (list, by = 'Last Updated') => {
-    const arr = Array.isArray(list) ? [...list] : []; // <-- copy first
+    const arr = Array.isArray(list) ? [...list] : [];
 
     let sortedMembers = []
     if (by === 'Name') {
@@ -324,12 +324,14 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
             &nbsp;{editingLocalData[1] && <button onClick={(e) => { setEditingLocalData([false, false]) }} style={{ cursor: 'pointer' }}>{'Cancel'}</button>}
           </span>
 
+        </div>}
+
+        <div className='settings-wrapper'>
 
           {/* Member List */}
-          <hr style={{ borderTop: '1px solid grey', width: '100%' }} />
           <span className="input-wrapper">
             <img src={groupIcon} alt="member-list" className='generic-icon'></img>
-            <span className='admin-settings-label'>Club Members</span>
+            <span className='admin-settings-label' style={{fontSize:'24px'}}>Club Members</span>
           </span><br />
 
           {/* Member list table */}
@@ -413,13 +415,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
               </table>
             </div>
           </div>
-
-
-
-
-
-
-        </div>}
+        </div>
 
         <div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large', marginBottom: '2px' }}><b>Hotkeys</b></div>

@@ -1028,7 +1028,6 @@ function App() {
         })
       });
     });
-
   }
 
   const handleStartPrintClick = (queue = false) => {
@@ -1081,7 +1080,7 @@ function App() {
         console.log("startPrintClick: warn: resin print costs $0.10 / ml");
         showMsgForDuration(`Warning: Resin prints cost $0.15 / ml,\nEven for club members.`, 'warn', popupTime + 5000);
       } else if ((selectedPrinter.filamentType === 'PLA') && !memberList.map(m=>m.email).includes(email) && !supervisorPrint) {
-        showMsgForDuration(`Warning: non-member detected. Pay-per-print\nthrough TooCool is required. Continue?`, 'warn', popupTime + 5000);
+        showMsgForDuration(`Warning: Non-member detected. Pay-per-print\nthrough TooCool is required. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
         //clear all warning popups 
