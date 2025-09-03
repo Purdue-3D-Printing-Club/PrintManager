@@ -38,7 +38,13 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
       window.removeEventListener('keydown', handleKeyPress);
     };
   })
-
+  
+  const toTime = (s) => {
+    if (!s) return -Infinity;
+    const iso = s.replace(' ', 'T') + 'Z';
+    const t = Date.parse(iso);
+    return Number.isFinite(t) ? t : -Infinity;
+  };
 
   
   const handleKeyPress = (e) => {
@@ -107,9 +113,11 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
         return sortAscending ? a.discordUsername.localeCompare(b.discordUsername) : b.discordUsername.localeCompare(a.discordUsername);
       });
     } else { // Last Updated
-      sortedMembers = arr.sort((a, b) => {
-        return sortAscending ? new Date(a.lastUpdated) - new Date(b.lastUpdated) : new Date(b.lastUpdated) - new Date(a.lastUpdated) ;
-      });
+      return arr.sort((a, b) => {
+      const t1 = toTime(a.lastUpdated);
+      const t2 = toTime(b.lastUpdated);
+      return sortAscending ? t1 - t2 : t2 - t1;
+    });
     }
     return sortedMembers
   }
@@ -181,8 +189,6 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
   const refreshMembers = () => {
     Axios.get(`${serverURL}/api/get?query=${'SELECT * FROM member'}`).then((response) => {
       setMemberList(sortMemberList(response.data.result, memberSort));
-      console.log('Got history list:')
-      console.log(newMemberList);
     });
   }
 
