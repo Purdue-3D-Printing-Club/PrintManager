@@ -861,7 +861,7 @@ function App() {
     } else if (selectedPrinter.status === 'testing') {
       return ("This printer is currently in testing, and is not available to print on.")
     } else if ((selectedPrinter.status === 'admin') && !isAdmin) {
-      return ("This printer is only available for admins. Please contact an officer if you would like to use this printer.")
+      return ("This printer is only available for admins. Please contact an officer if you would like to use it.")
     } else if ((selectedPrinter.status === 'admin') && isAdmin) {
       return ("This printer is available for you to print on!")
     } else {
@@ -1887,20 +1887,28 @@ function App() {
 
           {selectedPrinter && !menuOpen && <div>
             <div style={{ height: "35px" }}></div>
-            <div className='stat-msg' style={{ backgroundColor: getStatMsgColor() }}>
-              {getStatMsg()}
-              <hr style={{ borderTop: '1px solid black', width: '100%' }} />
-              {(isAdmin ? <div> {"Use "}
-                <select id="filamentType" value={selectedPrinter.filamentType} onChange={handleFilamentType}>
-                  <option value="PLA">PLA</option>
-                  <option value="PETG">PETG</option>
-                  <option value="TPU">TPU</option>
-                  <option value="Resin">Resin</option>
-                </select>
-                {" on this printer."}</div>
-                :
-                "Use " + selectedPrinter.filamentType + " on this printer.")
-              }
+            <div className='stat-msg' style={{ backgroundColor: getStatMsgColor(), display:'flex', flexWrap:'nowrap', }}>
+              <img src={`/images/printers/${selectedPrinter.model}.jpg`} style={{
+                width:'110px', height:'110px', flex: '0 0 auto', border:'1px solid black', borderRadius:'5px', objectFit: 'contain', objectPosition: 'center', backgroundColor: '#fff'
+                }}onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/images/printers/missing.jpg';
+                }}></img>
+                <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                {getStatMsg()}
+                <hr style={{ borderTop: '1px solid black', width: '100%' }} />
+                {(isAdmin ? <div> {"Use "}
+                  <select id="filamentType" value={selectedPrinter.filamentType} onChange={handleFilamentType}>
+                    <option value="PLA">PLA</option>
+                    <option value="PETG">PETG</option>
+                    <option value="TPU">TPU</option>
+                    <option value="Resin">Resin</option>
+                  </select>
+                  {" on this printer."}</div>
+                  :
+                  "Use " + selectedPrinter.filamentType + " on this printer.")
+                }
+              </div> 
             </div>
             <br />
             {
@@ -2167,10 +2175,12 @@ function App() {
 
             <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
               <div className='printer-header' style={{
-                //left: `calc(${sidebarWidth}px + (100% - ${sidebarWidth}px) / 4)`
-                width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px)/2)`,
+                display: 'inline-block', 
+                whiteSpace: 'nowrap',    
                 backgroundColor: `${getStatusColor(selectedPrinter.status)}`,
-                minWidth: 'fit-content',
+                margin:'auto',
+                paddingLeft: '20px',
+                paddingRight: '20px',
               }}>
                 {selectedPrinter.printerName} - {selectedPrinter.model}
               </div>

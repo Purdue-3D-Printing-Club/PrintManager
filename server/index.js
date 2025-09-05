@@ -1019,7 +1019,7 @@ app.put('/api/updateMember', (req, res) => {
         }
 
         connection.beginTransaction(function (err) {
-            connection.query(sqlUpdate, [name, email, lastUpdated, discordUsername, memberID], (err, result) => {
+            connection.query(sqlUpdate, [name, email, new Date(lastUpdated), discordUsername, memberID], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error updating database");

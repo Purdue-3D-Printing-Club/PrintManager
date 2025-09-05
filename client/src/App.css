@@ -135,6 +135,7 @@ html::-webkit-scrollbar {
 
 .printForm {
   margin: 5px 5px 0px 5px;
+  min-width: 470px;
   flex-direction: column;
   position: relative;
   background-color: rgb(222, 222, 222);
@@ -358,11 +359,11 @@ option {
 }
 
 .stat-msg {
-  width: 80%;
-  margin-left: 10%;
+  width: 50%;
+  min-width: 470px;
+  margin: auto;
   padding: 10px;
   display: flex;
-  flex-direction: column;
   box-shadow: 0 0 3px 2px rgb(50, 50, 50);
 }
 

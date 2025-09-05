@@ -205,8 +205,8 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
       if (memberCleanForInsert(member)) {
         //save the member in the database
         try {
-          let nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ')
-          Axios.put(`${serverURL}/api/updateMember`, { ...editingMember, lastUpdated: nowStr }).then(() => {
+          // let nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ')
+          Axios.put(`${serverURL}/api/updateMember`, { ...editingMember, lastUpdated: new Date().toISOString() }).then(() => {
             const newEditingMember = { ...editingMember, memberID: -1 }
             setEditingMember(newEditingMember);
             refreshMembers();
@@ -370,9 +370,9 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
                   <tr style={{ backgroundColor: '#ffffffff' }}>
                     <td><img src={addUser} className='generic-icon centeredIcon'></img></td>
                     <td> <button onClick={() => { handleMemberInsertClick(insertMember) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
-                    <td><input id='insert' type="text" className="history-edit" style={{ 'width': '200px' }} value={insertMember.email} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
-                    <td><input id='insert' type="text" className="history-edit" style={{ 'width': '200px' }} value={insertMember.name} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
-                    <td><input id='insert' type="text" className="history-edit" style={{ 'width': '200px' }} value={insertMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
+                    <td><input id='insert' type="text" placeholder="newmember@purdue.edu" className="history-edit" style={{ 'width': '250px' }} value={insertMember.email} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
+                    <td><input id='insert' type="text" placeholder="New Member" className="history-edit" style={{ 'width': '250px' }} value={insertMember.name} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
+                    <td><input id='insert' type="text" placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }} value={insertMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
                     <td> N/A </td>
                   </tr>
                   {memberList.map((member) => {
@@ -394,15 +394,15 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
                       {
                         ((editingMember.memberID === member.memberID)) ?
                           <>
-                            <td><input id='edit' type="text" className="history-edit" style={{ 'width': '200px' }} value={editingMember.email} onChange={(e) => handleMemberEdit(e, "email")}></input></td>
-                            <td><input id='edit' type="text" className="history-edit" style={{ 'width': '200px' }} value={editingMember.name} onChange={(e) => handleMemberEdit(e, "name")}></input></td>
-                            <td><input id='edit' type="text" className="history-edit" style={{ 'width': '200px' }} value={editingMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername")}></input></td>
+                            <td><input id='edit' type="text" className="history-edit" style={{ 'width': '250px' }} value={editingMember.email} onChange={(e) => handleMemberEdit(e, "email")}></input></td>
+                            <td><input id='edit' type="text" className="history-edit" style={{ 'width': '250px' }} value={editingMember.name} onChange={(e) => handleMemberEdit(e, "name")}></input></td>
+                            <td><input id='edit' type="text" className="history-edit" style={{ 'width': '150px' }} value={editingMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername")}></input></td>
                           </>
                           :
                           <>
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.email, false, 400) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.name, false, 400) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.discordUsername, false, 400) }} />
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.email, false, 300) }} />
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.name, false, 300) }} />
+                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.discordUsername, false, 190) }} />
                           </>
                       }
                       <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(member.lastUpdated, true), false, 400) }} />
