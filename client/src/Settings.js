@@ -131,7 +131,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
 
   const memberCleanForInsert = (member) => {
     if (memberList.map(mem => { if (mem.memberID === member.memberID) return null; return mem.email }).includes(member.email)) {
-      showMsgForDuration(`Cannot insert member: Member with email\n"${member.email}" already exists!`, 'err');
+      showMsgForDuration(`Cannot insert member: Email already exists!`, 'err');
       return false;
     } else if (!member.email || (!member.email.includes('@purdue.edu'))) {
       showMsgForDuration(`Cannot insert member: Email absent / malformed!`, 'err');

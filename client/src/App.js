@@ -3,7 +3,7 @@ import CryptoJS from 'crypto-js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import './App.css';
-import exitIcon from '/images/exit.svg';
+import exitIcon from '/images/cancel.svg';
 
 import loadingGif from '/images/loading.gif'
 import xIcon from '/images/x.png'
@@ -17,12 +17,13 @@ import ErrorBoundary from './ErrorBoundary';
 
 
 function App() {
+  const statusIconFolder = '/images/statusIcons'
   const SPECIAL_FILAMENT_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec'
   const MAIN_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec'
 
   const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
 
-  const [sidebarWidth, setSidebarWidth] = useState(225); // Initial sidebar width set to 225
+  const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width set to 250
   const minSidebarWidth = 180;
   const [isResizing, setIsResizing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -117,6 +118,26 @@ function App() {
   //     console.error("Error getting filename from: ", error);
   //   }
   // }
+
+  const mapStatusToIcon = (status) => {
+    if (selectedPrinter.status === 'busy') {
+      return `${statusIconFolder}/busy.svg`;
+    } if (selectedPrinter.status === 'admin-busy') {
+      return `${statusIconFolder}/busy.svg`;
+    } if (selectedPrinter.status === 'available') {
+      return `${statusIconFolder}/available.svg`;
+    } if (selectedPrinter.status === 'admin') {
+      if(isAdmin){
+        return `${statusIconFolder}/available.svg`;
+      } else {
+        return `${statusIconFolder}/admin.svg`;
+      }
+    } if (selectedPrinter.status === 'broken') {
+      return `${statusIconFolder}/broken.svg`;
+    }
+    // testing status included
+    return `${statusIconFolder}/testing.svg`;
+  }
 
   const getStatMsgColor = () => {
     if (selectedPrinter.status === 'busy') {
@@ -861,7 +882,7 @@ function App() {
     } else if (selectedPrinter.status === 'testing') {
       return ("This printer is currently in testing, and is not available to print on.")
     } else if ((selectedPrinter.status === 'admin') && !isAdmin) {
-      return ("This printer is only available for admins. Please contact an officer if you would like to use it.")
+      return ("This printer is only available for admins. Please contact an officer or lab advisor to use it.")
     } else if ((selectedPrinter.status === 'admin') && isAdmin) {
       return ("This printer is available for you to print on!")
     } else {
@@ -1035,9 +1056,6 @@ function App() {
     // get the latest queued print, and if it doesnt exist, show an error popup
     let queue = historyList.filter(item => item.status === 'queued')
     let toRelease = queue[queue.length - 1]
-    console.log('-----asdasd')
-    console.log(queue)
-    console.log(toRelease)
     // edge case handling
     if ((queue.length <= 0) || !toRelease) {
       showMsgForDuration('No jobs in queue! Print not started.', 'err');
@@ -1115,9 +1133,9 @@ function App() {
         console.log("startPrintClick: warn: duplicate name entry in queue");
         showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
-        console.log("startPrintClick: warn: already 5 queued resin prints");
+        console.log("startPrintClick: warn: already 3 queued resin prints");
         showMsgForDuration("Resin queue is full! Print not queued.", 'err');
-      } else if ((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) {
+      } else if (((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) && !personalFilament) {
         console.log("startPrintClick: warn: filament type not PLA");
         showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
@@ -1125,9 +1143,9 @@ function App() {
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
       } else if (queue) {
         console.log("startPrintClick: warn: resin print costs $0.10 / ml");
-        showMsgForDuration(`Warning: Resin prints cost $0.15 / ml,\nEven for club members.`, 'warn', popupTime + 5000);
-      } else if ((selectedPrinter.filamentType === 'PLA') && !memberList.map(m => m.email).includes(email) && !supervisorPrint) {
-        showMsgForDuration(`Warning: Non-member detected. Pay-per-print\nthrough TooCool is required. Continue?`, 'warn', popupTime + 5000);
+        showMsgForDuration(`Warning: Resin prints cost $0.12 / ml,\nEven for club members.`, 'warn', popupTime + 5000);
+      } else if ((selectedPrinter.filamentType === 'PLA') && !personalFilament && !memberList.map(m => m.email).includes(email) && !supervisorPrint) {
+        showMsgForDuration(`Warning: Non-member detected. Pay-per-gram\nthrough TooCool is required. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
         //clear all warning popups 
@@ -1171,7 +1189,7 @@ function App() {
       });
 
     } else {
-      startPrint();
+      startPrint(true);
     }
   }
 
@@ -1516,12 +1534,21 @@ function App() {
   };
 
   const handleUpload = async (e) => {
+    let files = Array.from(e.target.files)
+
+    // if(files.some((file)=>{
+    //   return !file.name.endsWith('.stl');
+    // })) {
+    //   showMsgForDuration('Cannot upload files: Only .stl files allowed', 'err');
+    //   return;
+    // }
+
     // immediately clear the files state and update the placeholder
     setfiles('');
     setFilesPlaceholder('Uploading Parts to Google Drive...');
 
     //update the part names
-    const filesList = Array.from(e.target.files).map(file => {
+    const filesList = files.map(file => {
       return file.name.substring(0, file.name.lastIndexOf('.')) || file;
     });
     const fileNames = filesList.join(', ');
@@ -1631,7 +1658,7 @@ function App() {
             {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
           </button></td>
         }
-        {!isComprehensive &&
+        {(!isComprehensive && !queue)&&
           <td>
             <button onClick={() => { autofillFields(job); showMsgForDuration('Autofill Successful', 'msg'); }} className='history-btn'>
               Autofill
@@ -1705,7 +1732,7 @@ function App() {
     setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
     handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
-    filesPlaceholder, memberList
+    filesPlaceholder, memberList, personalFilament
   }
 
 
@@ -1894,7 +1921,7 @@ function App() {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = '/images/printers/missing.jpg';
                 }}></img>
-                <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <div style={{ flex: '1 1 auto', minWidth: 0, paddingLeft:'10px'}}>
                 {getStatMsg()}
                 <hr style={{ borderTop: '1px solid black', width: '100%' }} />
                 {(isAdmin ? <div> {"Use "}
@@ -1914,10 +1941,14 @@ function App() {
             {
               (curJob && (selectedPrinter.status === 'busy' || selectedPrinter.status === 'admin-busy')) &&
               <div>
-                <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left' }}>
+                <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left', flexDirection:'column'}}>
                   {
                     curJob.name === curJob.supervisorName ? <>
-                      <span>&nbsp;<b>Supervisor Name:</b> {curJob.name}</span>
+                      <span>&nbsp;<b>Name:</b> {curJob.name}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Email:</b> {curJob.email}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Supervisor Name:</b> {curJob.supervisorName}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Files:</b> {curJob.files.replace(/,/g, ',\n')}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
@@ -1949,11 +1980,14 @@ function App() {
             {/* Printer status pages: busy, available, admin, admin-busy, broken, and testing */}
 
             {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy"))) && <div>
-              <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>Print Done</button>
+              <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={`images/check-circle.svg`}></img>Print Done</button>
               {((selectedPrinter.status === "busy") || ((selectedPrinter.status === "admin-busy") && isAdmin)) && <>
-                <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>Print Failed</button>
-                <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Cancel Print</button>
-                <select className="printer-btn" value={moveSelect} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} onChange={(e) => {
+                <button onClick={() => { handlePrintDoneClick("failed", null) }} style={{ backgroundColor: "rgba(246, 155, 97,0.8)" }} className='printer-btn'>
+                  <img className='status-icon' src={`${statusIconFolder}/failed.svg`}></img>Print Failed</button>
+                <button onClick={() => { cancelPrint() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
+                  <img className='status-icon' src={`images/cancel.svg`}></img>Cancel Print</button>
+                <select className="printer-btn select" value={moveSelect} onChange={(e) => {
                   const printer = e.target.value;
                   if (!printer) return;
                   movePrint(printer);
@@ -1961,7 +1995,9 @@ function App() {
                 }}>
                   <option value="" disabled hidden>Move Print</option>
                   {printerList.map((printer) => {
-                    if ((printer.filamentType === selectedPrinter.filamentType) && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {
+                    if ((((printer.filamentType==='Resin') && (selectedPrinter.filamentType==='Resin')) || // both printers are resin
+                     ((printer.filamentType !== 'Resin') && (selectedPrinter.filamentType !== 'Resin')))   // OR both printers aren't resin 
+                     && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {     // AND the printer must be available
                       return <>
                         <option value={printer.printerName}>{printer.printerName}</option>
                       </>
@@ -1971,16 +2007,30 @@ function App() {
               </>}
               {isAdmin && <>
                 <div>
-                  <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
-                  <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
-                  {selectedPrinter.status === 'busy' && <button onClick={() => { printerChangeWhileBusy("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>}
+                  <button onClick={() => { printerChangeWhileBusy("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={`${statusIconFolder}/broken.svg`}></img>Printer Broke</button>
+                  <button onClick={() => { printerChangeWhileBusy("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={`${statusIconFolder}/testing.svg`}></img>Testing Printer</button>
+                  {selectedPrinter.status === 'busy' && <button onClick={() => { printerChangeWhileBusy("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={`${statusIconFolder}/admin.svg`}></img>Admin Printer</button>}
                 </div>
               </>}
               <br />
 
+              
+
               {/* If the printer is a resin printer, then also include the option to queue up a new print */}
               {
                 selectedPrinter.filamentType === 'Resin' && <>
+                  {(((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy"))) && <>
+                  <StlPreviewSection
+                    showSTLPreviews={showSTLPreviews}
+                    curJob={curJob}
+                    getDirectDownloadLink={getDirectDownloadLink}
+                    truncateString={truncateString}
+                    serverURL={serverURL}
+                  />
+                </>}
                   <br /><br />
                   <PrintForm printFormArgs={printFormArgs}></PrintForm>
                   <br />
@@ -1995,13 +2045,15 @@ function App() {
                   }
 
                   <br />
-                  <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
-                  <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Clear Form</button>
+                  <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
+                  <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
+                    <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
                 </>
               }
             </div>}
 
-            {((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && <>
+            {(((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && selectedPrinter.filamentType !=='Resin') && <>
               <StlPreviewSection
                 showSTLPreviews={showSTLPreviews}
                 curJob={curJob}
@@ -2030,12 +2082,17 @@ function App() {
                 }
 
                 <br />
-                <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
-                <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Clear Form</button>
+                <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                   <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
+                <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
+                   <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
                 {isAdmin && <div style={{ display: 'block' }}>
-                  <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
-                  <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
-                  <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
+                  <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={`${statusIconFolder}/broken.svg`}></img>Printer Broke</button>
+                  <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={`${statusIconFolder}/testing.svg`}></img>Testing Printer</button>
+                  <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={`${statusIconFolder}/admin.svg`}></img>Admin Printer</button>
                 </div>}
                 <br />
 
@@ -2065,12 +2122,17 @@ function App() {
 
 
               <br />
-              <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
-              <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>Clear Form</button>
+              <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
+              <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
+                <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
               {isAdmin && <div style={{ display: 'block' }}>
-                <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
-                <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
-                <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Available</button>
+                <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>
+                  <img className='status-icon' src={`${statusIconFolder}/broken.svg`}></img>Printer Broke</button>
+                <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>
+                  <img className='status-icon' src={`${statusIconFolder}/testing.svg`}></img>Testing Printer</button>
+                <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                  <img className='status-icon' src={`${statusIconFolder}/available.svg`}></img>Printer Available</button>
               </div>}
 
               <br />
@@ -2085,15 +2147,21 @@ function App() {
             </div>}
 
             {selectedPrinter && (selectedPrinter.status === "broken") && isAdmin && <div>
-              <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Available</button>
-              <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>Testing Printer</button>
-              <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
+              <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={`${statusIconFolder}/available.svg`}></img>Printer Available</button>
+              <button onClick={() => { handlePrinterStatusChange("testing") }} style={{ backgroundColor: "rgba(255, 255, 255,0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={`${statusIconFolder}/testing.svg`}></img>Testing Printer</button>
+              <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={`${statusIconFolder}/admin.svg`}></img>Admin Printer</button>
             </div>}
 
             {selectedPrinter && (selectedPrinter.status === "testing") && isAdmin && <div>
-              <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>Printer Available</button>
-              <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>Printer Broke</button>
-              <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>Admin Printer</button>
+              <button onClick={() => { handlePrinterStatusChange("available") }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={`${statusIconFolder}/available.svg`}></img>Printer Available</button>
+              <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={`${statusIconFolder}/broken.svg`}></img>Printer Broke</button>
+              <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={`${statusIconFolder}/admin.svg`}></img>Admin Printer</button>
             </div>}
 
             {/* End printer status pages */}
@@ -2128,7 +2196,7 @@ function App() {
               selectedPrinter.filamentType === 'Resin' && <div>
                 <div style={{ height: "50px" }}></div>
 
-                <div className="print-history" style={{ marginTop: '20px' }}>Resin Printing Queue [{historyList.filter(item => item.status === 'queued').length}/5]</div>
+                <div className="print-history" style={{ marginTop: '20px' }}>Resin Printing Queue [{historyList.filter(item => item.status === 'queued').length}/3]</div>
 
                 <div className='wrapper-wrapper'>
                   <table className='history-wrapper'>
@@ -2136,6 +2204,7 @@ function App() {
                       <tr className='queue-top'>
                         {isAdmin && <th>Delete</th>}
                         {isAdmin && <th>Edit</th>}
+                        
                         <th>Time Queued</th>
                         <th>Parts</th>
                         <th>Name</th>
@@ -2179,9 +2248,10 @@ function App() {
                 whiteSpace: 'nowrap',    
                 backgroundColor: `${getStatusColor(selectedPrinter.status)}`,
                 margin:'auto',
-                paddingLeft: '20px',
+                paddingLeft: '10px',
                 paddingRight: '20px',
               }}>
+                <img className='status-icon' style={{height:'25px', width:'25px', paddingRight:'8px'}} src={mapStatusToIcon(selectedPrinter.status)}></img>
                 {selectedPrinter.printerName} - {selectedPrinter.model}
               </div>
             </div>
@@ -2270,7 +2340,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
 
               return (
                 <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
-                  {partname ? truncateString(partname.trim(), 24) : 'Download File ' + index}
+                  <img className='status-icon ' src={`images/download.svg`}></img> {partname ? truncateString(partname.trim(), 24) : 'File ' + index}
                 </button>
               );
             } else {
@@ -2301,7 +2371,7 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
             <tr>
               {isAdmin && <th>Delete</th>}
               {isAdmin && <th>Edit</th>}
-              {!isComprehensive && <th>Autofill</th>}
+              {(!isComprehensive) && <th>Autofill</th>}
               <th>Time Started</th>
               <th>Status</th>
               {isComprehensive && <th>Printer</th>}

@@ -9,7 +9,7 @@ const PrintForm = ({ printFormArgs }) => {
     const { setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
         handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
         filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
-        filesPlaceholder, memberList } = printFormArgs
+        filesPlaceholder, memberList, personalFilament } = printFormArgs
 
         const [isMember, setIsMember] = useState(false);
 
@@ -23,7 +23,7 @@ const PrintForm = ({ printFormArgs }) => {
 
     return (
         <div className='printForm'>
-            <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>{formData ? "Clear Autofill Data Table" : "Retrieve Latest Five Form Submissions..."}</button>
+            <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>{formData ? "Clear Autofill Data Table" : "Retrieve Latest Form Submissions..."}</button>
             {formDataLoading && <img src={loading} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }}>
             </img>}
             {formData && <div className="form-data-wrapper">
@@ -78,7 +78,7 @@ const PrintForm = ({ printFormArgs }) => {
                 <input placeholder={filesPlaceholder} value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
             </div>
             <div style={{height:'30px'}}> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
-                {(((selectedPrinter.filamentType !== 'PLA')) || (!isMember && !supervisorPrint)) && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.15 : 0.1)).toFixed(2)}`)} </div>
+                {(((selectedPrinter.filamentType !== 'PLA')) || (!isMember && !supervisorPrint && !personalFilament)) && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.12 : 0.1)).toFixed(2)}`)} </div>
 
             <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
                 <br />

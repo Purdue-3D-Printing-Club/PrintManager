@@ -395,11 +395,17 @@ option {
   display: inline-flex;
   justify-content: center;
   user-select: none;
-  padding-left: 15px;
+  padding-left: 10px;
   padding-right: 15px;
   background-color: silver;
   transition: opacity 0.15s ease;
   opacity: 80%;
+}
+
+.printer-btn.select{
+  background: rgb(159, 188, 254, 0.8) url('/images/move.svg') no-repeat left 8px center;
+  background-size: 20px 20px;
+  padding-left: 32px;
 }
 
 .history-btn {
@@ -409,6 +415,15 @@ option {
   width: 80%;
   margin-left: 10%;
   cursor: pointer;
+}
+
+.status-icon{
+  width: 20px;
+  height:20px;
+  margin:auto;
+  padding-right:5px;
+  align-items: center;
+  padding-top: 2px;
 }
 
 .printer-btn:hover,
