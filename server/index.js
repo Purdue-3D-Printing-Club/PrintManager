@@ -29,6 +29,8 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const { randomInt } = require('crypto');
 puppeteer.use(StealthPlugin());
 
+const tempCutoffTime = '2025-08-15'
+
 // json file management
 const path = require('path');
 const { type } = require('os');
@@ -737,10 +739,11 @@ app.get('/api/getHistory', (req, res) => {
     const field = req.query.field;
     // console.log('value:', value, '  field:', field)
 
-    let sqlSelectHistory = `SELECT * FROM printjob WHERE ${field} = ?`;
-    if (value === 'undefined') {
-        sqlSelectHistory = 'SELECT * FROM printjob';
+    let sqlSelectHistory = `SELECT * FROM printjob WHERE timeStarted > '${tempCutoffTime}'`;
+    if (value !== 'undefined') {
+        sqlSelectHistory += `AND ${field} = ?`
     }
+    sqlSelectHistory += ';'
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting connection from pool:', err);
