@@ -258,8 +258,9 @@ html::-webkit-scrollbar {
   outline: 2px solid black;
   margin-top: 20px;
   background-color: rgb(245, 245, 245);
-  width: 80%;
-  margin-left: 10%;
+  width: 52%;
+  min-width:470px;
+  margin:auto;
   word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: pre-wrap;
@@ -389,11 +390,10 @@ option {
   font-size: x-large;
   border-radius: 5px;
   padding: 5px;
-  outline: 1px solid black;
+  /* outline: 1px solid black; */
   margin-right: 10px;
   margin-top: 10px;
   display: inline-flex;
-  justify-content: center;
   user-select: none;
   padding-left: 10px;
   padding-right: 15px;
@@ -404,8 +404,11 @@ option {
 
 .printer-btn.select{
   background: rgb(159, 188, 254, 0.8) url('/images/move.svg') no-repeat left 8px center;
-  background-size: 20px 20px;
-  padding-left: 32px;
+  background-size: 25px 25px;
+  padding-left: 40px;
+  padding-bottom: 4px;
+  padding-top: 7px;
+
 }
 
 .history-btn {
@@ -418,12 +421,11 @@ option {
 }
 
 .status-icon{
-  width: 20px;
-  height:20px;
-  margin:auto;
+  width: 24px;
+  height:24px;
   padding-right:5px;
   align-items: center;
-  padding-top: 2px;
+  padding-top:2px;
 }
 
 .printer-btn:hover,
@@ -600,12 +602,12 @@ h2 {
   display: none;
 }
 .input-icon{
-  width: 25px;
-  height:25px;
+  width: 22px;
+  height:22px;
   margin:auto;
   position:absolute;
   right:5px;
-  top:4px;
+  top:5px;
 }
 
 .checkbox-container {

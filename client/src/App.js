@@ -708,7 +708,7 @@ function App() {
   }
 
   const cancelPrint = () => {
-    // autofillFields(curJob);
+    autofillFields(curJob);
     fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}`, { method: 'DELETE', }).then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -1158,9 +1158,26 @@ function App() {
     };
   };
 
-  const handleWarningClick = (id, replaceJob) => {
-    setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
+  const buildFormJob = () => {
+    return ({
+        files: truncateString(files, 512),
+        usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
+        timeStarted: new Date().toISOString(),
+        status: selectedPrinter?.filamentType === 'Resin' ? "queued" : "active",
+        name: truncateString(name, 64),
+        supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
+        notes: truncateString(notes, 256),
+        partNames: truncateString(partNames, 256),
+        email: truncateString(email, 64),
+        personalFilament: personalFilament
+    })
+  }
 
+  const handleWarningClick = (notification) => {
+    const {id, msg, type, replaceJob, msgPrinter, msgJob} = notification
+    const isResin = msgPrinter?.filamentType === 'Resin'
+
+    setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
     if (replaceJob) {
       // delete the old queued job with the same name
       fetch(`${serverURL}/api/deleteJob/${replaceJob.jobID}`, { method: 'DELETE', }).then(response => {
@@ -1181,49 +1198,40 @@ function App() {
 
         setHistoryList(updatedHistoryList);
 
-        // queue the new one
-        startPrint(true);
+        // queue the new one if resin
+        startPrint(isResin, msgPrinter, msgJob);
 
       }).catch(error => {
         console.error('Error:', error);
       });
 
     } else {
-      startPrint(true);
+      startPrint(isResin, msgPrinter, msgJob);
     }
   }
 
-  const startPrint = (queue = false) => {
+  const startPrint = (queue = false, formPrinter=selectedPrinter, formJob=buildFormJob()) => {
     try {
       Axios.post(`${serverURL}/api/insert`, {
-        printerName: selectedPrinter.printerName,
-        files: truncateString(files, 512),
-        usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
-        timeStarted: new Date().toISOString(),
-        status: selectedPrinter.filamentType === 'Resin' ? "queued" : "active",
-        name: truncateString(name, 64),
-        supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
-        notes: truncateString(notes, 256),
-        partNames: truncateString(partNames, 256),
-        email: truncateString(email, 64),
-        personalFilament: personalFilament
+        printerName: formPrinter.printerName,
+        ...formJob
       }).then(() => {
         if (!queue) {
           setTimeout(() => {
             //update the current job of the printer that was selected for the print
             try {
-              Axios.get(`${serverURL}/api/getCurrentJob?printerName=${selectedPrinter.printerName}`).then((response) => {
+              Axios.get(`${serverURL}/api/getCurrentJob?printerName=${formPrinter.printerName}`).then((response) => {
                 console.log("CurrentJob data: ");
                 console.log(response.data);
                 //update the printer status of the printer that was given the job
-                updateTable("printer", "status", selectedPrinter.printerName, selectedPrinter.status === 'admin' ? "admin-busy" : "busy", () => {
+                updateTable("printer", "status", formPrinter.printerName, formPrinter.status === 'admin' ? "admin-busy" : "busy", () => {
                   //update the currentJob of the printer that was used for the printJob
                   if (response.data.currentJob[0]) {
-                    updateTable("printer", "currentJob", selectedPrinter.printerName, response.data.currentJob[0].jobID, () => {
+                    updateTable("printer", "currentJob", formPrinter.printerName, response.data.currentJob[0].jobID, () => {
                       const updatedPrinterList = printerList.map(printer => {
-                        if (printer.printerName === selectedPrinter.printerName) {
+                        if (printer.printerName === formPrinter.printerName) {
                           let newPrinter = {
-                            ...printer, status: selectedPrinter.status === 'admin' ? 'admin-busy' : "busy",
+                            ...printer, status: formPrinter.status === 'admin' ? 'admin-busy' : "busy",
                             currentJob: response.data.currentJob[0].jobID
                           }
                           selectPrinter(newPrinter)
@@ -1240,9 +1248,9 @@ function App() {
               console.error("Error fetching printer data: ", error);
             }
           });
-          if (selectedPrinter.filamentType !== 'Resin') { clearFields(); }
+          if (formPrinter.filamentType !== 'Resin') { clearFields(); }
         } else {
-          Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
+          Axios.get(`${serverURL}/api/getHistory?value=${formPrinter.printerName}&field=printerName`).then((response) => {
             const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
             setHistoryList(newHistory);
             console.log('Got history list:')
@@ -1460,8 +1468,10 @@ function App() {
   const showMsgForDuration = (msg, type, duration = popupTime, replaceJob = null) => {
     console.log('adding [' + msg + '] to the queue...')
     const id = Date.now(); // Unique ID for each message
-
-    setMessageQueue(prevQueue => [...prevQueue, { id, msg, type, replaceJob }]);
+    
+    let msgJob = buildFormJob();
+    const msgPrinter = selectedPrinter
+    setMessageQueue(prevQueue => [...prevQueue, { id, msg, type, replaceJob, msgPrinter, msgJob}]);
 
     // Set a timeout to remove the message after its duration
     setTimeout(() => {
@@ -2167,6 +2177,8 @@ function App() {
             {/* End printer status pages */}
 
             {selectedPrinter && isAdmin && (printerNotes === null) && <div>
+            <div style={{height:'20px'}}></div>
+
               <div className='notes-msg'>
                 <strong>-- Printer Status Notes --</strong><br />
                 {
@@ -2287,11 +2299,12 @@ function App() {
           <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
         </div>
         {
-          messageQueue.map(({ id, msg, type, replaceJob }, index) => {
+          messageQueue.map((notification, index) => {
+            const {id, msg, type, replaceJob, msgPrinter, msgJob} = notification
             return (
               <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line', zIndex: 11 }} key={id} className={`${type}-msg`}>{msg}<img src={exitIcon} className="msg-exit" onClick={() => handleMsgExit(id)}></img>
                 {(type === 'warn') && <div className="warning-content">
-                  <div onClick={() => { handleWarningClick(id, replaceJob) }} style={{ backgroundColor: "#afc6fa" }} className='printer-btn'>Continue</div>
+                  <div onClick={() => { handleWarningClick(notification) }} style={{ backgroundColor: "#afc6fa" }} className='printer-btn'>Continue</div>
                 </div>}
               </div>
             )
