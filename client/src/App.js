@@ -8,6 +8,7 @@ import exitIcon from '/images/cancel.svg';
 import loadingGif from '/images/loading.gif'
 import xIcon from '/images/x.png'
 
+import TrendingPrints from './TrendingPrints'
 import StlPreview from './StlPreview';
 import Settings from './Settings';
 import Sidebar from './Sidebar';
@@ -127,7 +128,7 @@ function App() {
     } if (selectedPrinter.status === 'available') {
       return `${statusIconFolder}/available.svg`;
     } if (selectedPrinter.status === 'admin') {
-      if(isAdmin){
+      if (isAdmin) {
         return `${statusIconFolder}/available.svg`;
       } else {
         return `${statusIconFolder}/admin.svg`;
@@ -729,7 +730,7 @@ function App() {
     let newPrinter = printerList.find(p => p.printerName === printerName);
 
 
-   
+
 
 
     //update the new printer's status to active    
@@ -752,7 +753,7 @@ function App() {
           id: curJob.jobID,
           val: printerName
         }).then(() => {
-           // update the selected printer's status from active to inactive
+          // update the selected printer's status from active to inactive
           console.log('Changing', selectedPrinter.printerName, 'status to inactive')
 
           updateTable("printer", "currentJob", selectedPrinter.printerName, '', () => {
@@ -1160,21 +1161,21 @@ function App() {
 
   const buildFormJob = () => {
     return ({
-        files: truncateString(files, 512),
-        usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
-        timeStarted: new Date().toISOString(),
-        status: selectedPrinter?.filamentType === 'Resin' ? "queued" : "active",
-        name: truncateString(name, 64),
-        supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
-        notes: truncateString(notes, 256),
-        partNames: truncateString(partNames, 256),
-        email: truncateString(email, 64),
-        personalFilament: personalFilament
+      files: truncateString(files, 512),
+      usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
+      timeStarted: new Date().toISOString(),
+      status: selectedPrinter?.filamentType === 'Resin' ? "queued" : "active",
+      name: truncateString(name, 64),
+      supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
+      notes: truncateString(notes, 256),
+      partNames: truncateString(partNames, 256),
+      email: truncateString(email, 64),
+      personalFilament: personalFilament
     })
   }
 
   const handleWarningClick = (notification) => {
-    const {id, msg, type, replaceJob, msgPrinter, msgJob} = notification
+    const { id, msg, type, replaceJob, msgPrinter, msgJob } = notification
     const isResin = msgPrinter?.filamentType === 'Resin'
 
     setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
@@ -1210,7 +1211,7 @@ function App() {
     }
   }
 
-  const startPrint = (queue = false, formPrinter=selectedPrinter, formJob=buildFormJob()) => {
+  const startPrint = (queue = false, formPrinter = selectedPrinter, formJob = buildFormJob()) => {
     try {
       Axios.post(`${serverURL}/api/insert`, {
         printerName: formPrinter.printerName,
@@ -1468,10 +1469,10 @@ function App() {
   const showMsgForDuration = (msg, type, duration = popupTime, replaceJob = null) => {
     console.log('adding [' + msg + '] to the queue...')
     const id = Date.now(); // Unique ID for each message
-    
+
     let msgJob = buildFormJob();
     const msgPrinter = selectedPrinter
-    setMessageQueue(prevQueue => [...prevQueue, { id, msg, type, replaceJob, msgPrinter, msgJob}]);
+    setMessageQueue(prevQueue => [...prevQueue, { id, msg, type, replaceJob, msgPrinter, msgJob }]);
 
     // Set a timeout to remove the message after its duration
     setTimeout(() => {
@@ -1668,7 +1669,7 @@ function App() {
             {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
           </button></td>
         }
-        {(!isComprehensive && !queue)&&
+        {(!isComprehensive && !queue) &&
           <td>
             <button onClick={() => { autofillFields(job); showMsgForDuration('Autofill Successful', 'msg'); }} className='history-btn'>
               Autofill
@@ -1745,7 +1746,6 @@ function App() {
     filesPlaceholder, memberList, personalFilament
   }
 
-
   return (
     <div className="App">
 
@@ -1779,28 +1779,9 @@ function App() {
             <div>
               {/* Print of the day stl previews*/}
               <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
-              {(potdStatus === 'done') && <div>
-                {(dailyPrint.length != 0) ? <>
-                  <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
-                    {dailyPrint?.map((item) => {
-                      return (
-                        <a target="_blank" rel="noreferrer" className="print-card" href={item.link}>
-                          <div className="image-4-3">
-                            <img src={item.imgLink}></img>
-                          </div>
-                          <h3 style={{ marginTop: '5px' }}>{truncateString(item.name, 55)}</h3>
-                        </a>
-
-                        // <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
-                      )
-                    })
-                    }
-                  </div>
-                </> : <>
-                  <h2>No trending prints! Check again later.</h2>
-                </>}
-
-              </div>
+              {(potdStatus === 'done') && <TrendingPrints 
+              dailyPrint={dailyPrint} selectedPrinter={selectedPrinter} menuOpen={menuOpen} truncateString={truncateString}>
+              </TrendingPrints>
               }
 
 
@@ -1924,14 +1905,14 @@ function App() {
 
           {selectedPrinter && !menuOpen && <div>
             <div style={{ height: "35px" }}></div>
-            <div className='stat-msg' style={{ backgroundColor: getStatMsgColor(), display:'flex', flexWrap:'nowrap', }}>
+            <div className='stat-msg' style={{ backgroundColor: getStatMsgColor(), display: 'flex', flexWrap: 'nowrap', }}>
               <img src={`/images/printers/${selectedPrinter.model}.jpg`} style={{
-                width:'110px', height:'110px', flex: '0 0 auto', border:'1px solid black', borderRadius:'5px', objectFit: 'contain', objectPosition: 'center', backgroundColor: '#fff'
-                }}onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = '/images/printers/missing.jpg';
-                }}></img>
-                <div style={{ flex: '1 1 auto', minWidth: 0, paddingLeft:'10px'}}>
+                width: '110px', height: '110px', flex: '0 0 auto', border: '1px solid black', borderRadius: '5px', objectFit: 'contain', objectPosition: 'center', backgroundColor: '#fff'
+              }} onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/images/printers/missing.jpg';
+              }}></img>
+              <div style={{ flex: '1 1 auto', minWidth: 0, paddingLeft: '10px' }}>
                 {getStatMsg()}
                 <hr style={{ borderTop: '1px solid black', width: '100%' }} />
                 {(isAdmin ? <div> {"Use "}
@@ -1945,13 +1926,13 @@ function App() {
                   :
                   "Use " + selectedPrinter.filamentType + " on this printer.")
                 }
-              </div> 
+              </div>
             </div>
             <br />
             {
               (curJob && (selectedPrinter.status === 'busy' || selectedPrinter.status === 'admin-busy')) &&
               <div>
-                <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left', flexDirection:'column'}}>
+                <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left', flexDirection: 'column' }}>
                   {
                     curJob.name === curJob.supervisorName ? <>
                       <span>&nbsp;<b>Name:</b> {curJob.name}</span>
@@ -2005,9 +1986,9 @@ function App() {
                 }}>
                   <option value="" disabled hidden>Move Print</option>
                   {printerList.map((printer) => {
-                    if ((((printer.filamentType==='Resin') && (selectedPrinter.filamentType==='Resin')) || // both printers are resin
-                     ((printer.filamentType !== 'Resin') && (selectedPrinter.filamentType !== 'Resin')))   // OR both printers aren't resin 
-                     && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {     // AND the printer must be available
+                    if ((((printer.filamentType === 'Resin') && (selectedPrinter.filamentType === 'Resin')) || // both printers are resin
+                      ((printer.filamentType !== 'Resin') && (selectedPrinter.filamentType !== 'Resin')))   // OR both printers aren't resin 
+                      && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {     // AND the printer must be available
                       return <>
                         <option value={printer.printerName}>{printer.printerName}</option>
                       </>
@@ -2027,20 +2008,20 @@ function App() {
               </>}
               <br />
 
-              
+
 
               {/* If the printer is a resin printer, then also include the option to queue up a new print */}
               {
                 selectedPrinter.filamentType === 'Resin' && <>
                   {(((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy"))) && <>
-                  <StlPreviewSection
-                    showSTLPreviews={showSTLPreviews}
-                    curJob={curJob}
-                    getDirectDownloadLink={getDirectDownloadLink}
-                    truncateString={truncateString}
-                    serverURL={serverURL}
-                  />
-                </>}
+                    <StlPreviewSection
+                      showSTLPreviews={showSTLPreviews}
+                      curJob={curJob}
+                      getDirectDownloadLink={getDirectDownloadLink}
+                      truncateString={truncateString}
+                      serverURL={serverURL}
+                    />
+                  </>}
                   <br /><br />
                   <PrintForm printFormArgs={printFormArgs}></PrintForm>
                   <br />
@@ -2063,7 +2044,7 @@ function App() {
               }
             </div>}
 
-            {(((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && selectedPrinter.filamentType !=='Resin') && <>
+            {(((selectedPrinter.status === "busy") || (selectedPrinter.status === "admin-busy")) && selectedPrinter.filamentType !== 'Resin') && <>
               <StlPreviewSection
                 showSTLPreviews={showSTLPreviews}
                 curJob={curJob}
@@ -2093,9 +2074,9 @@ function App() {
 
                 <br />
                 <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
-                   <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
+                  <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
                 <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
-                   <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
+                  <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
                 {isAdmin && <div style={{ display: 'block' }}>
                   <button onClick={() => { handlePrinterStatusChange("broken") }} style={{ backgroundColor: "rgba(246, 97, 97,0.8)" }} className='printer-btn'>
                     <img className='status-icon' src={`${statusIconFolder}/broken.svg`}></img>Printer Broke</button>
@@ -2177,7 +2158,7 @@ function App() {
             {/* End printer status pages */}
 
             {selectedPrinter && isAdmin && (printerNotes === null) && <div>
-            <div style={{height:'20px'}}></div>
+              <div style={{ height: '20px' }}></div>
 
               <div className='notes-msg'>
                 <strong>-- Printer Status Notes --</strong><br />
@@ -2216,7 +2197,7 @@ function App() {
                       <tr className='queue-top'>
                         {isAdmin && <th>Delete</th>}
                         {isAdmin && <th>Edit</th>}
-                        
+
                         <th>Time Queued</th>
                         <th>Parts</th>
                         <th>Name</th>
@@ -2256,14 +2237,14 @@ function App() {
 
             <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
               <div className='printer-header' style={{
-                display: 'inline-block', 
-                whiteSpace: 'nowrap',    
+                display: 'inline-block',
+                whiteSpace: 'nowrap',
                 backgroundColor: `${getStatusColor(selectedPrinter.status)}`,
-                margin:'auto',
+                margin: 'auto',
                 paddingLeft: '10px',
                 paddingRight: '20px',
               }}>
-                <img className='status-icon' style={{height:'25px', width:'25px', paddingRight:'8px'}} src={mapStatusToIcon(selectedPrinter.status)}></img>
+                <img className='status-icon' style={{ height: '25px', width: '25px', paddingRight: '8px' }} src={mapStatusToIcon(selectedPrinter.status)}></img>
                 {selectedPrinter.printerName} - {selectedPrinter.model}
               </div>
             </div>
@@ -2300,7 +2281,7 @@ function App() {
         </div>
         {
           messageQueue.map((notification, index) => {
-            const {id, msg, type, replaceJob, msgPrinter, msgJob} = notification
+            const { id, msg, type, replaceJob, msgPrinter, msgJob } = notification
             return (
               <div style={{ top: `${10 + (index * 60) + (getWarningsBeforeIndex(index) * 85)}px`, whiteSpace: 'pre-line', zIndex: 11 }} key={id} className={`${type}-msg`}>{msg}<img src={exitIcon} className="msg-exit" onClick={() => handleMsgExit(id)}></img>
                 {(type === 'warn') && <div className="warning-content">

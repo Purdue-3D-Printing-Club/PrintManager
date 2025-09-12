@@ -75,6 +75,21 @@ html::-webkit-scrollbar {
   overflow-y:hidden;
   column-gap: 10px;
   padding-bottom: 15px;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+}
+
+
+.print-card {
+  flex: 0 0 auto; 
+  width: 300px;
+  color:black;
+  /* min-width:300px; */
+  transition: 0.1s scale ease-in-out;
+}
+
+.print-card:hover {
+  scale:1.02;
 }
 
 .hidden {
@@ -108,15 +123,6 @@ html::-webkit-scrollbar {
   font-size: medium;
 }
 
-.print-card {
-  color:black;
-  min-width:300px;
-  transition: 0.1s scale ease-in-out;
-}
-
-.print-card:hover {
-  scale:1.02;
-}
 
 .image-4-3 {
   aspect-ratio: 4 / 3;

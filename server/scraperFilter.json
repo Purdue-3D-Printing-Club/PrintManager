@@ -1,0 +1,26 @@
+{
+    "blacklist": [
+    "gun", "firearm", "weapon", "arms", "armament",
+    "rifle", "shotgun", "pistol", "revolver", "handgun", "minigun",
+    "sniper", "carbine", "assault", "smg", "submachine",
+    "machinegun", "uzi", "ak47", "ak-47", "m16", "m4", "ar15", "ar-15", "glock",
+    "beretta", "sig", "colt", "remington", "winchester", "springfield",
+    "bullet", "ammo", "ammunition", "magazine", "mag", "round", "shell", "cartridge",
+    "silencer", "suppressor", "barrel", "slide",
+    "nerf", "dart", "blaster", "bbgun", "airsoft", "paintball",
+    "knife", "dagger", "blade", "machete", "shiv", "shank", "stiletto", "bayonet",
+    "sword", "katana", "longsword", "shortsword", "claymore", "sabre", "saber", "rapier",
+    "polearm", "polearms", "spear", "halberd", "pike", "lance", "trident",
+    "axe", "hatchet", "tomahawk", "battleaxe",
+    "club", "baton", "mace", "flail", "morningstar",
+    "saw", "tactical", "firing", "reloading", "reload", "detonate", "detonator", 
+    "bow", "crossbow", "quiver", "arrow", "bolt", "arrowhead",
+    "grenade", "landmine", "mine", "ied", "bomb", "explosive", "dynamite", "c4", "tnt", "molotov",
+    "rocket", "rpg", "bazooka", "missile", "launcher",
+    "tank", "artillery", "howitzer", "cannon", "mortar",
+    "taser"
+    ],
+    "whitelist": [
+        "figurine", "toy", "figure", "tabletop", "model", "miniature", "dnd", "warhammer"
+    ]
+}

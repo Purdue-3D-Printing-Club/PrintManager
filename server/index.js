@@ -11,6 +11,16 @@ const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
 const fetch = require('node-fetch');
 
+// printables filtering
+const {blacklist, whitelist} = require('./scraperFilter.json')
+function buildWordRegex(words) {
+  const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`(?:^|[^a-zA-Z0-9])(${escaped.join("|")})(?=$|[^a-zA-Z0-9])`, "i");
+}
+const blacklistRegex = buildWordRegex(blacklist);
+const whitelistRegex = buildWordRegex(whitelist);
+
+
 // google drive / file system
 const fs = require('fs-extra');
 const { google } = require('googleapis');
@@ -399,6 +409,22 @@ async function getDownloadLinks(browser, printLinks) {
     return ({ 'partLinks': dlLinks, 'pageLink': printLinks[pageIndex].link, 'pageName': printLinks[pageIndex].name });
 }
 
+// determine if a string should be blocked or not using the whitelist and blacklist
+function isBlocked(text) {
+  const lower = text.toLowerCase();
+  // Check for blacklist matches
+  if (!lower.match(blacklistRegex)) return false;
+
+  // Allow blacklisted words if there are also whitelisted words
+  if (lower.match(whitelistRegex)) {
+    return false;
+  }
+
+//   console.log('blocked scraped print: ', text)
+  // Block strings that have blacklisted words only
+  return true;
+}
+
 app.get('/api/getDailyPrint', async (req, res) => {
     async function getDailyPrint() {
         let browser;
@@ -406,10 +432,8 @@ app.get('/api/getDailyPrint', async (req, res) => {
             browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
             const printLinks = await getPrintLinks(browser);
 
-
-            // let linkObj = await getDownloadLinks(browser, printLinks);
-
-            return printLinks;
+            // filter the scraped prints based on the blacklist and whitelist globals
+            return printLinks.filter(p=>!isBlocked(p.name));;
         } catch (e) {
             console.error('Error in getDailyPrint: ', e);
             return [];
