@@ -1669,7 +1669,7 @@ function App() {
             {editingJob.jobID !== job.jobID ? 'edit' : 'save'}
           </button></td>
         }
-        {(!isComprehensive && !queue) &&
+        {(!queue) &&
           <td>
             <button onClick={() => { autofillFields(job); showMsgForDuration('Autofill Successful', 'msg'); }} className='history-btn'>
               Autofill
@@ -2365,7 +2365,7 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
             <tr>
               {isAdmin && <th>Delete</th>}
               {isAdmin && <th>Edit</th>}
-              {(!isComprehensive) && <th>Autofill</th>}
+              {<th>Autofill</th>}
               <th>Time Started</th>
               <th>Status</th>
               {isComprehensive && <th>Printer</th>}
