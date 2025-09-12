@@ -96,7 +96,7 @@ Coming soon!
 5. Go to Server > Data Import
 6. Import From Dump Project Folder (select the extracted dump folder you just downloaded).
 7. You should see a schema called "printmanagerdb2" load in, and in the bottom right you need to click 'Start Import'.
-8. Restart MySQL Workbench, and now on the left you should see the printmanagerdb2 scehma. This means it worked. Optionally, you can open the schema, go to tables, and right click on the tables and click 'Select rows - limit 1000' to view the contents of each table. There should be some printers already available in the printer table, but nothing in the printjob table.
+8. Restart MySQL Workbench, and now on the left you should see the printmanagerdb2 schema. This means it worked. Optionally, you can open the schema, go to tables, and right click on the tables and click 'Select rows - limit 1000' to view the contents of each table. There should be some printers already available in the printer table, but nothing in the printjob table.
 <img width="1050" alt="pm_5" src="https://github.com/user-attachments/assets/00893db6-02fe-4626-9a15-45438337a0a4">
 
 - After you are done with this, the database should be all ready to go! Now lets set up VSCode.
