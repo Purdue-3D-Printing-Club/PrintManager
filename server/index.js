@@ -11,6 +11,15 @@ const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
 const fetch = require('node-fetch');
 
+const pool = mysql.createPool({
+    host: "localhost",
+    user: "root",
+    password: "rootpassword",
+    database: "printmanagerdb2",
+    timezone: '-04:00',
+    dateStrings: true
+})
+
 // printables filtering
 const {blacklist, whitelist} = require('./scraperFilter.json');
 function buildWordRegex(words) {
@@ -86,14 +95,6 @@ async function getGraphClient() {
     });
 }
 
-const pool = mysql.createPool({
-    host: "localhost",
-    user: "root",
-    password: "rootpassword",
-    database: "printmanagerdb2",
-    timezone: '-04:00',
-    dateStrings: true
-})
 
 app.use(cors());
 app.use(express.json());

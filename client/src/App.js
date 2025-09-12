@@ -20,7 +20,7 @@ import ErrorBoundary from './ErrorBoundary';
 function App() {
   const statusIconFolder = '/images/statusIcons'
   const SPECIAL_FILAMENT_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec'
-  const MAIN_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytjN8jEK8rcrjqrpQFUYezzeVH8k86GgYgR4NaIkvT95ScBpUwDw09g2JxrpyT1UTrMQ/exec'
+  const MAIN_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMTIphmSEMiWof46LvuMCZYyONi3wqAbaxzjKXTFxQ8gNQd84Wzct7GsidBwQjyQld/exec'
 
   const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
 
