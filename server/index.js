@@ -12,11 +12,13 @@ require('isomorphic-fetch');
 const fetch = require('node-fetch');
 
 // printables filtering
-const {blacklist, whitelist} = require('./scraperFilter.json')
+const {blacklist, whitelist} = require('./scraperFilter.json');
 function buildWordRegex(words) {
+  words = words.concat(words.map(w => w+'s'));
   const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   return new RegExp(`(?:^|[^a-zA-Z0-9])(${escaped.join("|")})(?=$|[^a-zA-Z0-9])`, "i");
 }
+
 const blacklistRegex = buildWordRegex(blacklist);
 const whitelistRegex = buildWordRegex(whitelist);
 

@@ -10,7 +10,7 @@
     "nerf", "dart", "blaster", "bbgun", "airsoft", "paintball",
     "knife", "dagger", "blade", "machete", "shiv", "shank", "stiletto", "bayonet",
     "sword", "katana", "longsword", "shortsword", "claymore", "sabre", "saber", "rapier",
-    "polearm", "polearms", "spear", "halberd", "pike", "lance", "trident",
+    "polearm", "spear", "halberd", "pike", "lance", "trident",
     "axe", "hatchet", "tomahawk", "battleaxe",
     "club", "baton", "mace", "flail", "morningstar",
     "saw", "tactical", "firing", "reloading", "reload", "detonate", "detonator", 
@@ -21,6 +21,6 @@
     "taser"
     ],
     "whitelist": [
-        "figurine", "toy", "figure", "tabletop", "model", "miniature", "dnd", "warhammer"
+        "figurine", "figure", "tabletop", "model", "miniature", "dnd", "warhammer"
     ]
 }
