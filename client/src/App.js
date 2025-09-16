@@ -1779,8 +1779,8 @@ function App() {
             <div>
               {/* Print of the day stl previews*/}
               <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
-              {(potdStatus === 'done') && <TrendingPrints 
-              dailyPrint={dailyPrint} selectedPrinter={selectedPrinter} menuOpen={menuOpen} truncateString={truncateString}>
+              {(potdStatus === 'done') && <TrendingPrints
+                dailyPrint={dailyPrint} selectedPrinter={selectedPrinter} menuOpen={menuOpen} truncateString={truncateString}>
               </TrendingPrints>
               }
 
@@ -1937,8 +1937,6 @@ function App() {
                     curJob.name === curJob.supervisorName ? <>
                       <span>&nbsp;<b>Supervisor Name:</b> {curJob.name}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Files:</b> {curJob.files.replace(/,/g, ',\n')}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
                     </> : <>
                       <span>&nbsp;<b>Name:</b> {curJob.name}</span>
@@ -1946,8 +1944,6 @@ function App() {
                       <span>&nbsp;<b>Email:</b> {curJob.email}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Supervisor:</b> {curJob.supervisorName}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Files:</b> {curJob.files.replace(/,/g, ',\n')}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
                     </>
