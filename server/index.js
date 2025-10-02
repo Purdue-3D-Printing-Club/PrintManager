@@ -899,8 +899,10 @@ app.post('/api/insertMember', (req, res) => {
     });
 });
 
-app.delete('/api/cancelPrint/:printerName', (req, res) => {
+app.delete('/api/cancelPrint/:printerName/:usage', (req, res) => {
     const printerName = req.params.printerName;
+    const usageRefund = req.params.usage;
+
     const sqlDelete = 'DELETE FROM printJob WHERE printerName=? AND status = "active"';
     pool.getConnection((err, connection) => {
         if (err) {
@@ -916,6 +918,12 @@ app.delete('/api/cancelPrint/:printerName', (req, res) => {
                     connection.release();
                     return;
                 }
+                
+                // Refund the filament usage
+                let localData = loadLocalData();
+                let newStock = Math.max(0, localData?.filamentStock + usageRefund);
+                saveLocalData({ ...localData, filamentStock: newStock });
+
                 res.send(result);
                 connection.release();
             });

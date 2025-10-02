@@ -717,7 +717,7 @@ function App() {
 
   const cancelPrint = () => {
     autofillFields(curJob);
-    fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}`, { method: 'DELETE', }).then(response => {
+    fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}/${curJob.usage_g}`, { method: 'DELETE', }).then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -923,11 +923,11 @@ function App() {
           case 'Backspace':
             selectPrinter(null)
             break;
-          case 'ArrowLeft':
+          case 'ArrowUp':
             e.preventDefault();
             movePrinter(-1);
             break;
-          case 'ArrowRight':
+          case 'ArrowDown':
             e.preventDefault();
             movePrinter(1);
             break;
@@ -1133,7 +1133,7 @@ function App() {
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         console.log("startPrintClick: err: no filamentUsage");
         showMsgForDuration("No Filament Usage! Print not started.", 'err');
-      } else if (historyList.filter(item => item.status === 'queued').some(job => {
+      } else if (queue && historyList.filter(item => item.status === 'queued').some(job => {
         if (job.name.toLowerCase() === name.toLowerCase()) {
           matchingJob = job;
           return true;
@@ -1148,6 +1148,9 @@ function App() {
       } else if (((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) && !personalFilament) {
         console.log("startPrintClick: warn: filament type not PLA");
         showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
+      }else if ((selectedPrinter.filamentType === 'Resin')) {
+        console.log("startPrintClick: warn: Resin filament type");
+        showMsgForDuration(`Warning: Resin costs $0.12 / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         console.log("startPrintClick: warn: filamentUsage > 1000g");
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
@@ -1173,7 +1176,8 @@ function App() {
       files: truncateString(files, 512),
       usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
       timeStarted: new Date().toISOString(),
-      status: selectedPrinter?.filamentType === 'Resin' ? "queued" : "active",
+      // status: selectedPrinter?.filamentType === 'Resin' ? "queued" : "active",
+      status: "active",
       name: truncateString(name, 64),
       supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
       notes: truncateString(notes, 256),
@@ -1209,14 +1213,16 @@ function App() {
         setHistoryList(updatedHistoryList);
 
         // queue the new one if resin
-        startPrint(isResin, msgPrinter, msgJob);
+        // startPrint(isResin, msgPrinter, msgJob);
+        startPrint(false, msgPrinter, msgJob);
 
       }).catch(error => {
         console.error('Error:', error);
       });
 
     } else {
-      startPrint(isResin, msgPrinter, msgJob);
+      // startPrint(isResin, msgPrinter, msgJob);
+      startPrint(false, msgPrinter, msgJob);
     }
   }
 
@@ -1459,7 +1465,7 @@ function App() {
             })
 
 
-          setFormData(formattedData)
+          setFormData(formattedData.reverse())
 
         } else {
           showMsgForDuration('Error Filling Form...', 'err');
@@ -2021,36 +2027,40 @@ function App() {
 
               {/* If the printer is a resin printer, then also include the option to queue up a new print */}
               {
-                selectedPrinter.filamentType === 'Resin' && <>
-                  {(((selectedPrinter.status?.slice(-4) === "busy"))) && <>
-                    <StlPreviewSection
-                      showSTLPreviews={showSTLPreviews}
-                      curJob={curJob}
-                      getDirectDownloadLink={getDirectDownloadLink}
-                      truncateString={truncateString}
-                      serverURL={serverURL}
-                    />
-                  </>}
-                  <br /><br />
-                  <PrintForm printFormArgs={printFormArgs}></PrintForm>
-                  <br />
+                // selectedPrinter.filamentType === 'Resin' && <>
+                //   {(((selectedPrinter.status?.slice(-4) === "busy"))) && <>
+                //     <StlPreviewSection
+                //       showSTLPreviews={showSTLPreviews}
+                //       curJob={curJob}
+                //       getDirectDownloadLink={getDirectDownloadLink}
+                //       truncateString={truncateString}
+                //       serverURL={serverURL}
+                //     />
+                //   </>}
+                //   <br /><br />
+                //   <PrintForm printFormArgs={printFormArgs}></PrintForm>
+                //   <br />
 
-                  {/* Checkbox to toggle supervisor print */}
-                  <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
+                //   {/* Checkbox to toggle supervisor print */}
+                //   <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
 
-                  {/* Checkbox to toggle personal filament */}
+                //   {/* Checkbox to toggle personal filament */}
 
-                  {(selectedPrinter.filamentType !== 'Resin') &&
-                    <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
-                  }
+                //   {(selectedPrinter.filamentType !== 'Resin') &&
+                //     <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
+                //   }
 
-                  <br />
-                  <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
-                    <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
-                  <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
-                    <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
-                </>
+                //   <br />
+                //   {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                //     <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button> */}
+                //   <button onClick={() => { handleStartPrintClick(false) }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                //     <img className='status-icon' src={`${statusIconFolder}/start.svg`}></img>{'Start Print'}</button>
+                //   <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
+                //     <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
+                // </>
               }
+
+
             </div>}
 
             {(((selectedPrinter.status?.slice(-4) === "busy")) && selectedPrinter.filamentType !== 'Resin') && <>
@@ -2082,8 +2092,10 @@ function App() {
                 }
 
                 <br />
-                <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
-                  <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
+                 {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button> */}
+                  <button onClick={() => { handleStartPrintClick(false) }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={`${statusIconFolder}/start.svg`}></img>{'Start Print'}</button>
                 <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
                   <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
                 {isAdmin && <div style={{ display: 'block' }}>
@@ -2121,8 +2133,10 @@ function App() {
               }
 
               <br />
-              <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
-                <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button>
+               {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                    <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button> */}
+              <button onClick={() => { handleStartPrintClick(false) }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                <img className='status-icon' src={`${statusIconFolder}/start.svg`}></img>{'Start Print'}</button>
               <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
                 <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
 
@@ -2203,7 +2217,7 @@ function App() {
             </div>}
 
 
-            {
+            {/* {
               selectedPrinter.filamentType === 'Resin' && <div>
                 <div style={{ height: "50px" }}></div>
 
@@ -2244,7 +2258,7 @@ function App() {
                   <button onClick={() => { releaseFromQueue() }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>{'Release From Queue'}</button>}
 
               </div>
-            }
+            } */}
 
             <div style={{ height: "100px" }}></div>
 
