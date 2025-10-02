@@ -425,8 +425,8 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
                 </tr>
               </thead>
               <tbody>
-                <tr><td>←</td> <td>Move up one printer</td></tr>
-                <tr><td>→</td> <td>Move down one printer</td></tr>
+                <tr><td>↑</td> <td>Move up one printer</td></tr>
+                <tr><td>↓</td> <td>Move down one printer</td></tr>
                 <tr><td>Enter</td> <td>Start a print</td></tr>
                 <tr><td>Backspace</td> <td>Exit menu / clear selection</td></tr>
                 <tr><td>c</td> <td>Clear popups</td></tr>

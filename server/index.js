@@ -10,6 +10,7 @@ const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env
 const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
 const fetch = require('node-fetch');
+const axios = require('axios');
 
 const pool = mysql.createPool({
     host: "localhost",
@@ -104,6 +105,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.get('/api/getLocalData', (req, res) => {
     res.send(loadLocalData());
 });
+
 
 // set the localData
 app.post('/api/setLocalData', (req, res) => {
@@ -921,7 +923,7 @@ app.delete('/api/cancelPrint/:printerName/:usage', (req, res) => {
                 
                 // Refund the filament usage
                 let localData = loadLocalData();
-                let newStock = Math.max(0, localData?.filamentStock + usageRefund);
+                let newStock = Math.max(0, parseInt(localData?.filamentStock) + parseInt(usageRefund));
                 saveLocalData({ ...localData, filamentStock: newStock });
 
                 res.send(result);
