@@ -1738,6 +1738,7 @@ function App() {
       </>
     )
   }
+  
 
   // Highlight the search in the job's fields by wrapping it with <b>
   const applyHighlight = (text, queue, pixelWidth = 400) => {

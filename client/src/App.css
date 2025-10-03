@@ -408,13 +408,12 @@ option {
   opacity: 80%;
 }
 
-.printer-btn.select{
+.printer-btn.select {
   background: rgb(159, 188, 254, 0.8) url('/images/move.svg') no-repeat left 8px center;
   background-size: 25px 25px;
   padding-left: 40px;
   padding-bottom: 4px;
-  padding-top: 7px;
-
+  padding-top: 9px;
 }
 
 .history-btn {
