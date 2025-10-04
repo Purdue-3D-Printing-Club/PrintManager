@@ -18,7 +18,7 @@
     "grenade", "landmine", "mine", "ied", "bomb", "explosive", "dynamite", "c4", "tnt", "molotov",
     "rocket", "rpg", "bazooka", "missile", "launcher",
     "tank", "artillery", "howitzer", "cannon", "mortar",
-    "taser"
+    "taser", "needle"
     ],
     "whitelist": [
         "figurine", "figure", "tabletop", "model", "dnd", "warhammer"

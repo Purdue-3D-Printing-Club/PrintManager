@@ -8,7 +8,7 @@ import formIcon from '/images/form_icon.png'
 
 
 const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width,
-    getStatusColor, printerSort, handlePrinterSort, printerRefs }) => {
+    getStatusColor, printerSort, handlePrinterSort, printerRefs, organizerLinks }) => {
     const getPrinterInfo = (printer) => {
         switch (printerSort) {
             case "Printer Model": return printer.model
@@ -22,9 +22,9 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
 
                 <div className="icons-wrapper">
                     <div className='settings-icon-wrapper' style={menuOpen ? { outline: "4px solid black" } : {}}><img id="settingsIcon" src={settingsIcon} alt="Settings Icon" title="Open Settings" onClick={() => handleOpenMenu()}></img></div>
-                    <a target="_blank" rel="noreferrer" href="https://www.purdue3dpc.org/index.html"><img className='resizeIcon' src={clubIcon} alt="3DPC Icon" title="To 3DPC Website"></img></a>
-                    <a target="_blank" rel="noreferrer" href="https://docs.google.com/forms/d/e/1FAIpQLScotuFISiZDdJUDmf3OXDgBOY-JSJZNFooZAfX8penUztZmwQ/viewform?usp=dialog"><img className="resizeIcon" src={formIcon} alt="Google forms Icon" title="To Job Form"></img></a>
-                    <a target="_blank" rel="noreferrer" href="https://docs.google.com/spreadsheets/d/1Ax9InwNzogcTwsVTjPCf2UJDALKkSiXkRTjorxXr2RI/edit?gid=1308411944#gid=1308411944"><img className="resizeIcon" src={sheetsIcon} alt="Google sheets Icon" title="To Job Form Submissions"></img></a>
+                    <a target="_blank" rel="noreferrer" href={organizerLinks.websiteURL}><img className='resizeIcon' src={clubIcon} alt="3DPC Icon" title="To 3DPC Website"></img></a>
+                    <a target="_blank" rel="noreferrer" href={organizerLinks.formURL}><img className="resizeIcon" src={formIcon} alt="Google forms Icon" title="To Job Form"></img></a>
+                    <a target="_blank" rel="noreferrer" href={organizerLinks.submissionsURL}><img className="resizeIcon" src={sheetsIcon} alt="Google sheets Icon" title="To Job Form Submissions"></img></a>
                     {/* old form link: https://docs.google.com/spreadsheets/d/1MmkZDc7zRuepVEo2r84ithNJ6Q01GhMqSWrNzZSzRpQ/edit?gid=701945760#gid=701945760 */}
                 </div>
 

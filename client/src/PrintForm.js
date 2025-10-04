@@ -21,6 +21,22 @@ const PrintForm = ({ printFormArgs }) => {
             }
         }, [email, memberList])
 
+    // format an ISO string as mm/dd hh:mm
+    function formatTimestamp(ts) {
+        const date = new Date(ts); // parse the ISO string
+        const pad = n => n.toString().padStart(2, '0');
+
+        const month = pad(date.getMonth() + 1);
+        const day = pad(date.getDate());
+        let hours = pad(date.getHours());
+        const suffix = hours >= 12 ? 'PM' : 'AM';
+        hours = (hours % 12) || 12;
+        const minutes = pad(date.getMinutes());
+
+
+        return `${month}/${day} ${hours}:${minutes} ${suffix}`;
+    }
+
     return (
         <div className='printForm'>
             <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>{formData ? "Clear Autofill Data Table" : "Retrieve Latest Form Submissions..."}</button>
@@ -30,6 +46,7 @@ const PrintForm = ({ printFormArgs }) => {
                 <table className="form-data-table">
                     <thead>
                         <tr>
+                            <th>Time Submitted</th>
                             <th>Parts</th>
                             <th>Name</th>
                             <th>Email</th>
@@ -45,6 +62,7 @@ const PrintForm = ({ printFormArgs }) => {
                     <tbody>
                         {formData.map((job, index) => {
                             return <tr className={`history-row form-data-row`} onClick={() => { fillFormData(index) }} key={index}>
+                                <td> {formatTimestamp(job.timestamp)} </td>
                                 <td> {truncateString(job.partNames, 40)} </td>
                                 <td> {truncateString(job.name, 20)} </td>
                                 <td> {truncateString(job.email, 30)} </td>

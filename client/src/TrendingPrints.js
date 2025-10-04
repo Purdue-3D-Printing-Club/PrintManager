@@ -5,7 +5,6 @@ const TrendingPrints = ({dailyPrint, selectedPrinter, menuOpen, truncateString})
       const trendingRef = useRef(null);
       const [trendingIndex, setTrendingIndex] = useState(0);
       useEffect(() => {
-          console.log('trending index updated: ', trendingIndex)
     
         if (!trendingRef.current || !dailyPrint?.length) return;
     
@@ -54,7 +53,7 @@ const TrendingPrints = ({dailyPrint, selectedPrinter, menuOpen, truncateString})
                   <div ref={trendingRef} className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
                     {dailyPrint?.map((item) => {
                       return (
-                        <a target="_blank" rel="noreferrer" className="print-card" href={item.link}>
+                        <a target="_blank" rel="noreferrer" className="print-card" href={item.link} key={item.link}>
                           <div className="image-4-3">
                             <img src={item.imgLink}></img>
                           </div>

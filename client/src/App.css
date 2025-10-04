@@ -476,6 +476,7 @@ option {
   gap: 5px;
   justify-content: center;
   margin-top: 5px;
+  align-items: center;
 }
 
 .print-history {

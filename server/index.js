@@ -791,7 +791,6 @@ app.get('/api/getHistory', (req, res) => {
                     console.error(errHistory);
                     res.status(500).send("Error accessing printjob files data");
                 } else {
-                    console.log(resultHistory)
                     res.send({ historyList: resultHistory });
                 }
                 connection.release();

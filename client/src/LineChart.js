@@ -195,9 +195,14 @@ const LineChart = ({ argsObject, index }) => {
                                         value={sliderValues}
                                         onChange={handleSliderChange}
                                         invert={true}
-                                        renderThumb={(props, state) => <div {...props}>
-                                            {state.valueNow}
-                                        </div>}
+                                        renderThumb={(props, state) => {
+                                            const { key, ...rest } = props;
+                                            return (
+                                                <div key={key} {...rest}>
+                                                    {state.valueNow}
+                                                </div>
+                                            );
+                                        }}
                                     />
                                 </ErrorBoundary>
 
@@ -235,9 +240,14 @@ const LineChart = ({ argsObject, index }) => {
                                             value={sliderValues}
                                             onChange={handleSliderChange}
                                             invert={true}
-                                            renderThumb={(props, state) => <div {...props}>
-                                                {state.valueNow}
-                                            </div>} />
+                                            renderThumb={(props, state) => {
+                                            const { key, ...rest } = props;
+                                            return (
+                                                <div key={key} {...rest}>
+                                                    {state.valueNow}
+                                                </div>
+                                            );
+                                        }} />
                                     </ErrorBoundary>
 
                                 </div>

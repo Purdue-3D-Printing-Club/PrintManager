@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import './App.css';
 import exitIcon from '/images/cancel.svg';
+import searchIcon from '/images/search.svg'
 
 import loadingGif from '/images/loading.gif'
 import xIcon from '/images/x.png'
@@ -19,16 +20,16 @@ import ErrorBoundary from './ErrorBoundary';
 
 function App() {
   const statusIconFolder = '/images/statusIcons'
-  const SPECIAL_FILAMENT_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec'
-  const MAIN_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMTIphmSEMiWof46LvuMCZYyONi3wqAbaxzjKXTFxQ8gNQd84Wzct7GsidBwQjyQld/exec'
+  // const SPECIAL_FILAMENT_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec'
+  // const MAIN_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMTIphmSEMiWof46LvuMCZYyONi3wqAbaxzjKXTFxQ8gNQd84Wzct7GsidBwQjyQld/exec'
 
   const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
+  const [organizerLinks, setOrganizerLinks] = useState({});
 
   const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width set to 250
   const minSidebarWidth = 180;
   const [isResizing, setIsResizing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
 
   const [formData, setFormData] = useState(null)
   const [filamentUsage, setFilamentUsage] = useState('');
@@ -196,8 +197,9 @@ function App() {
 
   }, [serverURL, printerSort, selectedPrinter]);
 
-  // fill member list
+  // fill member list and update the organizer links
   useEffect(() => {
+    // member list
     try {
       Axios.get(`${serverURL}/api/get?query=${"SELECT * FROM member"}`).then((response) => {
         let members = response.data.result
@@ -209,6 +211,23 @@ function App() {
       });
     } catch (error) {
       console.error("Error fetching member list: ", error);
+    }
+
+    // organizer links
+    try {
+      Axios.get(`${serverURL}/api/getLocalData`).then((response) => {
+        let localData = response.data;
+        console.log('app.js got localData: ', localData);
+        if (response?.data?.organizerLinks) {
+          setOrganizerLinks(response.data.organizerLinks);
+        } else{
+          console.error('Error fetching organizer links, field does not exist!')
+        }
+      }).catch(e => {
+        console.error('Error in fetching local data: ', e)
+      });
+    } catch (error) {
+      console.error("Error updating from serverURL: ", error);
     }
   }, [serverURL]);
 
@@ -274,7 +293,6 @@ function App() {
         console.error("Error fetching printer data: ", error);
       }
     } else {
-      console.log('PRINTER LIST LENGTH: ', printerList.length)
       if (printerList.length === 0) {
         return;
       }
@@ -819,10 +837,6 @@ function App() {
         });
       });
     });
-
-
-
-
   }
 
   const sortPrinterList = (list, by = 'Availability') => {
@@ -1471,8 +1485,8 @@ function App() {
       // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
 
       const url = specialFilament ?
-        SPECIAL_FILAMENT_APP_SCRIPT_URL :
-        MAIN_APP_SCRIPT_URL;
+        organizerLinks.specialtyAppScriptURL :
+        organizerLinks.mainAppScriptURL;
 
       setFormDataLoading(true);
       fetch(url).then(response => response.json()).then(data => {
@@ -1486,6 +1500,7 @@ function App() {
           let formattedData = specialFilament ?
             data.map((job) => {
               return ({
+                timestamp: job[0],
                 name: job[1],
                 email: job[2],
                 supervisorName: job[3],
@@ -1498,6 +1513,7 @@ function App() {
             }) :
             data.map((job) => {
               return ({
+                timestamp: job[0],
                 name: job[1],
                 email: job[2],
                 supervisorName: job[3],
@@ -1592,7 +1608,7 @@ function App() {
 
   const handlePswdChange = (e) => {
     const pswd = e.target.value;
-    console.log('changed adminPswd to ' + pswd);
+    // console.log('changed adminPswd to ' + pswd); 
     setAdminPswd(pswd);
   }
 
@@ -1692,8 +1708,11 @@ function App() {
       usage = parts[0] + '.' + parts.slice(1).join('').replace(/\./g, '');
     }
 
-    setFilamentUsage(usage);
-    console.log("set filament usage to " + usage);
+    if ((usage === "") || (parseFloat(usage) < 100000)) {
+      setFilamentUsage(usage);
+      console.log("set filament usage to " + usage);
+    }
+
   };
 
   const handleOpenMenu = () => {
@@ -1774,7 +1793,7 @@ function App() {
               {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', queue, 200) }} />}
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), queue, 200) }} />
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, queue, 600) }} />
-              <td>{job.files.split(',').map((link, index) => { return (<button style={{ cursor: 'pointer' }} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
+              <td>{job.files.split(',').map((link, index) => { return (<button style={{ cursor: 'pointer' }} key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
               <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, queue, 2560) }} />
             </>
         }
@@ -1813,7 +1832,7 @@ function App() {
         sidebarOpen ?
           <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
             handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}
-            printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} />
+            printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} organizerLinks={organizerLinks} />
           : <></>
       }
 
@@ -2338,7 +2357,7 @@ function App() {
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
                 serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
                 memberList={memberList} setMemberList={setMemberList} formatDate={formatDate} truncateString={truncateString}
-                showMsgForDuration={showMsgForDuration} />
+                showMsgForDuration={showMsgForDuration} setOrganizerLinks={setOrganizerLinks}/>
             }
           </div>
         ) :
@@ -2430,11 +2449,8 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
 
 
 function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, setHistorySearch, createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod, setHistoryPeriod, refreshHistory }) {
-  console.log('printhistory historyPeriod: ', historyPeriod)
 
   function leftArrowClick(historyPeriod) {
-    console.log('left arrow historyPeriod: ', historyPeriod)
-
     if (historyPeriod.seasonEnc === 0) {
       setHistoryPeriod(old => ({ ...old, year: old.year - 1, seasonEnc: 2 }))
     } else {
@@ -2442,7 +2458,6 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
     }
   }
   function rightArrowClick(historyPeriod) {
-    console.log('right arrow historyPeriod: ', historyPeriod)
 
     if (historyPeriod.seasonEnc === 2) {
       setHistoryPeriod(old => ({ ...old, year: old.year + 1, seasonEnc: 0 }))
@@ -2459,10 +2474,11 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
     <div className="print-history">
       <div style={{ margin: '0px', padding: '0px', justifyContent: 'center', alignItems: 'center', display: 'flex', userSelect: 'none' }}>
         <div className='arrow-btn left' onClick={() => leftArrowClick(historyPeriod)}>&lt;</div>
-        <div style={{width:"75%", maxWidth: '500px'}}> {title} [{historyList.length - historyList.filter(item => item.status === 'queued').length}] </div>
+        <div style={{ width: "75%", maxWidth: '500px' }}> {title} [{historyList.length - historyList.filter(item => item.status === 'queued').length}] </div>
         <div className='arrow-btn right' onClick={() => rightArrowClick(historyPeriod)}>&gt;</div>
       </div>
       <div className="search-bar">
+        <img src={searchIcon} style={{ width: "25px", height: "20px" }}></img>
         Search:&nbsp;
         <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
         <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>

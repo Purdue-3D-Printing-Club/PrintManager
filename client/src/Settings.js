@@ -7,6 +7,7 @@ import eyeSlash from '/images/eye_slash.svg'
 import serverIcon from '/images/server.svg';
 import groupIcon from '/images/group.svg';
 import filamentSpool from '/images/filament_spool.svg';
+import linkIcon from '/images/link.svg';
 import addUser from '/images/add_user.svg';
 import searchIcon from '/images/search.svg'
 import sortIcon from '/images/sort.svg'
@@ -15,20 +16,28 @@ import discord_qr from '/images/3dpc_discord.png'
 
 function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
   handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
-  memberList, setMemberList, truncateStringWidth, formatDate, truncateString, showMsgForDuration }) {
+  memberList, setMemberList, truncateStringWidth, formatDate, truncateString, showMsgForDuration, setOrganizerLinks }) {
 
-  const [loginTextVisible, setLoginTextVisible] = useState(false)
-  const [tempServerURL, setTempServerURL] = useState(serverURL)
+  const [loginTextVisible, setLoginTextVisible] = useState(false);
+  const [tempServerURL, setTempServerURL] = useState(serverURL);
 
-  const [localData, setLocalData] = useState({ filamentStock: 0, filamentThreshold: 15000 })
-  const [tempLocalData, setTempLocalData] = useState(localData)
+  const [localData, setLocalData] = useState({ filamentStock: 0, filamentThreshold: 15000 });
+  const [tempLocalData, setTempLocalData] = useState(localData);
 
-  const [editingLocalData, setEditingLocalData] = useState([false, false])
+  const [editingLocalData, setEditingLocalData] = useState([false, false]);
   const [editingMember, setEditingMember] = useState({});
   const [insertMember, setInsertMember] = useState({});
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSort, setMemberSort] = useState('Email');
   const [sortAscending, setSortAscending] = useState(false);
+
+  const organizerLinksFields = [
+    { key: "websiteURL", label: "Website:", placeholder: " Server URL" },
+    { key: "formURL", label: "Job Form:", placeholder: " Form URL" },
+    { key: "submissionsURL", label: "Form Submissions:", placeholder: " Submissions URL" },
+    { key: "mainAppScriptURL", label: "Main App Script:", placeholder: " Main App Script URL" },
+    { key: "specialtyAppScriptURL", label: "Specialty App Script:", placeholder: " Specialty App Script URL" },
+  ];
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -37,7 +46,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
       window.removeEventListener('keydown', handleKeyPress);
     };
   })
-  
+
   const toTime = (s) => {
     if (!s) return -Infinity;
     const iso = s.replace(' ', 'T') + 'Z';
@@ -45,7 +54,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     return Number.isFinite(t) ? t : -Infinity;
   };
 
-  
+
   const handleKeyPress = (e) => {
     const isInputFocused =
       e.target.tagName === 'INPUT' ||
@@ -85,8 +94,11 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     Axios.post(`${serverURL}/api/setLocalData`, {
       localData: tempLocalData
     }).then((res) => {
-      console.log(res.data)
-      showMsgForDuration(`Successfully Saved Filament.`, 'msg');
+      if (res.data.success) {
+        showMsgForDuration(`Successfully Saved Local Data.`, 'msg');
+      } else {
+        showMsgForDuration(`Error Saving Local Data.`, 'err');
+      }
     })
   }
 
@@ -106,7 +118,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
       });
     } else if (by === 'Email') {
       sortedMembers = arr.sort((a, b) => {
-        return sortAscending ?  a.email.localeCompare(b.email) : b.email.localeCompare(a.email);
+        return sortAscending ? a.email.localeCompare(b.email) : b.email.localeCompare(a.email);
       });
     } else if (by === 'Discord Username') {
       sortedMembers = arr.sort((a, b) => {
@@ -114,10 +126,10 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
       });
     } else { // Last Updated
       return arr.sort((a, b) => {
-      const t1 = toTime(a.lastUpdated);
-      const t2 = toTime(b.lastUpdated);
-      return sortAscending ? t1 - t2 : t2 - t1;
-    });
+        const t1 = toTime(a.lastUpdated);
+        const t2 = toTime(b.lastUpdated);
+        return sortAscending ? t1 - t2 : t2 - t1;
+      });
     }
     return sortedMembers
   }
@@ -248,6 +260,23 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     setTempLocalData({ ...tempLocalData, [dataField]: cleaned_filament });
   }
 
+  const updateOrganizerLink = (field, value) => {
+    const updatedLinks = { ...tempLocalData.organizerLinks, [field]: value };
+
+    setOrganizerLinks(updatedLinks);
+
+    Axios.post(`${serverURL}/api/setLocalData`, {
+      localData: { ...tempLocalData, organizerLinks: updatedLinks }
+    }).then((res) => {
+      console.log(res)
+      if (res.data.success) {
+        showMsgForDuration(`Successfully Saved Link.`, 'msg');
+      } else {
+        showMsgForDuration(`Error Saving Link.`, 'err');
+      }
+    })
+  }
+
 
   return (
     <div className='settings'>
@@ -321,6 +350,42 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
             &nbsp;{editingLocalData[1] && <button onClick={(e) => { setEditingLocalData([false, false]) }} style={{ cursor: 'pointer' }}>{'Cancel'}</button>}
           </span>
 
+          {/* Organizer Links */}
+          <hr style={{ borderTop: '1px solid grey', width: '100%' }} />
+          <span className="input-wrapper">
+            <img src={linkIcon} alt="links" className='generic-icon'></img>
+            <span className='admin-settings-label'>Organizer Links</span>
+          </span><br />
+
+          {organizerLinksFields.map(({ key, label, placeholder }) => (
+            <span key={key} className="input-wrapper">
+              <b style={{ width: '180px', textAlign: 'right' }}>{label}</b>&nbsp;&nbsp;
+              <input
+                type="text"
+                autoComplete="off"
+                placeholder={placeholder}
+                value={tempLocalData.organizerLinks[key] || ""}
+                onChange={(e) =>
+                  setTempLocalData(old => ({
+                    ...old,
+                    organizerLinks: {
+                      ...old.organizerLinks,
+                      [key]: e.target.value,
+                    },
+                  }))
+                }
+                style={{ width: '250px', fontSize: 'large' }}
+              />
+              &nbsp;
+              <button
+                onClick={() => updateOrganizerLink(key, tempLocalData.organizerLinks[key])}
+                style={{ fontSize: 'large', cursor: 'pointer' }}
+              >
+                Update
+              </button>
+            </span>
+          ))}
+
         </div>}
 
         <div className='settings-wrapper'>
@@ -328,27 +393,27 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
           {/* Member List */}
           <span className="input-wrapper">
             <img src={groupIcon} alt="member-list" className='generic-icon'></img>
-            <span className='admin-settings-label' style={{fontSize:'24px'}}>Club Members</span>
+            <span className='admin-settings-label' style={{ fontSize: '24px' }}>Club Members</span>
           </span><br />
 
           {/* Member list table */}
           <div className="print-history" style={{ 'backgroundColor': '#ddddddff' }}>
-            <div style={{ display: 'flex', flexWrap:'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems:'center' }}>
-            <span className="search-bar">
-              <img src={searchIcon} className='generic-icon'></img>
-              <input type="text" value={memberSearch} onChange={handleMemberSearch}></input>
-              <button style={{ cursor: 'pointer' }} onClick={() => setMemberSearch('')}>Clear</button>
-            </span>
-            <span className='search-bar'>
-              <img src={sortIcon} className='generic-icon'></img>
-              <select id="printerSort" value={memberSort} onChange={(e) => setMemberSort(e.target.value)}>
-                <option value="Email">Email</option>
-                <option value="Name">Name</option>
-                <option value="Discord Username">Discord Username</option>
-                <option value="Last Updated">Last Updated</option>
-              </select>
-              <button style={{ cursor: 'pointer' }} onClick={() => setSortAscending(old=>!old)}>{sortAscending ? '↕ Asc.\u00A0\u00A0' : '↕ Desc.'}</button>
-            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>
+              <span className="search-bar">
+                <img src={searchIcon} className='generic-icon'></img>
+                <input type="text" value={memberSearch} onChange={handleMemberSearch}></input>
+                <button style={{ cursor: 'pointer' }} onClick={() => setMemberSearch('')}>Clear</button>
+              </span>
+              <span className='search-bar'>
+                <img src={sortIcon} className='generic-icon'></img>
+                <select id="printerSort" value={memberSort} onChange={(e) => setMemberSort(e.target.value)}>
+                  <option value="Email">Email</option>
+                  <option value="Name">Name</option>
+                  <option value="Discord Username">Discord Username</option>
+                  <option value="Last Updated">Last Updated</option>
+                </select>
+                <button style={{ cursor: 'pointer' }} onClick={() => setSortAscending(old => !old)}>{sortAscending ? '↕ Asc.\u00A0\u00A0' : '↕ Desc.'}</button>
+              </span>
             </div>
 
           </div>
@@ -425,21 +490,15 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
                 </tr>
               </thead>
               <tbody>
-                <tr><td>↑</td> <td>Move up one printer</td></tr>
-                <tr><td>↓</td> <td>Move down one printer</td></tr>
+                <tr><td>&nbsp;↑</td> <td>Move up one printer</td></tr>
+                <tr><td>&nbsp;↓</td> <td>Move down one printer</td></tr>
                 <tr><td>Enter</td> <td>Start a print</td></tr>
                 <tr><td>Backspace</td> <td>Exit menu / clear selection</td></tr>
                 <tr><td>c</td> <td>Clear popups</td></tr>
                 <tr><td>s</td> <td>Open/close settings</td></tr>
-
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div className='qr-wrapper'>
-          <h1>3DPC Discord</h1>
-          <img src={discord_qr} alt='3DPC Discord QR Code'></img>
         </div>
 
         <div className='settings-wrapper'>
@@ -452,7 +511,15 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
           <br />
           <button onClick={() => { handleFeedbackClick() }} style={{ fontSize: 'large', marginTop: '5px', cursor: 'pointer' }}>Send Feedback</button>
         </div>
+
+        <div className='qr-wrapper'>
+          <h1>3DPC Discord</h1>
+          <img src={discord_qr} alt='3DPC Discord QR Code'></img>
+        </div>
+
         <div style={{ height: '100px' }}></div>
+
+
       </div>
       <div className='settings-header'><b>Settings</b></div>
     </div>
