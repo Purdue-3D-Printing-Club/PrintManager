@@ -68,6 +68,9 @@ function App() {
   const [curJob, setCurJob] = useState(null);
   const [historyList, setHistoryList] = useState([]);
   const [historySearch, setHistorySearch] = useState('');
+  const [historyPeriod, setHistoryPeriod] = useState({ year: 2025, seasonEnc: 2 }); // season encoding: 0-Spring, 1-Summer, 2-Fall
+  const seasonUpperBounds = [new Date(2000, 4, 20), new Date(2000, 7, 20), new Date(2000, 11, 31)] // The upper bounds for each season, assuming normalized year of 2000.
+
   const [editingJob, setEditingJob] = useState({
     email: '',
     files: '',
@@ -81,6 +84,7 @@ function App() {
     notes: ''
   })
 
+  //
 
   //summary page data
   const [recentFiles, setRecentFiles] = useState([]);
@@ -231,6 +235,9 @@ function App() {
     }
   }, [selectedPrinter, printerList]); // Run effect when selectedPrinter or printerList changes
 
+  useEffect(() => {
+    refreshHistory();
+  }, [historyPeriod])
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
@@ -239,13 +246,13 @@ function App() {
     console.log('printerList: ', printerList)
     console.log('menuOpen: ', menuOpen)
 
-    // fetch the printer history or, if its null, get the comprehensive history
-    Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter?.printerName}&field=printerName`).then((response) => {
-      const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
-      setHistoryList(newHistory);
-      console.log('Got history list:')
-      console.log(newHistory);
-    });
+    // Update the history period with the current date and refresh the history table
+    let now = new Date();
+    let newYear = now.getFullYear();
+
+    let normalizedDate = now.setFullYear(2000);
+    let newSeasonEnc = normalizedDate < seasonUpperBounds[0] ? 0 : normalizedDate < seasonUpperBounds[1] ? 1 : 2;
+    setHistoryPeriod({ year: newYear, seasonEnc: newSeasonEnc });
 
     //Update the data that is shown
     if (selectedPrinter !== null && selectedPrinter !== undefined) {
@@ -263,12 +270,6 @@ function App() {
         } else {
           setCurJob(null)
         }
-        // Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter.printerName}&field=printerName`).then((response) => {
-        //   const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
-        //   setHistoryList(newHistory);
-        //   console.log('Got history list:')
-        //   console.log(newHistory);
-        // });
       } catch (error) {
         console.error("Error fetching printer data: ", error);
       }
@@ -479,8 +480,55 @@ function App() {
     console.log("Edited job " + field + " to " + newVal);
   }
 
+  function toMySQLDate(date) {
+    const pad = n => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
+  // fetch the printer history or, if its null, get the comprehensive history
   const refreshHistory = () => {
-    Axios.get(`${serverURL}/api/getHistory?value=${selectedPrinter?.printerName}&field=printerName`).then((response) => {
+    console.log('historyPeriod:', historyPeriod)
+    // get a start and end date from the history period
+    let dateRangeString;
+
+    if (historyPeriod.seasonEnc === 0) { // Spring
+      let end = new Date(seasonUpperBounds[0])
+      end.setFullYear(historyPeriod.year)
+
+      dateRangeString = {
+        startDate: toMySQLDate(new Date(historyPeriod.year, 0, 1)),
+        endDate: toMySQLDate(end)
+      }
+    } else if (historyPeriod.seasonEnc === 1) { // Summer
+      let start = new Date(seasonUpperBounds[0])
+      start.setFullYear(historyPeriod.year)
+      let end = new Date(seasonUpperBounds[1])
+      end.setFullYear(historyPeriod.year)
+      dateRangeString = {
+        startDate: toMySQLDate(start),
+        endDate: toMySQLDate(end)
+      }
+    } else if (historyPeriod.seasonEnc === 2) { // Fall
+      let start = new Date(seasonUpperBounds[1])
+      start.setFullYear(historyPeriod.year)
+      let end = new Date(seasonUpperBounds[2])
+      end.setFullYear(historyPeriod.year)
+      dateRangeString = {
+        startDate: toMySQLDate(start),
+        endDate: toMySQLDate(end)
+      }
+    } else {
+      console.error(`ERROR in refreshHistory: Invalid season encoding in historyPeriod of ${historyPeriod.seasonEnc}`)
+    }
+
+    console.log(dateRangeString)
+    Axios.get(`${serverURL}/api/getHistory`, {
+      params: {
+        value: selectedPrinter?.printerName ?? 'undefined',
+        field: "printerName",
+        dateRangeString: JSON.stringify(dateRangeString)
+      }
+    }).then((response) => {
       const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
       setHistoryList(newHistory);
       console.log('Got history list:')
@@ -1109,7 +1157,7 @@ function App() {
 
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
-      if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' && 
+      if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' &&
         selectedPrinter.status !== 'testing' && selectedPrinter.filamentType !== 'Resin') {
         showMsgForDuration("This printer is not available!", 'err');
       } else if (selectedPrinter.status === 'admin' && !isAdmin) {
@@ -1148,7 +1196,7 @@ function App() {
       } else if (((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) && !personalFilament) {
         console.log("startPrintClick: warn: filament type not PLA");
         showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
-      }else if ((selectedPrinter.filamentType === 'Resin')) {
+      } else if ((selectedPrinter.filamentType === 'Resin')) {
         console.log("startPrintClick: warn: Resin filament type");
         showMsgForDuration(`Warning: Resin costs $0.12 / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
@@ -1266,12 +1314,7 @@ function App() {
           });
           if (formPrinter.filamentType !== 'Resin') { clearFields(); }
         } else {
-          Axios.get(`${serverURL}/api/getHistory?value=${formPrinter.printerName}&field=printerName`).then((response) => {
-            const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
-            setHistoryList(newHistory);
-            console.log('Got history list:')
-            console.log(newHistory);
-          });
+          refreshHistory()
           clearFields();
         }
       }, 500)
@@ -1738,7 +1781,7 @@ function App() {
       </>
     )
   }
-  
+
 
   // Highlight the search in the job's fields by wrapping it with <b>
   const applyHighlight = (text, queue, pixelWidth = 400) => {
@@ -1914,7 +1957,8 @@ function App() {
 
               {/* Comprehensive print history */}
               <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
-                createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}></PrintHistoryTable>
+                createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
+                historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} refreshHistory={refreshHistory}></PrintHistoryTable>
 
             </div>}
           </div>}
@@ -2093,10 +2137,10 @@ function App() {
                 }
 
                 <br />
-                 {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
                     <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button> */}
-                  <button onClick={() => { handleStartPrintClick(false) }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
-                    <img className='status-icon' src={`${statusIconFolder}/start.svg`}></img>{'Start Print'}</button>
+                <button onClick={() => { handleStartPrintClick(false) }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+                  <img className='status-icon' src={`${statusIconFolder}/start.svg`}></img>{'Start Print'}</button>
                 <button onClick={() => { clearFields() }} style={{ backgroundColor: 'rgb(159, 188, 254, 0.8)' }} className='printer-btn'>
                   <img className='status-icon' src={`${statusIconFolder}/clear.svg`}></img>Clear Form</button>
                 {isAdmin && <div style={{ display: 'block' }}>
@@ -2134,7 +2178,7 @@ function App() {
               }
 
               <br />
-               {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
+              {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
                     <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button> */}
               <button onClick={() => { handleStartPrintClick(false) }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
                 <img className='status-icon' src={`${statusIconFolder}/start.svg`}></img>{'Start Print'}</button>
@@ -2217,7 +2261,7 @@ function App() {
               <button onClick={() => { updatePrinterNotes() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Save Notes</button>
             </div>}
 
-
+            {/* Resin queue table */}
             {/* {
               selectedPrinter.filamentType === 'Resin' && <div>
                 <div style={{ height: "50px" }}></div>
@@ -2265,7 +2309,8 @@ function App() {
 
             {/* print history table */}
             <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
-              createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}></PrintHistoryTable>
+              createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
+              historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} refreshHistory={refreshHistory}></PrintHistoryTable>
 
 
             <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
@@ -2380,11 +2425,43 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
   );
 }
 
-function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, setHistorySearch, createHistoryRow, selectedPrinter, isAdmin, formatDate }) {
+
+
+
+
+function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, setHistorySearch, createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod, setHistoryPeriod, refreshHistory }) {
+  console.log('printhistory historyPeriod: ', historyPeriod)
+
+  function leftArrowClick(historyPeriod) {
+    console.log('left arrow historyPeriod: ', historyPeriod)
+
+    if (historyPeriod.seasonEnc === 0) {
+      setHistoryPeriod(old => ({ ...old, year: old.year - 1, seasonEnc: 2 }))
+    } else {
+      setHistoryPeriod(old => ({ ...old, year: old.year, seasonEnc: old.seasonEnc - 1 }))
+    }
+  }
+  function rightArrowClick(historyPeriod) {
+    console.log('right arrow historyPeriod: ', historyPeriod)
+
+    if (historyPeriod.seasonEnc === 2) {
+      setHistoryPeriod(old => ({ ...old, year: old.year + 1, seasonEnc: 0 }))
+    } else {
+      setHistoryPeriod(old => ({ ...old, year: old.year, seasonEnc: old.seasonEnc + 1 }))
+    }
+  }
+
   let isComprehensive = !selectedPrinter;
+  let seasonText = historyPeriod.seasonEnc === 0 ? 'Spring' : historyPeriod.seasonEnc === 1 ? 'Summer' : 'Fall';
+  let title = seasonText + ' ' + historyPeriod.year + ' ';
+  title += selectedPrinter ? 'History' : 'Full History';
   return (<>
     <div className="print-history">
-      <div style={{ margin: '0px', padding: '0px' }}>{selectedPrinter ? 'Print History' : 'Comprehensive Print History'} [{historyList.length - historyList.filter(item => item.status === 'queued').length}]</div>
+      <div style={{ margin: '0px', padding: '0px', justifyContent: 'center', alignItems: 'center', display: 'flex', userSelect: 'none' }}>
+        <div className='arrow-btn left' onClick={() => leftArrowClick(historyPeriod)}>&lt;</div>
+        <div style={{width:"75%", maxWidth: '500px'}}> {title} [{historyList.length - historyList.filter(item => item.status === 'queued').length}] </div>
+        <div className='arrow-btn right' onClick={() => rightArrowClick(historyPeriod)}>&gt;</div>
+      </div>
       <div className="search-bar">
         Search:&nbsp;
         <input type="text" value={historySearch} onChange={handleHistorySearch}></input>

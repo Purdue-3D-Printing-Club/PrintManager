@@ -51,7 +51,6 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const { randomInt } = require('crypto');
 puppeteer.use(StealthPlugin());
 
-const tempCutoffTime = '2025-08-15'
 
 // json file management
 const path = require('path');
@@ -766,13 +765,14 @@ app.get('/api/getdailyprints', (req, res) => {
 app.get('/api/getHistory', (req, res) => {
     const value = req.query.value;
     const field = req.query.field;
-    // console.log('value:', value, '  field:', field)
+    const dateRangeString = JSON.parse(req.query.dateRangeString);
 
-    let sqlSelectHistory = `SELECT * FROM printjob WHERE timeStarted > '${tempCutoffTime}'`;
+    let sqlSelectHistory = `SELECT * FROM printjob WHERE timeStarted >= ? AND timeStarted <= ?`;
     if (value !== 'undefined') {
-        sqlSelectHistory += `AND ${field} = ?`
+        sqlSelectHistory += ` AND ${field} = ?`
     }
     sqlSelectHistory += ';'
+
     pool.getConnection((err, connection) => {
         if (err) {
             console.error('Error getting connection from pool:', err);
@@ -781,13 +781,17 @@ app.get('/api/getHistory', (req, res) => {
         }
         //transaction with no isolation level: reads only (transaction ensures consistency)
         connection.beginTransaction(function (err) {
-            const queryParams = value === 'undefined' ? [] : [value];
-
+            const queryParams = [dateRangeString.startDate, dateRangeString.endDate]
+            if(value !== 'undefined') {
+                queryParams.push(value);
+            }
+            
             connection.query(sqlSelectHistory, queryParams, (errHistory, resultHistory) => {
                 if (errHistory) {
                     console.error(errHistory);
                     res.status(500).send("Error accessing printjob files data");
                 } else {
+                    console.log(resultHistory)
                     res.send({ historyList: resultHistory });
                 }
                 connection.release();
