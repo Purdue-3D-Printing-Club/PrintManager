@@ -832,10 +832,14 @@ app.get('/api/getFailureCount', (req, res) => {
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;
+    console.log(b);
 
+    
     const dateTime = new Date(b.timeStarted);
-    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted, status, name, supervisorName, " +
-        "notes, partNames, email, personalFilament) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," + 
+        " status, name, supervisorName, notes, partNames, email, personalFilament, " + 
+        " color, layerHeight, selfPostProcess, detailedPostProcess, cureTime"+
+        ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -845,7 +849,8 @@ app.post('/api/insert', (req, res) => {
         }
         connection.beginTransaction(function (err) {
             connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
-            b.notes, b.partNames, b.email, b.personalFilament], (err, result) => {
+            b.notes, b.partNames, b.email, b.personalFilament, b.color, b.layerHeight, b.selfPostProcess, 
+            b.detailedPostProcess, b.cureTime], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error inserting printjob");

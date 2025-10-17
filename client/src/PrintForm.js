@@ -9,7 +9,8 @@ const PrintForm = ({ printFormArgs }) => {
     const { setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
         handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
         filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
-        filesPlaceholder, memberList, personalFilament } = printFormArgs
+        filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight,
+        cureTime, handleCureTime } = printFormArgs
 
         const [isMember, setIsMember] = useState(false);
 
@@ -106,10 +107,21 @@ const PrintForm = ({ printFormArgs }) => {
             <div style={{height:'30px'}}> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
                 {(((selectedPrinter.filamentType !== 'PLA')) || (!isMember && !supervisorPrint && !personalFilament)) && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.12 : 0.1)).toFixed(2)}`)} </div>
 
-            <div style={{ marginTop: '10px' }}> -- Notes (Optional) --
+            <div style={{ marginTop: '15px' }}> -- Notes (Optional) --
                 <br />
-                <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea></div>
-        </div>
+                <textarea value={notes} type="text" onChange={handlenotes} style={{ width: '400px', height: '60px', fontSize: 'large', resize: 'none' }}></textarea>
+                </div>
+                {(selectedPrinter.filamentType !== 'PLA') && <>
+            <br/>
+            <div style={{height:'10px'}}></div>
+            <div> Color: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Clear" value={color} onChange={handleColor} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
+            <div> Layer Height: <input placeholder="25 μm" value={layerHeight} onChange={handleLayerHeight} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
+            <div> Cure Time: &nbsp;&nbsp;&nbsp; <input placeholder="1 minute" value={cureTime} onChange={handleCureTime} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
+            <div style={{height:'10px'}}></div>
+            </>}
+            </div>
+            
+             
 
     )
 }

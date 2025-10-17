@@ -40,9 +40,9 @@ function App() {
   const [filesPlaceholder, setFilesPlaceholder] = useState('Google Drive Links');
   // Specialty filament form fields
   const [color, setColor] = useState('');
-  const [layerHeight, setLayerHeight] = useState(0);
+  const [layerHeight, setLayerHeight] = useState('');
   const [selfPostProcess, setSelfPostProcess] = useState(false);
-  const [detailedPostProcess, setDetailedPostProcess] = useState(true);
+  const [detailedPostProcess, setDetailedPostProcess] = useState(false);
   const [cureTime, setCureTime] = useState('');
 
   const [notes, setnotes] = useState('');
@@ -227,7 +227,7 @@ function App() {
         console.log('app.js got localData: ', localData);
         if (response?.data?.organizerLinks) {
           setOrganizerLinks(response.data.organizerLinks);
-        } else{
+        } else {
           console.error('Error fetching organizer links, field does not exist!')
         }
       }).catch(e => {
@@ -491,6 +491,14 @@ function App() {
   const toggleSTLPreviews = () => {
     console.log('setting STLPreviews to ', !showSTLPreviews);
     setShowSTLPreviews(!showSTLPreviews);
+  }
+  const toggleSelfPostProcess = () => {
+    console.log('setting selfPostProcess to ', !selfPostProcess);
+    setSelfPostProcess(!selfPostProcess);
+  }
+  const toggleDetailedPostProcess = () => {
+    console.log('setting detailedPostProcess to ', !detailedPostProcess);
+    setDetailedPostProcess(!detailedPostProcess);
   }
 
   const handleHistorySearch = (e) => {
@@ -775,6 +783,12 @@ function App() {
     setfiles('');
     setnotes('');
     setpartnames('');
+    
+    setColor('');
+    setLayerHeight('');
+    setDetailedPostProcess(false);
+    setSelfPostProcess(false);
+    setCureTime('');
   }
   const autofillFields = (job) => {
     setname(job.name);
@@ -786,6 +800,12 @@ function App() {
     setnotes(job.notes);
     setSupervisorPrint(job.name === job.supervisorName);
     setPersonalFilament(job.personalFilament);
+    
+    setColor(job.color);
+    setLayerHeight(job.layerHeight);
+    setDetailedPostProcess(job.detailedPostProcess);
+    setSelfPostProcess(job.selfPostProcess);
+    setCureTime(job.cureTime);
   }
 
   const cancelPrint = () => {
@@ -808,10 +828,6 @@ function App() {
     console.log(`moving current print from ${selectedPrinter.printerName} to ${printerName}...`);
 
     let newPrinter = printerList.find(p => p.printerName === printerName);
-
-
-
-
 
     //update the new printer's status to active    
     console.log('Changing', newPrinter.printerName, 'status to active')
@@ -1252,7 +1268,12 @@ function App() {
       notes: truncateString(notes, 256),
       partNames: truncateString(partNames, 256),
       email: truncateString(email, 64),
-      personalFilament: personalFilament
+      personalFilament: personalFilament,
+      color: truncateString(color, 64),
+      layerHeight: truncateString(layerHeight, 64),
+      cureTime: truncateString(cureTime, 64),
+      selfPostProcess: selfPostProcess,
+      detailedPostProcess: detailedPostProcess,
     })
   }
 
@@ -1338,12 +1359,18 @@ function App() {
           refreshHistory()
           clearFields();
         }
-      }, 500)
+      }, 500).catch((error) => {
+        showMsgForDuration(queue ? 'Error queueing print.' : `Error starting print.`, 'err');
+        console.error('Error starting print: ', error.message);
+      })
+      showMsgForDuration(queue ? 'Print job queued!' : `Print job successfully started!`, 'msg');
+
     } catch (error) {
       console.error('Error submitting printJob: ', error);
+      showMsgForDuration(queue ? 'Error queueing print.' : `Error starting print.`, 'err');
+
     }
 
-    showMsgForDuration(queue ? 'Print job queued!' : `Print job successfully started!`, 'msg');
   };
 
 
@@ -1515,11 +1542,11 @@ function App() {
                 files: job[5],
                 partNames: job[6],
                 notes: job[10],
-                color:job[11],
-                layerHeight:job[12],
-                selfPostProcess:job[13],
-                detailedPostProcess:job[14],
-                cureTime:job[15]
+                color: job[11],
+                layerHeight: job[12],
+                selfPostProcess: job[13] == 'Yes',
+                detailedPostProcess: job[14] == 'Yes',
+                cureTime: job[15]
               })
             }) :
             data.map((job) => {
@@ -1694,6 +1721,21 @@ function App() {
     setname(name);
     console.log("set name to " + name);
   };
+  const handleColor = (e) => {
+    const color = e.target.value;
+    setColor(color);
+    console.log("set color to " + color);
+  };
+  const handleLayerHeight = (e) => {
+    const layerHeight = e.target.value;
+    setLayerHeight(layerHeight);
+    console.log("set layerHeight to " + layerHeight);
+  };
+  const handleCureTime = (e) => {
+    const cureTime = e.target.value;
+    setCureTime(cureTime);
+    console.log("set cureTime to " + cureTime);
+  };
 
   const handleemail = (e) => {
     const email = e.target.value;
@@ -1838,7 +1880,7 @@ function App() {
     setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
     handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
-    filesPlaceholder, memberList, personalFilament
+    filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight, cureTime, handleCureTime
   }
 
   return (
@@ -2049,7 +2091,20 @@ function App() {
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Filament Used:</b> {curJob.usage_g}g</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
+                    </>
+                  }
+                  {
+                    selectedPrinter.filamentType !== "PLA" && <>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Color:</b> {curJob.color ?? 'N/A' }</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Layer Height:</b> {curJob.layerHeight ?? 'N/A'}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Self Post-Process:</b> {curJob.selfPostProcess ? 'Yes' : 'No' ?? 'N/A'}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Detailed Post-Process:</b> {curJob.detailedPostProcess ? 'Yes' : 'No' ?? 'N/A'}</span>
                     </>
                   }
                 </div>
@@ -2172,6 +2227,13 @@ function App() {
                   <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
                 }
 
+                 {selectedPrinter && (selectedPrinter.filamentType != 'PLA') && <>
+                  <div>
+                    <FormCheckbox activeCheckVal={selfPostProcess} handleChangeFunc={toggleSelfPostProcess} text={"Self Post-Process"}></FormCheckbox>
+                    <FormCheckbox activeCheckVal={detailedPostProcess} handleChangeFunc={toggleDetailedPostProcess} text={"Detailed Post-Process"}></FormCheckbox>
+                  </div>
+                </>}
+
                 <br />
                 {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
                     <img className='status-icon' src={selectedPrinter.filamentType !== 'Resin' ? `${statusIconFolder}/start.svg` : `${statusIconFolder}/queue.svg`}></img>{selectedPrinter.filamentType === 'Resin' ? 'Queue Print' : 'Start Print'}</button> */}
@@ -2212,6 +2274,13 @@ function App() {
               {(selectedPrinter.filamentType !== 'Resin') &&
                 <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
               }
+
+              {selectedPrinter && isAdmin && (selectedPrinter.filamentType != 'PLA') && <>
+                  <div>
+                    <FormCheckbox activeCheckVal={selfPostProcess} handleChangeFunc={toggleSelfPostProcess} text={"Self Post-Process"}></FormCheckbox>
+                    <FormCheckbox activeCheckVal={detailedPostProcess} handleChangeFunc={toggleDetailedPostProcess} text={"Detailed Post-Process"}></FormCheckbox>
+                  </div>
+                </>}
 
               <br />
               {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
@@ -2267,6 +2336,9 @@ function App() {
               <button onClick={() => { handlePrinterStatusChange("admin") }} style={{ backgroundColor: "rgba(100, 180, 100, 0.8)" }} className='printer-btn'>
                 <img className='status-icon' src={`${statusIconFolder}/admin.svg`}></img>Admin Printer</button>
             </div>} */}
+
+           
+
 
             {/* End printer status pages */}
 
@@ -2374,7 +2446,7 @@ function App() {
                 handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
                 serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
                 memberList={memberList} setMemberList={setMemberList} formatDate={formatDate} truncateString={truncateString}
-                showMsgForDuration={showMsgForDuration} setOrganizerLinks={setOrganizerLinks}/>
+                showMsgForDuration={showMsgForDuration} setOrganizerLinks={setOrganizerLinks} />
             }
           </div>
         ) :
