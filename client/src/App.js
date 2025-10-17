@@ -37,7 +37,14 @@ function App() {
   const [email, setemail] = useState('');
   const [supervisor, setsupervisor] = useState('');
   const [files, setfiles] = useState('');
-  const [filesPlaceholder, setFilesPlaceholder] = useState('Google Drive Links')
+  const [filesPlaceholder, setFilesPlaceholder] = useState('Google Drive Links');
+  // Specialty filament form fields
+  const [color, setColor] = useState('');
+  const [layerHeight, setLayerHeight] = useState(0);
+  const [selfPostProcess, setSelfPostProcess] = useState(false);
+  const [detailedPostProcess, setDetailedPostProcess] = useState(true);
+  const [cureTime, setCureTime] = useState('');
+
   const [notes, setnotes] = useState('');
   const [partNames, setpartnames] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
@@ -1504,11 +1511,15 @@ function App() {
                 name: job[1],
                 email: job[2],
                 supervisorName: job[3],
-                material: job[4],
+                filamentType: job[4],
                 files: job[5],
                 partNames: job[6],
-                notes: job[11],
-                discord: job[12]
+                notes: job[10],
+                color:job[11],
+                layerHeight:job[12],
+                selfPostProcess:job[13],
+                detailedPostProcess:job[14],
+                cureTime:job[15]
               })
             }) :
             data.map((job) => {
@@ -1591,6 +1602,12 @@ function App() {
     setfiles(job.files);
     setnotes(job.notes);
     setpartnames(job.partNames);
+
+    setColor(job.color);
+    setLayerHeight(job.layerHeight);
+    setSelfPostProcess(job.selfPostProcess);
+    setDetailedPostProcess(job.detailedPostProcess);
+    setCureTime(job.cureTime);
 
     //clear the form data table
     setFormData(null);

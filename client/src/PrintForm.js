@@ -53,7 +53,11 @@ const PrintForm = ({ printFormArgs }) => {
                             <th>Supervisor</th>
                             {(selectedPrinter.filamentType !== 'PLA') && <>
                                 <th>Material</th>
-                                <th>Discord Username</th>
+                                <th>Color</th>
+                                <th>Layer Height</th>
+                                <th>Self Processing</th>
+                                <th>Detailed Processing</th>
+                                <th>Cure Time</th>
                             </>}
                             <th>Notes</th>
                             <th>Files</th>
@@ -69,7 +73,11 @@ const PrintForm = ({ printFormArgs }) => {
                                 <td> {truncateString(job.supervisorName, 20)} </td>
                                 {(selectedPrinter.filamentType !== 'PLA') && <>
                                     <td> {truncateString(job.filamentType, 20)} </td>
-                                    <td> {truncateString(job.supervisorName, 20)} </td>
+                                    <td> {truncateString(job.color, 20)} </td>
+                                    <td> {truncateString(job.layerHeight, 20)} </td>
+                                    <td> {truncateString(job.selfPostProcess, 20)} </td>
+                                    <td> {truncateString(job.detailedPostProcess, 20)} </td>
+                                    <td> {truncateString(job.cureTime, 20)} </td>
                                     </>}
                                 <td> {truncateString(job.notes, 128)} </td>
                                 <td> {truncateString(job.files, 256)} </td>
