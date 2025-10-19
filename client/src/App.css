@@ -491,6 +491,16 @@ option {
   outline: 2px solid black;
 }
 
+.history-page-btn {
+  width:96%;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+}
+.history-page-btn:hover{
+  cursor: pointer;
+}
+
 .form-data-wrapper {
   margin: auto;
   overflow-x: auto;

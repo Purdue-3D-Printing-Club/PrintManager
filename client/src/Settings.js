@@ -400,12 +400,12 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
           <div className="print-history" style={{ 'backgroundColor': '#ddddddff' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>
               <span className="search-bar">
-                <img src={searchIcon} className='generic-icon'></img>
+                <img src={searchIcon} className='generic-icon'></img> Search
                 <input type="text" value={memberSearch} onChange={handleMemberSearch}></input>
                 <button style={{ cursor: 'pointer' }} onClick={() => setMemberSearch('')}>Clear</button>
               </span>
               <span className='search-bar'>
-                <img src={sortIcon} className='generic-icon'></img>
+                <img src={sortIcon} className='generic-icon'></img> Sort
                 <select id="printerSort" value={memberSort} onChange={(e) => setMemberSort(e.target.value)}>
                   <option value="Email">Email</option>
                   <option value="Name">Name</option>

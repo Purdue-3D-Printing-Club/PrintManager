@@ -4,12 +4,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import './App.css';
 import exitIcon from '/images/cancel.svg';
-import searchIcon from '/images/search.svg'
+import searchIcon from '/images/search.svg';
+import sortIcon from '/images/sort.svg';
 
-import loadingGif from '/images/loading.gif'
-import xIcon from '/images/x.png'
 
-import TrendingPrints from './TrendingPrints'
+import loadingGif from '/images/loading.gif';
+import xIcon from '/images/x.png';
+
+import TrendingPrints from './TrendingPrints';
 import StlPreview from './StlPreview';
 import Settings from './Settings';
 import Sidebar from './Sidebar';
@@ -19,7 +21,7 @@ import ErrorBoundary from './ErrorBoundary';
 
 
 function App() {
-  const statusIconFolder = '/images/statusIcons'
+  const statusIconFolder = '/images/statusIcons';
   // const SPECIAL_FILAMENT_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec'
   // const MAIN_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMTIphmSEMiWof46LvuMCZYyONi3wqAbaxzjKXTFxQ8gNQd84Wzct7GsidBwQjyQld/exec'
 
@@ -76,8 +78,12 @@ function App() {
   const [curJob, setCurJob] = useState(null);
   const [historyList, setHistoryList] = useState([]);
   const [historySearch, setHistorySearch] = useState('');
+  const [historyPagesShowing, setHistoryPagesShowing] = useState(1);
   const [historyPeriod, setHistoryPeriod] = useState({ year: 2025, seasonEnc: 2 }); // season encoding: 0-Spring, 1-Summer, 2-Fall
   const seasonUpperBounds = [new Date(2000, 4, 20), new Date(2000, 7, 20), new Date(2000, 11, 31)] // The upper bounds for each season, assuming normalized year of 2000.
+
+  const [historySort, setHistorySort] = useState('Time Started');
+  const [sortAscending, setSortAscending] = useState(false);
 
   const [editingJob, setEditingJob] = useState({
     email: '',
@@ -133,10 +139,10 @@ function App() {
   // }
 
   const openToBusy = (status) => {
-    return status === 'admin' ? 'admin-busy' : status === 'testing' ? 'testing-busy' : 'busy'
+    return (status === 'admin') ? 'admin-busy' : (status === 'testing' ? 'testing-busy' : 'busy')
   }
   const busyToOpen = (status) => {
-    return status === 'admin-busy' ? 'admin' : status === 'testing-busy' ? 'testing' : 'available'
+    return status === 'admin-busy' ? 'admin' : (status === 'testing-busy' ? 'testing' : 'available')
   }
 
   const mapStatusToIcon = (status) => {
@@ -259,11 +265,13 @@ function App() {
         });
       }
     }
+    setHistoryPagesShowing(1);
   }, [selectedPrinter, printerList]); // Run effect when selectedPrinter or printerList changes
 
   useEffect(() => {
+    console.log('fetching history...')
     refreshHistory();
-  }, [historyPeriod])
+  }, [historyPeriod]);
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
@@ -379,8 +387,6 @@ function App() {
           setPrinterNames(sortedData.map(printer => printer.printerName));
           setFrequencies(sortedData.map(printer => printer.cnt));
           setFilamentSum(sortedData.map(printer => printer.sum));
-
-
 
           try {
             Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
@@ -519,7 +525,7 @@ function App() {
   }
 
   // fetch the printer history or, if its null, get the comprehensive history
-  const refreshHistory = () => {
+  const refreshHistory = async () => {
     console.log('historyPeriod:', historyPeriod)
     // get a start and end date from the history period
     let dateRangeString;
@@ -562,12 +568,56 @@ function App() {
         dateRangeString: JSON.stringify(dateRangeString)
       }
     }).then((response) => {
-      const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
+      // const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
+      const newHistory = sortHistoryList(response.data.historyList, historySort);
       setHistoryList(newHistory);
-      console.log('Got history list:')
+      console.log('Got history list:');
       console.log(newHistory);
     });
   }
+
+  useEffect(() => {
+    setHistoryList(sortHistoryList(historyList, historySort))
+  }, [historySort, sortAscending]) // selectedPrinter?
+
+
+
+
+  const sortHistoryList = (list, by = 'Time Started') => {
+    const arr = Array.isArray(list) ? [...list] : [];
+
+    let sortedHistory = []
+    if (by === 'Name') {
+      sortedHistory = arr.sort((a, b) => {
+        return sortAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      });
+    } if (by === 'Supervisor') {
+      sortedHistory = arr.sort((a, b) => {
+        return sortAscending ? a.supervisorName.localeCompare(b.supervisorName) : b.name.localeCompare(a.supervisorName);
+      });
+    } if (by === 'Parts') {
+      sortedHistory = arr.sort((a, b) => {
+        return sortAscending ? a.partNames.localeCompare(b.partNames) : b.name.localeCompare(a.partNames);
+      });
+    } else if (by === 'Email') {
+      sortedHistory = arr.sort((a, b) => {
+        return sortAscending ? a.email.localeCompare(b.email) : b.email.localeCompare(a.email);
+      });
+    } else if (by === 'Usage (g)') {
+      sortedHistory = arr.sort((a, b) => {
+        return sortAscending ? a.usage_g > b.usage_g : a.usage_g < b.usage_g;
+      });
+    } else { // Time Started
+      return arr.sort((a, b) => {
+        const t1 = new Date(b.timeStarted);
+        const t2 = new Date(a.timeStarted);
+        return sortAscending ? t2 - t1 : t1 - t2;
+      });
+    }
+    return sortedHistory
+  }
+
+
 
   const saveJob = () => {
     try {
@@ -783,7 +833,7 @@ function App() {
     setfiles('');
     setnotes('');
     setpartnames('');
-    
+
     setColor('');
     setLayerHeight('');
     setDetailedPostProcess(false);
@@ -800,7 +850,7 @@ function App() {
     setnotes(job.notes);
     setSupervisorPrint(job.name === job.supervisorName);
     setPersonalFilament(job.personalFilament);
-    
+
     setColor(job.color);
     setLayerHeight(job.layerHeight);
     setDetailedPostProcess(job.detailedPostProcess);
@@ -1257,6 +1307,7 @@ function App() {
   };
 
   const buildFormJob = () => {
+
     return ({
       files: truncateString(files, 512),
       usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
@@ -1337,7 +1388,7 @@ function App() {
                       const updatedPrinterList = printerList.map(printer => {
                         if (printer.printerName === formPrinter.printerName) {
                           let newPrinter = {
-                            ...printer, status: openToBusy(formPrinter),
+                            ...printer, status: openToBusy(formPrinter.status),
                             currentJob: response.data.currentJob[0].jobID
                           }
                           selectPrinter(newPrinter)
@@ -1797,6 +1848,25 @@ function App() {
   }
 
   const createHistoryRow = (job, isComprehensive, queue) => {
+    const ScrollCell = ({ html, width=null }) => (
+      <td style={{ padding: 0 }}>
+        <div
+          style={{
+            paddingLeft:'5px',
+            paddingRight:'5px',
+            width: width ? width+'px' : '100%',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            whiteSpace: 'nowrap',
+            display: 'block',
+            height: '22px',
+            scrollbarWidth: 'none'
+          }}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </td>
+    );
+
     return (
       <>
         {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
@@ -1826,7 +1896,7 @@ function App() {
                 </select>
               </td>}
               {isComprehensive && <td><input type="text" className="history-edit" value={editingJob.printerName} onChange={(e) => handleJobEdit(e, "printerName")}></input></td>}
-              <td><input type="text" className="history-edit" value={editingJob.partNames} onChange={(e) => handleJobEdit(e, "partNames")}></input></td>
+              <td style={{ overflow: '' }}><input type="text" className="history-edit" value={editingJob.partNames} onChange={(e) => handleJobEdit(e, "partNames")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.name} onChange={(e) => handleJobEdit(e, "name")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.email} onChange={(e) => handleJobEdit(e, "email")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.supervisorName} onChange={(e) => handleJobEdit(e, "supervisorName")}></input></td>
@@ -1837,24 +1907,34 @@ function App() {
                 </select>
               </td>}
               <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
-              <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
               <td>{job.files.split(',').map((link, index) => { return (<button style={{ cursor: 'pointer' }} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
-              <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td>
+              <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
+              {/* <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td> */}
             </>
             :
             <>
-              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.status, queue, 400) }} />}
-              {isComprehensive && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.printerName, queue, 400) }} />}
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.partNames, queue, 400) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.name, queue, 200) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.email, queue, 300) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.supervisorName, queue, 200) }} />
-              {!queue && <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.personalFilament ? 'personal' : 'club', queue, 200) }} />}
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.usage_g.toString(), queue, 200) }} />
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.notes, queue, 600) }} />
-              <td>{job.files.split(',').map((link, index) => { return (<button style={{ cursor: 'pointer' }} key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
-              <td dangerouslySetInnerHTML={{ __html: applyHighlight(job.files, queue, 2560) }} />
+              {!queue && <ScrollCell html={applyHighlight(job.status, queue)} width={100} />}
+              {isComprehensive && <ScrollCell html={applyHighlight(job.printerName, queue)} width={100} />}
+              <ScrollCell html={applyHighlight(job.partNames, queue)} width={400} />
+              <ScrollCell html={applyHighlight(job.name, queue)} width={150} />
+              <ScrollCell html={applyHighlight(job.email, queue)} width={200} />
+              <ScrollCell html={applyHighlight(job.supervisorName, queue)} width={150} />
+              {!queue && <ScrollCell html={applyHighlight(job.personalFilament ? 'personal' : 'club', queue)} width={null} />}
+              <ScrollCell html={applyHighlight(job.usage_g.toString(), queue)} width={null} />
+              <td>
+                {job.files.split(',').map((link, i) => (
+                  <button
+                    key={i}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => (window.location.href = getDirectDownloadLink(link.trim()))}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </td>
+              <ScrollCell html={applyHighlight(job.notes, queue, 600)} width={400} />
             </>
+
         }
       </>
     )
@@ -1862,9 +1942,9 @@ function App() {
 
 
   // Highlight the search in the job's fields by wrapping it with <b>
-  const applyHighlight = (text, queue, pixelWidth = 400) => {
-    const truncatedText = truncateStringWidth(text, pixelWidth);
-
+  const applyHighlight = (text, queue) => {
+    // const truncatedText = truncateStringWidth(text, pixelWidth);
+    const truncatedText = text;
     if (!text || !historySearch || queue) return truncatedText;
 
     const escapedSearch = historySearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -2036,7 +2116,9 @@ function App() {
               {/* Comprehensive print history */}
               <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
                 createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
-                historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} refreshHistory={refreshHistory}></PrintHistoryTable>
+                historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} historyPagesShowing={historyPagesShowing}
+                setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
+                sortAscending={sortAscending} setSortAscending={setSortAscending} ></PrintHistoryTable>
 
             </div>}
           </div>}
@@ -2098,13 +2180,16 @@ function App() {
                   {
                     selectedPrinter.filamentType !== "PLA" && <>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Color:</b> {curJob.color ?? 'N/A' }</span>
+                      <span>&nbsp;<b>Color:</b> {curJob.color ?? 'N/A'}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Layer Height:</b> {curJob.layerHeight ?? 'N/A'}</span>
+                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
+                      <span>&nbsp;<b>Cure Time:</b> {curJob.cureTime ?? 'N/A'}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Self Post-Process:</b> {curJob.selfPostProcess ? 'Yes' : 'No' ?? 'N/A'}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Detailed Post-Process:</b> {curJob.detailedPostProcess ? 'Yes' : 'No' ?? 'N/A'}</span>
+
                     </>
                   }
                 </div>
@@ -2227,7 +2312,7 @@ function App() {
                   <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
                 }
 
-                 {selectedPrinter && (selectedPrinter.filamentType != 'PLA') && <>
+                {selectedPrinter && (selectedPrinter.filamentType != 'PLA') && <>
                   <div>
                     <FormCheckbox activeCheckVal={selfPostProcess} handleChangeFunc={toggleSelfPostProcess} text={"Self Post-Process"}></FormCheckbox>
                     <FormCheckbox activeCheckVal={detailedPostProcess} handleChangeFunc={toggleDetailedPostProcess} text={"Detailed Post-Process"}></FormCheckbox>
@@ -2276,11 +2361,11 @@ function App() {
               }
 
               {selectedPrinter && isAdmin && (selectedPrinter.filamentType != 'PLA') && <>
-                  <div>
-                    <FormCheckbox activeCheckVal={selfPostProcess} handleChangeFunc={toggleSelfPostProcess} text={"Self Post-Process"}></FormCheckbox>
-                    <FormCheckbox activeCheckVal={detailedPostProcess} handleChangeFunc={toggleDetailedPostProcess} text={"Detailed Post-Process"}></FormCheckbox>
-                  </div>
-                </>}
+                <div>
+                  <FormCheckbox activeCheckVal={selfPostProcess} handleChangeFunc={toggleSelfPostProcess} text={"Self Post-Process"}></FormCheckbox>
+                  <FormCheckbox activeCheckVal={detailedPostProcess} handleChangeFunc={toggleDetailedPostProcess} text={"Detailed Post-Process"}></FormCheckbox>
+                </div>
+              </>}
 
               <br />
               {/* <button onClick={() => { handleStartPrintClick(selectedPrinter.filamentType === 'Resin') }} style={{ backgroundColor: "rgba(30, 203, 96,0.8)" }} className='printer-btn'>
@@ -2337,7 +2422,7 @@ function App() {
                 <img className='status-icon' src={`${statusIconFolder}/admin.svg`}></img>Admin Printer</button>
             </div>} */}
 
-           
+
 
 
             {/* End printer status pages */}
@@ -2418,7 +2503,9 @@ function App() {
             {/* print history table */}
             <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
               createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
-              historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} refreshHistory={refreshHistory}></PrintHistoryTable>
+              historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} historyPagesShowing={historyPagesShowing}
+                setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
+                sortAscending={sortAscending} setSortAscending={setSortAscending}></PrintHistoryTable>
 
 
             <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
@@ -2537,7 +2624,11 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
 
 
 
-function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, setHistorySearch, createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod, setHistoryPeriod, refreshHistory }) {
+function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, setHistorySearch,
+  createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod, setHistoryPeriod,
+  historyPagesShowing, setHistoryPagesShowing, historySort, setHistorySort, sortAscending, setSortAscending }) {
+  let PRINTSPERPAGE = 50;
+
 
   function leftArrowClick(historyPeriod) {
     if (historyPeriod.seasonEnc === 0) {
@@ -2566,11 +2657,26 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
         <div style={{ width: "75%", maxWidth: '500px' }}> {title} [{historyList.length - historyList.filter(item => item.status === 'queued').length}] </div>
         <div className='arrow-btn right' onClick={() => rightArrowClick(historyPeriod)}>&gt;</div>
       </div>
-      <div className="search-bar">
-        <img src={searchIcon} style={{ width: "25px", height: "20px" }}></img>
-        Search:&nbsp;
-        <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
-        <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>
+        <span className="search-bar">
+          <img src={searchIcon} className='generic-icon'></img> Search
+          <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
+          <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>
+        </span>
+
+        <span className='search-bar'>
+          <img src={sortIcon} className='generic-icon'></img> Sort
+          <select id="printerSort" value={historySort} onChange={(e) => setHistorySort(e.target.value)}>
+            <option value="Time Started">Time Started</option>
+            <option value="Email">Email</option>
+            <option value="Parts">Parts</option>
+            <option value="Name">Name</option>
+            <option value="Supervisor">Supervisor</option>
+            <option value="Usage (g)">Usage (g)</option>
+          </select>
+          <button style={{ cursor: 'pointer' }} onClick={() => setSortAscending(old => !old)}>{sortAscending ? '↕ Asc.\u00A0\u00A0' : '↕ Desc.'}</button>
+        </span>
       </div>
     </div>
     <div style={{ height: 'calc(85vh - 90px)', overflow: 'hidden' }}>
@@ -2583,20 +2689,21 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
               {<th>Autofill</th>}
               <th>Time Started</th>
               <th>Status</th>
-              {isComprehensive && <th>Printer</th>}
+              {isComprehensive &&
+                <th>Printer</th>}
               <th>Parts</th>
               <th>Name</th>
               <th>Email</th>
               <th>Supervisor</th>
               <th>Filament</th>
               <th>Used {selectedPrinter?.filamentType === 'Resin' ? '(ml)' : '(g)'}</th>
-              <th>Notes</th>
-              <th>Downloads</th>
               <th>Files</th>
+              <th> Notes</th>
+              {/* <th>Files</th> */}
             </tr>
           </thead>
           <tbody>
-            {historyList.map((job) => {
+            {historyList.slice(0, historyPagesShowing * PRINTSPERPAGE).map((job) => {
               const containsSearch = Object.keys(job).some(key => {
                 let value = job[key]
                 if (key === 'timeStarted') {
@@ -2617,6 +2724,14 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
                 {createHistoryRow(job, isComprehensive, false)}
               </tr>
             })}
+            {
+              (historyList.length > (historyPagesShowing * PRINTSPERPAGE)) && 
+              <tr className="history-row completed">
+                {Array.from({ length: (selectedPrinter ? 11 : 12) }, (_, i) => (
+                  <td><button className="history-page-btn" key={i} onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
+                ))}
+              </tr>
+            }
           </tbody>
         </table>
       </div>
