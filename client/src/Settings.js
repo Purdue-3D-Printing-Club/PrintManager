@@ -256,9 +256,14 @@ function Settings({ settingsArgs }) {
     }
   }, [menuOpen])
 
-  const handleFilamentChange = (filament, dataField) => {
-    let cleaned_filament = filament.replace(/[^\d.]/g, '')
-    setTempLocalData({ ...tempLocalData, filamentSettings: {...tempLocalData.filamentSettings, [dataField]: cleaned_filament} });
+  // const handleFilamentChange = (filament, dataField) => {
+  //   let cleaned_filament = filament.replace(/[^\d.]/g, '')
+  //   setTempLocalData({ ...tempLocalData, filamentSettings: { ...tempLocalData.filamentSettings, [dataField]: cleaned_filament } });
+  // }
+  const handleGeneralNumericInput = (input, key, settingObj = 'generalSettings') => {
+    let cleaned_input = '';
+    cleaned_input = input.replace(/[^\d]/g, '')
+    setTempLocalData({ ...tempLocalData, [settingObj]: { ...tempLocalData[settingObj], [key]: cleaned_input } });
   }
 
   const updateOrganizerLink = (field, value) => {
@@ -289,7 +294,7 @@ function Settings({ settingsArgs }) {
 
     //update localData
     Axios.post(`${serverURL}/api/setLocalData`, {
-      localData: { ...localData, generalSettings: { ...localData.generalSettings, [key]: value } }
+      localData: { ...tempLocalData, generalSettings: { ...tempLocalData.generalSettings, [key]: value } }
     }).then((res) => {
       if (generalSettings?.debugMode) console.log(res)
       if (res.data.success) {
@@ -297,6 +302,8 @@ function Settings({ settingsArgs }) {
       } else {
         showMsgForDuration(`Error Updating ${key}`, 'err');
       }
+    }).catch(e => {
+      showMsgForDuration(`Error Updating ${key}`, 'err');
     })
     setGeneralSettings(old => ({ ...old, [key]: value }));
   }
@@ -336,8 +343,17 @@ function Settings({ settingsArgs }) {
         <div className='settings-wrapper'>
           <div>
             <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>General Settings</b></div>
+            <span className='input-wrapper' style={{ height: '25px' }}>
+              <b className='input-label'>History Page Size:</b>&nbsp;&nbsp;
+              <input type="text" autoComplete='off' placeholder="# of jobs/page" value={tempLocalData?.generalSettings?.pageSize}
+                onChange={(e) => handleGeneralNumericInput(e.target.value, 'pageSize', 'generalSettings')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;
+              &nbsp; <button onClick={(e) => { updateGeneralSettings('pageSize', tempLocalData?.generalSettings?.pageSize) }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
+            </span><br />
+
             <FormCheckbox activeCheckVal={generalSettings?.showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
             <FormCheckbox activeCheckVal={generalSettings?.debugMode} handleChangeFunc={toggleDebugMode} text={"Debug Mode"}></FormCheckbox>
+            <br/>
+            
 
           </div>
         </div>
@@ -358,8 +374,8 @@ function Settings({ settingsArgs }) {
             onChange={(e) => setServerURL(e.target.value)} style={{ width: '500px', fontSize: 'large', marginBottom: '3px' }} /> */}
           <span className='input-wrapper'>
             <b>Server URL:</b>&nbsp;&nbsp;
-            <input id="URLInput" type="text" autoComplete='off' placeholder=" Server URL" value={tempServerURL} 
-            onChange={(e) => setTempServerURL(e.target.value)} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
+            <input id="URLInput" type="text" autoComplete='off' placeholder=" Server URL" value={tempServerURL}
+              onChange={(e) => setTempServerURL(e.target.value)} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
             <button onClick={(e) => { setServerURL(tempServerURL) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Update</button>
           </span>
 
@@ -372,15 +388,15 @@ function Settings({ settingsArgs }) {
 
           <span className='input-wrapper' style={{ height: '25px' }}>
             <b className='input-label'>Lab Filament Stock:</b>&nbsp;&nbsp;
-            <input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData?.filamentSettings?.filamentStock} 
-            onChange={(e) => handleFilamentChange(e.target.value, 'filamentStock')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g
+            <input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData?.filamentSettings?.filamentStock}
+              onChange={(e) => handleGeneralNumericInput(e.target.value, 'filamentStock', 'filamentSettings')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g
             &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
           </span><br />
 
           <span className='input-wrapper' style={{ height: '25px' }}>
             <b className='input-label'>Alert Threshold:</b>&nbsp;&nbsp;
-            <input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData?.filamentSettings?.filamentThreshold} 
-            onChange={(e) => handleFilamentChange(e.target.value, 'filamentThreshold')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g
+            <input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData?.filamentSettings?.filamentThreshold}
+              onChange={(e) => handleGeneralNumericInput(e.target.value, 'filamentThreshold', 'filamentSettings')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g
             &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
           </span>
 
@@ -394,14 +410,14 @@ function Settings({ settingsArgs }) {
           <span className='input-wrapper' style={{ height: '25px' }}>
             <b className='input-label'>Resin Cost:</b>&nbsp;&nbsp;$
             <input type="text" autoComplete='off' value={tempLocalData?.filamentSettings?.resinCost}
-            onChange={(e) => handleFilamentChange(e.target.value, 'resinCost')} style={{ width: '80px', fontSize: 'large' }}></input>/ml&nbsp;
+              onChange={(e) => handleGeneralNumericInput(e.target.value, 'resinCost', 'filamentSettings')} style={{ width: '80px', fontSize: 'large' }}></input>/ml&nbsp;
             &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
           </span><br />
-          
+
           <span className='input-wrapper' style={{ height: '25px' }}>
             <b className='input-label'>FDM Cost:</b>&nbsp;&nbsp;$
-            <input type="text" autoComplete='off' value={tempLocalData?.filamentSettings?.fdmCost} 
-            onChange={(e) => handleFilamentChange(e.target.value, 'fdmCost')} style={{ width: '80px', fontSize: 'large' }}></input>/g&nbsp;
+            <input type="text" autoComplete='off' value={tempLocalData?.filamentSettings?.fdmCost}
+              onChange={(e) => handleGeneralNumericInput(e.target.value, 'fdmCost', 'filamentSettings')} style={{ width: '80px', fontSize: 'large' }}></input>/g&nbsp;
             &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
           </span>
 

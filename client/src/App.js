@@ -107,7 +107,7 @@ function App() {
   const [potdStatus, setPotdStatus] = useState('loading')
   const hasFetchedDailyPrint = useRef(false);
 
-  const [generalSettings, setGeneralSettings] = useState({ showSTLPreviews: true })
+  const [generalSettings, setGeneralSettings] = useState({ })
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
   const [supervisorData, setSupervisorData] = useState([]);
@@ -2118,7 +2118,7 @@ function App() {
                 createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
                 historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} historyPagesShowing={historyPagesShowing}
                 setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
-                sortAscending={sortAscending} setSortAscending={setSortAscending} ></PrintHistoryTable>
+                sortAscending={sortAscending} setSortAscending={setSortAscending} pageSize={generalSettings.pageSize}></PrintHistoryTable>
 
             </div>}
           </div>}
@@ -2497,7 +2497,7 @@ function App() {
               createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
               historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} historyPagesShowing={historyPagesShowing}
               setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
-              sortAscending={sortAscending} setSortAscending={setSortAscending}></PrintHistoryTable>
+              sortAscending={sortAscending} setSortAscending={setSortAscending} pageSize={generalSettings.pageSize}></PrintHistoryTable>
 
 
             <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
@@ -2605,8 +2605,8 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
 
 function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySearch, setHistorySearch,
   createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod, setHistoryPeriod,
-  historyPagesShowing, setHistoryPagesShowing, historySort, setHistorySort, sortAscending, setSortAscending }) {
-  let PRINTSPERPAGE = 50;
+  historyPagesShowing, setHistoryPagesShowing, historySort, setHistorySort, sortAscending, setSortAscending,
+  pageSize }) {
 
 
   function leftArrowClick(historyPeriod) {
@@ -2682,13 +2682,13 @@ function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySe
             </tr>
           </thead>
           <tbody>
-            {filteredHistoryList.slice(0, historyPagesShowing * PRINTSPERPAGE).map((job) => {
+            {filteredHistoryList.slice(0, historyPagesShowing * pageSize).map((job) => {
               return <tr className={`${job.status} history-row`} key={job.jobID}>
                 {createHistoryRow(job, isComprehensive, false)}
               </tr>
             })}
             {
-              (filteredHistoryList.length > (historyPagesShowing * PRINTSPERPAGE)) &&
+              (filteredHistoryList.length > (historyPagesShowing * pageSize)) &&
               <tr className="history-row completed">
                 {Array.from({ length: (selectedPrinter ? (isAdmin ? 13 : 11) : (isAdmin ? 14 : 12)) }, (_, i) => (
                   <td key={i}><button className="history-page-btn"  onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
