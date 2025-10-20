@@ -607,11 +607,11 @@ function App() {
       sortedHistory = arr.sort((a, b) => {
         return sortAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
       });
-    } if (by === 'Supervisor') {
+    } else if (by === 'Supervisor') {
       sortedHistory = arr.sort((a, b) => {
         return sortAscending ? a.supervisorName.localeCompare(b.supervisorName) : b.name.localeCompare(a.supervisorName);
       });
-    } if (by === 'Parts') {
+    } else if (by === 'Parts') {
       sortedHistory = arr.sort((a, b) => {
         return sortAscending ? a.partNames.localeCompare(b.partNames) : b.name.localeCompare(a.partNames);
       });
@@ -619,9 +619,9 @@ function App() {
       sortedHistory = arr.sort((a, b) => {
         return sortAscending ? a.email.localeCompare(b.email) : b.email.localeCompare(a.email);
       });
-    } else if (by === 'Usage (g)') {
+    } else if (by === 'Used (g)') {
       sortedHistory = arr.sort((a, b) => {
-        return sortAscending ? a.usage_g > b.usage_g : a.usage_g < b.usage_g;
+        return sortAscending ? (a.usage_g - b.usage_g) : (b.usage_g - a.usage_g);
       });
     } else { // Time Started
       return arr.sort((a, b) => {
@@ -2652,7 +2652,7 @@ function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySe
             <option value="Parts">Parts</option>
             <option value="Name">Name</option>
             <option value="Supervisor">Supervisor</option>
-            <option value="Usage (g)">Usage (g)</option>
+            <option value="Used (g)">Used (g)</option>
           </select>
           <button style={{ cursor: 'pointer' }} onClick={() => setSortAscending(old => !old)}>{sortAscending ? '↕ Asc.\u00A0\u00A0' : '↕ Desc.'}</button>
         </span>
