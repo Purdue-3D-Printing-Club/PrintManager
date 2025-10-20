@@ -27,6 +27,7 @@ function App() {
 
   const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
   const [organizerLinks, setOrganizerLinks] = useState({});
+  const [filamentSettings, setFilamentSettings] = useState({});
 
   const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width set to 250
   const minSidebarWidth = 180;
@@ -77,6 +78,8 @@ function App() {
 
   const [curJob, setCurJob] = useState(null);
   const [historyList, setHistoryList] = useState([]);
+  const [filteredHistoryList, setFilteredHistoryList] = useState([]);
+
   const [historySearch, setHistorySearch] = useState('');
   const [historyPagesShowing, setHistoryPagesShowing] = useState(1);
   const [historyPeriod, setHistoryPeriod] = useState({ year: 2025, seasonEnc: 2 }); // season encoding: 0-Spring, 1-Summer, 2-Fall
@@ -98,15 +101,13 @@ function App() {
     notes: ''
   })
 
-  //
-
   //summary page data
   const [recentFiles, setRecentFiles] = useState([]);
   const [dailyPrint, setDailyPrint] = useState([]);
   const [potdStatus, setPotdStatus] = useState('loading')
   const hasFetchedDailyPrint = useRef(false);
 
-  const [showSTLPreviews, setShowSTLPreviews] = useState(true)
+  const [generalSettings, setGeneralSettings] = useState({ showSTLPreviews: true })
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
   const [supervisorData, setSupervisorData] = useState([]);
@@ -128,7 +129,7 @@ function App() {
   // const getFilenameFromLink = async (link) => {
   //   try {
   //     Axios.get(`${serverURL}/api/getFileName?link=${link}`).then((response) => {
-  //       console.log('Got filename from server:', response);
+  //       if(generalSettings?.debugMode)  console.log('Got filename from server:', response);
   //       return response.filename;
   //     }).catch(error => {
   //       console.error("Error getting filename from: ", error);
@@ -195,11 +196,11 @@ function App() {
   useEffect(() => {
     try {
       Axios.get(`${serverURL}/api/get?query=${"SELECT * FROM printer"}`).then((response) => {
-        console.log(response);
+        if (generalSettings?.debugMode) console.log(response);
 
         const sorted = sortPrinterList(response.data.result, printerSort)
         setPrinterList(sorted);
-        console.log("setting printers to data: ", sorted);
+        if (generalSettings?.debugMode) console.log("setting printers to data: ", sorted);
       }).catch(e => {
         console.error("Error fetching printer data: ", e)
         setLoading('error')
@@ -216,7 +217,7 @@ function App() {
     try {
       Axios.get(`${serverURL}/api/get?query=${"SELECT * FROM member"}`).then((response) => {
         let members = response.data.result
-        console.log('member list: ', members);
+        if (generalSettings?.debugMode) console.log('member list: ', members);
 
         setMemberList(members);
       }).catch(e => {
@@ -229,12 +230,14 @@ function App() {
     // organizer links
     try {
       Axios.get(`${serverURL}/api/getLocalData`).then((response) => {
-        let localData = response.data;
-        console.log('app.js got localData: ', localData);
-        if (response?.data?.organizerLinks) {
-          setOrganizerLinks(response.data.organizerLinks);
+        let localData = response?.data;
+        if (generalSettings?.debugMode) console.log('app.js got localData: ', localData);
+        if (localData) {
+          setOrganizerLinks(localData.organizerLinks);
+          setGeneralSettings(localData.generalSettings);
+          setFilamentSettings(localData.filamentSettings);
         } else {
-          console.error('Error fetching organizer links, field does not exist!')
+          console.error('Error fetching local data')
         }
       }).catch(e => {
         console.error('Error in fetching local data: ', e)
@@ -269,16 +272,18 @@ function App() {
   }, [selectedPrinter, printerList]); // Run effect when selectedPrinter or printerList changes
 
   useEffect(() => {
-    console.log('fetching history...')
+    if (generalSettings?.debugMode) console.log('fetching history...')
     refreshHistory();
   }, [historyPeriod]);
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
-    console.log('updating printer screen')
-    console.log('selectedPrinter: ', selectedPrinter)
-    console.log('printerList: ', printerList)
-    console.log('menuOpen: ', menuOpen)
+    if (generalSettings?.debugMode) {
+      console.log('updating printer screen')
+      console.log('selectedPrinter: ', selectedPrinter)
+      console.log('printerList: ', printerList)
+      console.log('menuOpen: ', menuOpen)
+    }
 
     // Update the history period with the current date and refresh the history table
     let now = new Date();
@@ -295,11 +300,15 @@ function App() {
         if (selectedPrinter.currentJob !== "" && selectedPrinter.currentJob !== null) {
           //get the current job and store it
           Axios.get(`${serverURL}/api/getjob?jobID=${selectedPrinter.currentJob}`).then((response) => {
-            console.log('got current job');
-            console.log(response.data.res);
+            if (generalSettings?.debugMode) {
+              console.log('got current job');
+              console.log(response.data.res);
+            }
             setCurJob(response.data.res[0]);
-            console.log("set curJob to:")
-            console.log(response.data.res[0])
+            if (generalSettings?.debugMode) {
+              console.log("set curJob to:")
+              console.log(response.data.res[0])
+            }
           });
         } else {
           setCurJob(null)
@@ -316,16 +325,16 @@ function App() {
       try {
         Axios.get(`${serverURL}/api/getRecentFiles`).then((response) => {
           let recentFilesTemp = response.data.recentFiles;
-          recentFilesTemp.files = recentFilesTemp.files.split(',').map(file => file.trim())
-          recentFilesTemp.partNames = recentFilesTemp.partNames.split(',').map(name => name.trim())
+          recentFilesTemp.files = recentFilesTemp.files.split(/[,;]/).map(file => file.trim())
+          recentFilesTemp.partNames = recentFilesTemp.partNames.split(/[,;]/).map(name => name.trim())
 
-          console.log('recentFilesTemp:', recentFilesTemp)
+          if (generalSettings?.debugMode) console.log('recentFilesTemp:', recentFilesTemp)
           const newRecentFiles = recentFilesTemp.files.map((file, index) => ({
             file: file,
             name: recentFilesTemp.partNames[index] || ""
           }));
 
-          console.log('setting new recent files: ', newRecentFiles)
+          if (generalSettings?.debugMode) console.log('setting new recent files: ', newRecentFiles)
           setRecentFiles(newRecentFiles)
         });
       } catch (error) {
@@ -343,14 +352,14 @@ function App() {
             // let newDailyPrint = []; 
             // for (let fileno in dailyPrintTemp) {
             //   let fileName = dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('/') + 1).trim();
-            //   console.log('trending print file name: ', fileName);
+            //   if(generalSettings?.debugMode)  console.log('trending print file name: ', fileName);
             //   newDailyPrint.push({
             //     "name": fileName,
             //     "file": dailyPrintTemp[fileno]
             //   });
             // }
 
-            console.log('setting trending print: ', dailyPrintTemp);
+            if (generalSettings?.debugMode) console.log('setting trending print: ', dailyPrintTemp);
             setPotdStatus('done')
             // setDailyPrint({ 'parts': dailyPrintTemp, 'pageLink': response.data.pageLink, 'pageName': response.data.pageName });
             setDailyPrint(dailyPrintTemp);
@@ -377,11 +386,10 @@ function App() {
         return dateArray;
       };
 
-      //console.log(`### loading line chart ${index}...`)
+      //if(generalSettings?.debugMode)  console.log(`### loading line chart ${index}...`)
       try {
         Axios.get(`${serverURL}/api/getfreq`).then((response) => {
-          console.log("frequencies: ");
-          console.log(response.data);
+          if (generalSettings?.debugMode) console.log("frequencies: ", response.data);
           const sortedData = response.data.res;
 
           setPrinterNames(sortedData.map(printer => printer.printerName));
@@ -390,17 +398,15 @@ function App() {
 
           try {
             Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
-              console.log('supervisor data:')
+              if (generalSettings?.debugMode) console.log('supervisor data: ',sortedData)
               setSupervisorData(response.data.res);
-              console.log(sortedData)
               Axios.get(`${serverURL}/api/getfilamentdata`).then((response) => {
-                console.log('filament name data:')
+                if (generalSettings?.debugMode) console.log('filament name data: ', response.data.res)
                 setNameFilamentData(response.data.res);
-                console.log(response.data.res)
+                if (generalSettings?.debugMode) console.log()
 
                 Axios.get(`${serverURL}/api/getdailyprints`).then((response2) => {
-                  console.log("daily data:");
-                  console.log(response2.data);
+                  if (generalSettings?.debugMode) console.log("daily data: ",response2.data);
 
                   if (response2.data) {
                     const dailyData = response2.data.res;
@@ -438,9 +444,6 @@ function App() {
                       setLinePersonalData([filledPersonalCnt, filledPersonalSum]);
                       setLineClubData([filledClubCnt, filledClubSum]);
                       setLineDateWindow(allDates);
-                      // console.log('linePersonalData: ', filledPersonalCnt)
-                      // console.log('lineClubData: ', filledClubCnt)
-                      // console.log('lineDateWindow: ', allDates)
                     }
                   }
                   setLoading('done');
@@ -490,33 +493,46 @@ function App() {
     };
   })
 
-
-
-
-
-  const toggleSTLPreviews = () => {
-    console.log('setting STLPreviews to ', !showSTLPreviews);
-    setShowSTLPreviews(!showSTLPreviews);
-  }
   const toggleSelfPostProcess = () => {
-    console.log('setting selfPostProcess to ', !selfPostProcess);
+    if (generalSettings?.debugMode) console.log('setting selfPostProcess to ', !selfPostProcess);
     setSelfPostProcess(!selfPostProcess);
   }
   const toggleDetailedPostProcess = () => {
-    console.log('setting detailedPostProcess to ', !detailedPostProcess);
+    if (generalSettings?.debugMode) console.log('setting detailedPostProcess to ', !detailedPostProcess);
     setDetailedPostProcess(!detailedPostProcess);
+  }
+
+  const filterHistory = (rawHistoryList, search) => {
+    // filter the history list
+    let filteredHistoryTemp = rawHistoryList.filter(job => Object.keys(job).some(key => {
+      let value = job[key]
+      if (key === 'timeStarted') {
+        value = formatDate(value, true)
+      } else if (key === 'personalFilament') {
+        value = value ? 'personal' : 'club'
+      } else if (key === 'usage_g') {
+        value = value.toString()
+      }
+      return (typeof value === 'string' && value.toLowerCase().includes(search.toLowerCase()))
+    }) && job.status !== 'queued'
+    )
+
+    if (generalSettings?.debugMode) console.log('### New filtered history: ', filteredHistoryTemp);
+    setFilteredHistoryList(filteredHistoryTemp);
   }
 
   const handleHistorySearch = (e) => {
     const newSearch = e.target.value
     setHistorySearch(newSearch);
-    console.log("Set historySearch to " + newSearch);
+    if (generalSettings?.debugMode) console.log("Set historySearch to " + newSearch);
+
+    filterHistory(historyList, newSearch);
   }
 
   const handleJobEdit = (e, field) => {
     const newVal = e.target.value
     setEditingJob({ ...editingJob, [field]: newVal });
-    console.log("Edited job " + field + " to " + newVal);
+    if (generalSettings?.debugMode) console.log("Edited job " + field + " to " + newVal);
   }
 
   function toMySQLDate(date) {
@@ -526,7 +542,7 @@ function App() {
 
   // fetch the printer history or, if its null, get the comprehensive history
   const refreshHistory = async () => {
-    console.log('historyPeriod:', historyPeriod)
+    if (generalSettings?.debugMode) console.log('historyPeriod:', historyPeriod)
     // get a start and end date from the history period
     let dateRangeString;
 
@@ -560,7 +576,7 @@ function App() {
       console.error(`ERROR in refreshHistory: Invalid season encoding in historyPeriod of ${historyPeriod.seasonEnc}`)
     }
 
-    console.log(dateRangeString)
+    if (generalSettings?.debugMode) console.log(dateRangeString)
     Axios.get(`${serverURL}/api/getHistory`, {
       params: {
         value: selectedPrinter?.printerName ?? 'undefined',
@@ -571,14 +587,14 @@ function App() {
       // const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
       const newHistory = sortHistoryList(response.data.historyList, historySort);
       setHistoryList(newHistory);
-      console.log('Got history list:');
-      console.log(newHistory);
+      if (generalSettings?.debugMode) console.log('Got unfiltered history list: ',newHistory);
+      filterHistory(newHistory, historySearch);
     });
   }
 
   useEffect(() => {
-    setHistoryList(sortHistoryList(historyList, historySort))
-  }, [historySort, sortAscending]) // selectedPrinter?
+    setFilteredHistoryList(sortHistoryList(filteredHistoryList, historySort))
+  }, [historySort, sortAscending]);
 
 
 
@@ -625,7 +641,7 @@ function App() {
         const newEditingJob = { ...editingJob, jobID: -1 }
         setEditingJob(newEditingJob);
         refreshHistory();
-        console.log('Saved job in history table');
+        if (generalSettings?.debugMode) console.log('Saved job in history table');
       });
     } catch (error) {
       console.error("Error updating printer: ", error);
@@ -634,7 +650,7 @@ function App() {
 
   // update the printer's status from active to inactive
   const activeToInactive = (refPrinter) => {
-    console.log('Changing', refPrinter.printerName, 'status to inactive')
+    if (generalSettings?.debugMode) console.log('Changing', refPrinter.printerName, 'status to inactive')
 
     updateTable("printer", "currentJob", refPrinter.printerName, '', () => {
       handlePrinterStatusChange(busyToOpen(refPrinter.status), refPrinter);
@@ -644,7 +660,7 @@ function App() {
   }
 
   const inactiveToActive = (refPrinter, editingJobFilt) => {
-    console.log('Changing', refPrinter.printerName, 'status to active')
+    if (generalSettings?.debugMode) console.log('Changing', refPrinter.printerName, 'status to active')
     handlePrinterStatusChange(refPrinter.status === 'admin' ? 'admin-busy' : refPrinter.status === 'testing' ? 'testing-busy' : 'busy', refPrinter);
     setCurJob(editingJobFilt);
     refPrinter.currentJob = editingJobFilt.jobID;
@@ -675,7 +691,7 @@ function App() {
       return response.json();
     }).then(data => {
       refreshHistory();
-      console.log('Deleted job with id ' + jobID);
+      if (generalSettings?.debugMode) console.log('Deleted job with id ' + jobID);
     }).catch(error => {
       console.error('Error:', error);
     });
@@ -701,13 +717,13 @@ function App() {
 
     // This is the comprehensive history table in the lab summary page
     if (!refPrinter) {
-      console.log('No referencedPrinter, searching in printerList...')
+      if (generalSettings?.debugMode) console.log('No referencedPrinter, searching in printerList...')
       // look up the printer name in the printer list to use it later
       refPrinter = printerList.find(printer => printer.printerName === job.printerName);
-      console.log('Found printer: ', refPrinter)
+      if (generalSettings?.debugMode) console.log('Found printer: ', refPrinter)
 
       if (!refPrinter) {
-        console.log('Could not find the reference printer in printerList, edit not allowed.')
+        if (generalSettings?.debugMode) console.log('Could not find the reference printer in printerList, edit not allowed.')
         return;
       }
     }
@@ -715,7 +731,7 @@ function App() {
     // save the edits
     if (editingJobFilt.jobID === job.jobID) {
       if (!printerList.map(printer => printer.printerName).includes(editingJob.printerName)) {
-        console.log('Cannot set new printer name: Printer does not exist!')
+        if (generalSettings?.debugMode) console.log('Cannot set new printer name: Printer does not exist!')
         showMsgForDuration(`Cannot save job: Printer "${editingJob.printerName}" doesn't exist!`, 'err');
         setEditingJob({ ...editingJob, jobID: -1 });
         return;
@@ -753,12 +769,12 @@ function App() {
           }
         }
       } else {
-        console.log('status did not change')
-        console.log('editingJob name: ', editingJob.printerName, ' | job name: ', job.printerName)
+        if (generalSettings?.debugMode) console.log('status did not change')
+        if (generalSettings?.debugMode) console.log('editingJob name: ', editingJob.printerName, ' | job name: ', job.printerName)
         // if the printer was changed, and the status is active, then we need to update the printer status of both printers
         // source -- busy to inactive   |   destination -- inactive to busy
         if ((job.printerName !== editingJob.printerName) && (job.status === 'active')) {
-          console.log('active to active printer name change detected')
+          if (generalSettings?.debugMode) console.log('active to active printer name change detected')
           let destPrinter = printerList.find(printer => printer.printerName === editingJob.printerName)
           // set the source printer to inactive
           activeToInactive(refPrinter);
@@ -771,7 +787,7 @@ function App() {
     } else {
       // change the job to edit, discard previous changes
       setEditingJob(job);
-      console.log('Editing job: ', job);
+      if (generalSettings?.debugMode) console.log('Editing job: ', job);
     }
   }
 
@@ -779,7 +795,7 @@ function App() {
   const handlePrinterSort = (e) => {
     const newSort = e.target.value;
     setPrinterSort(newSort);
-    console.log('now sorting printers by ' + newSort);
+    if (generalSettings?.debugMode) console.log('now sorting printers by ' + newSort);
   }
 
   const handleFilamentType = (e) => {
@@ -794,34 +810,34 @@ function App() {
       });
       setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
     })
-    console.log('changed filament type to ' + newType);
+    if (generalSettings?.debugMode) console.log('changed filament type to ' + newType);
   }
 
   const handlePrinterNotes = (e) => {
     const newPrinterNotes = e.target.value;
     setPrinterNotes(newPrinterNotes);
-    console.log('set printerNotes to ' + newPrinterNotes);
+    if (generalSettings?.debugMode) console.log('set printerNotes to ' + newPrinterNotes);
   }
 
   const handleEditPrinterNotesClick = () => {
     if (selectedPrinter && selectedPrinter.notes) {
       setPrinterNotes(selectedPrinter.notes)
-      console.log('editing printer notes: ' + selectedPrinter.notes);
+      if (generalSettings?.debugMode) console.log('editing printer notes: ' + selectedPrinter.notes);
     } else {
       setPrinterNotes('')
-      console.log('editing printer notes')
+      if (generalSettings?.debugMode) console.log('editing printer notes')
     }
   }
 
   const handleFeedbackSubjectChange = (e) => {
     const newFeedbackSubject = e.target.value;
-    console.log('changed feedbackSubject to: ' + newFeedbackSubject);
+    if (generalSettings?.debugMode) console.log('changed feedbackSubject to: ' + newFeedbackSubject);
     setFeedbackSubject(newFeedbackSubject);
   }
 
   const handleFeedbackTextChange = (e) => {
     const newFeedbackText = e.target.value;
-    console.log('changed feedbackText to: ' + newFeedbackText);
+    if (generalSettings?.debugMode) console.log('changed feedbackText to: ' + newFeedbackText);
     setFeedbackText(newFeedbackText);
   }
 
@@ -875,12 +891,12 @@ function App() {
   }
 
   const movePrint = (printerName) => {
-    console.log(`moving current print from ${selectedPrinter.printerName} to ${printerName}...`);
+    if (generalSettings?.debugMode) console.log(`moving current print from ${selectedPrinter.printerName} to ${printerName}...`);
 
     let newPrinter = printerList.find(p => p.printerName === printerName);
 
     //update the new printer's status to active    
-    console.log('Changing', newPrinter.printerName, 'status to active')
+    if (generalSettings?.debugMode) console.log('Changing', newPrinter.printerName, 'status to active')
     handlePrinterStatusChange(newPrinter.status === 'admin' ? 'admin-busy' : 'busy', newPrinter);
     newPrinter.currentJob = curJob.jobID;
 
@@ -900,7 +916,7 @@ function App() {
           val: printerName
         }).then(() => {
           // update the selected printer's status from active to inactive
-          console.log('Changing', selectedPrinter.printerName, 'status to inactive')
+          if (generalSettings?.debugMode) console.log('Changing', selectedPrinter.printerName, 'status to inactive')
 
           updateTable("printer", "currentJob", selectedPrinter.printerName, '', () => {
             handlePrinterStatusChange(busyToOpen(selectedPrinter.status), selectedPrinter);
@@ -984,22 +1000,22 @@ function App() {
   };
 
   const handleSendEmailChange = () => {
-    console.log('changed sendEmail to ' + !sendEmail);
+    if (generalSettings?.debugMode) console.log('changed sendEmail to ' + !sendEmail);
     setSendEmail(!sendEmail);
   }
 
   const handleIsAdminChange = (state) => {
-    console.log('changed isAdmin to ' + state);
+    if (generalSettings?.debugMode) console.log('changed isAdmin to ' + state);
     setIsAdmin(state);
   }
 
   const handleSupervisorPrintChange = () => {
-    console.log('changed supervisorPrint to ' + !supervisorPrint);
+    if (generalSettings?.debugMode) console.log('changed supervisorPrint to ' + !supervisorPrint);
     setSupervisorPrint(!supervisorPrint);
   }
 
   const handlePersonalFilamentChange = () => {
-    console.log('changed personalFilament to ' + !personalFilament);
+    if (generalSettings?.debugMode) console.log('changed personalFilament to ' + !personalFilament);
     setPersonalFilament(!personalFilament);
   }
 
@@ -1036,8 +1052,8 @@ function App() {
 
   const checkPswd = (given, actual) => {
     const hash = CryptoJS.SHA256(given).toString();
-    console.log('given pswd: ' + hash)
-    console.log('actual pswd: ' + actual)
+    if (generalSettings?.debugMode) console.log('given pswd: ' + hash)
+    if (generalSettings?.debugMode) console.log('actual pswd: ' + actual)
     if (hash === actual) {
       showMsgForDuration("Logged in as Admin!", 'msg');
       handleIsAdminChange(true)
@@ -1118,8 +1134,8 @@ function App() {
   }
 
   const movePrinter = (direction) => {
-    console.log('moving printer by arrow key...')
-    console.log(selectedPrinter)
+    if (generalSettings?.debugMode) console.log('moving printer by arrow key...')
+    if (generalSettings?.debugMode) console.log(selectedPrinter)
     if (selectedPrinter === null) {
       handlePrinterClick(0);
       return;
@@ -1130,7 +1146,7 @@ function App() {
       if (curIndex === -1) curIndex = printerList.length - 1;
       handlePrinterClick(curIndex);
     } catch (e) {
-      console.log('arrow press failed: printer not found in printerList:\n' + e)
+      if (generalSettings?.debugMode) console.log('arrow press failed: printer not found in printerList:\n' + e)
     }
   }
 
@@ -1175,7 +1191,7 @@ function App() {
   };
 
   const handlePrinterStatusChange = (statusArg, refPrinter = selectedPrinter) => {
-    console.log('changing printer ' + refPrinter.printerName + '\'s status to ' + statusArg)
+    if (generalSettings?.debugMode) console.log('changing printer ' + refPrinter.printerName + '\'s status to ' + statusArg)
     //first, update the database to have the new printer status
     updateTable("printer", "status", refPrinter.printerName, statusArg, () => {
       //then, update the local printer array to reflect this change
@@ -1250,23 +1266,17 @@ function App() {
       } else if (selectedPrinter.status === 'admin' && !isAdmin) {
         showMsgForDuration("This printer is not available!", 'err');
       } else if (name.length === 0) {
-        console.log("startPrintClick: err: no name");
         showMsgForDuration("No Name! Print not started.", 'err');
       } else if ((email.length === 0) && !supervisorPrint) {
-        console.log("startPrintClick: err: no email");
         showMsgForDuration("No Email! Print not started.", 'err');
       } else if ((supervisor.length === 0) && !supervisorPrint) {
-        console.log("startPrintClick: err: no supervisor");
         showMsgForDuration("No Supervisor! Print not started.", 'err');
       } else if ((partNames.length === 0)) {// && !supervisorPrint) {
-        console.log("startPrintClick: err: no partNames");
         showMsgForDuration("No Part Names! Print not started.", 'err');
       } else if (files.length === 0) {
-        console.log("startPrintClick: err: no files");
         showMsgForDuration("No Files! Print not started.", 'err');
       }
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
-        console.log("startPrintClick: err: no filamentUsage");
         showMsgForDuration("No Filament Usage! Print not started.", 'err');
       } else if (queue && historyList.filter(item => item.status === 'queued').some(job => {
         if (job.name.toLowerCase() === name.toLowerCase()) {
@@ -1275,23 +1285,17 @@ function App() {
         }
         return false;
       })) {
-        console.log("startPrintClick: warn: duplicate name entry in queue");
         showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
-        console.log("startPrintClick: warn: already 3 queued resin prints");
         showMsgForDuration("Resin queue is full! Print not queued.", 'err');
       } else if (((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) && !personalFilament) {
-        console.log("startPrintClick: warn: filament type not PLA");
-        showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $0.10 / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
+        showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $${filamentSettings.fdmCost} / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
       } else if ((selectedPrinter.filamentType === 'Resin')) {
-        console.log("startPrintClick: warn: Resin filament type");
-        showMsgForDuration(`Warning: Resin costs $0.12 / ml,\neven for members.`, 'warn', popupTime + 5000);
+        showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
-        console.log("startPrintClick: warn: filamentUsage > 1000g");
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
       } else if (queue) {
-        console.log("startPrintClick: warn: resin print costs $0.10 / ml");
-        showMsgForDuration(`Warning: Resin prints cost $0.12 / ml,\nEven for club members.`, 'warn', popupTime + 5000);
+        showMsgForDuration(`Warning: Resin prints cost $${filamentSettings.resinCost} / ml,\nEven for club members.`, 'warn', popupTime + 5000);
       } else if ((selectedPrinter.filamentType === 'PLA') && !personalFilament && !memberList.map(m => m.email).includes(email) && !supervisorPrint) {
         showMsgForDuration(`Warning: Non-member detected. Pay-per-gram\nthrough TooCool is required. Continue?`, 'warn', popupTime + 5000);
       } else {
@@ -1300,7 +1304,7 @@ function App() {
         setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
 
         // insert the print to the "printJob" table
-        console.log("startPrintClick: all fields valid, inserting to printJob");
+        if (generalSettings?.debugMode) console.log("startPrintClick: all fields valid, inserting to printJob");
         startPrint(queue);
       };
     };
@@ -1342,14 +1346,13 @@ function App() {
         return response.json();
       }).then(data => {
         refreshHistory();
-        console.log('Deleted job with id ' + replaceJob.jobID);
+        if (generalSettings?.debugMode) console.log('Deleted job with id ' + replaceJob.jobID);
 
 
         //apply changes locally
         const updatedHistoryList = historyList.filter(job => !(job.jobID === replaceJob.jobID))
 
-        console.log('updated history list:')
-        console.log(updatedHistoryList)
+        if (generalSettings?.debugMode) console.log('updated history list: ',updatedHistoryList)
 
         setHistoryList(updatedHistoryList);
 
@@ -1378,8 +1381,7 @@ function App() {
             //update the current job of the printer that was selected for the print
             try {
               Axios.get(`${serverURL}/api/getCurrentJob?printerName=${formPrinter.printerName}`).then((response) => {
-                console.log("CurrentJob data: ");
-                console.log(response.data);
+                if (generalSettings?.debugMode) console.log("CurrentJob data: ", response.data);
                 //update the printer status of the printer that was given the job
                 updateTable("printer", "status", formPrinter.printerName, openToBusy(formPrinter.status), () => {
                   //update the currentJob of the printer that was used for the printJob
@@ -1419,9 +1421,7 @@ function App() {
     } catch (error) {
       console.error('Error submitting printJob: ', error);
       showMsgForDuration(queue ? 'Error queueing print.' : `Error starting print.`, 'err');
-
     }
-
   };
 
 
@@ -1468,7 +1468,7 @@ function App() {
   const handlePrintDoneClick = (statusArg, callback) => {
     setPersonalFilament(false);
     try {
-      console.log("print done was clicked... setting printer status to available");
+      if (generalSettings?.debugMode) console.log("print done was clicked... setting printer status to available");
       //set status to available
       updateTable("printer", "status", selectedPrinter.printerName, busyToOpen(selectedPrinter.status), () => {
 
@@ -1480,7 +1480,7 @@ function App() {
           val: statusArg
         }).then(() => {
           //remove currentJob
-          console.log("removing printer's currentJob...");
+          if (generalSettings?.debugMode) console.log("removing printer's currentJob...");
           updateTable("printer", "currentJob", selectedPrinter.printerName, "", () => {
 
             //apply the changes locally
@@ -1491,11 +1491,11 @@ function App() {
               return printer;
             });
             setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
-            console.log(updatedPrinterList)
+            if (generalSettings?.debugMode) console.log(updatedPrinterList)
 
             //Email the user and set popup message
             if (sendEmail) {
-              console.log('sending email...')
+              if (generalSettings?.debugMode) console.log('sending email...')
               let success = statusArg === 'completed'
 
               let text = success ? "Hello " + curJob.name + ", \n \n Your 3D print of [" + curJob.partNames +
@@ -1515,7 +1515,7 @@ function App() {
                   try {
                     Axios.get(`${serverURL}/api/getFailureCount?parts=${curJob.partNames}&name=${curJob.name}`).then((response) => {
                       let failureCount = response.data.count[0].cnt
-                      console.log('failure count: ' + failureCount)
+                      if (generalSettings?.debugMode) console.log('failure count: ' + failureCount)
                       if (failureCount >= 3) {
                         sendMail("3DPC: Print Failed", text);
                       } else {
@@ -1529,10 +1529,10 @@ function App() {
 
               } catch (e) {
                 showMsgForDuration('Error Sending Email', 'err');
-                console.log('Error sending email:', e);
+                if (generalSettings?.debugMode) console.log('Error sending email:', e);
               }
             } else {
-              console.log('not sending email...')
+              if (generalSettings?.debugMode) console.log('not sending email...')
               showMsgForDuration('No Email Sent. (Disabled)', 'msg');
             }
 
@@ -1543,7 +1543,7 @@ function App() {
               callback();
             }
 
-            console.log("Print finished, done updating the database.");
+            if (generalSettings?.debugMode) console.log("Print finished, done updating the database.");
 
           });
         });
@@ -1576,8 +1576,7 @@ function App() {
       setFormDataLoading(true);
       fetch(url).then(response => response.json()).then(data => {
         if (data !== null && data.length > 0) {
-          console.log('fetched form data: ');
-          console.log(data)
+          if (generalSettings?.debugMode) console.log('fetched form data: ',data);
           showMsgForDuration('Form Data Retrieved Successfully!', 'msg');
           setFormDataLoading(false);
 
@@ -1626,11 +1625,11 @@ function App() {
 
   useEffect(() => {
     // Log the messageQueue whenever it changes
-    console.log("Updated messageQueue:", messageQueue);
+    if (generalSettings?.debugMode) console.log("Updated messageQueue:", messageQueue);
   }, [messageQueue]);
 
   const showMsgForDuration = (msg, type, duration = popupTime, replaceJob = null) => {
-    console.log('adding [' + msg + '] to the queue...')
+    if (generalSettings?.debugMode) console.log('adding [' + msg + '] to the queue...')
     const id = Date.now(); // Unique ID for each message
 
     let msgJob = buildFormJob();
@@ -1639,7 +1638,7 @@ function App() {
 
     // Set a timeout to remove the message after its duration
     setTimeout(() => {
-      console.log('removing [' + msg + '] from the queue...')
+      if (generalSettings?.debugMode) console.log('removing [' + msg + '] from the queue...')
 
       setMessageQueue(prevQueue => prevQueue.filter(message => message.id !== id))
     }, duration);
@@ -1658,12 +1657,10 @@ function App() {
     if (printer) {
       if (selectedPrinter && (selectedPrinter.printerName === printer.printerName)) {
         selectPrinter(null);
-        console.log("unselected printer: ");
-        console.log(printer);
+        if (generalSettings?.debugMode) console.log("unselected printer: ",printer);
       } else {
         selectPrinter(printer);
-        console.log("selected printer: ");
-        console.log(printer);
+        if (generalSettings?.debugMode) console.log("selected printer: ",printer);
       }
     }
   };
@@ -1698,19 +1695,18 @@ function App() {
   const handlefiles = (e) => {
     const files = e.target.value;
     setfiles(files);
-    console.log("set files to " + files);
+    if (generalSettings?.debugMode) console.log("set files to " + files);
   };
 
   const handlePswdChange = (e) => {
     const pswd = e.target.value;
-    // console.log('changed adminPswd to ' + pswd); 
     setAdminPswd(pswd);
   }
 
   const handlenotes = (e) => {
     const notes = e.target.value;
     setnotes(notes);
-    console.log("set notes to " + notes);
+    if (generalSettings?.debugMode) console.log("set notes to " + notes);
   };
 
   const handleUpload = async (e) => {
@@ -1734,14 +1730,13 @@ function App() {
     const fileNames = filesList.join(', ');
     if (fileNames) {
       setpartnames(fileNames);
-      console.log('set partnames to: ' + fileNames);
+      if (generalSettings?.debugMode) console.log('set partnames to: ' + fileNames);
     }
 
     // create an array of promises, one for each file
     const uploadPromises = Array.from(e.target.files).map(async (file) => {
       const formData = new FormData();
       formData.append('file', file);
-      // console.log('formData:', formData);
 
       try {
         const response = await fetch(`${serverURL}/api/upload/`, {
@@ -1752,7 +1747,6 @@ function App() {
           throw new Error(`Upload failed: ${response.statusText}`);
         }
         const data = await response.json();
-        // console.log('Upload response data:', data);
         return data.fileLink;
       } catch (error) {
         console.error('Error during upload:', error);
@@ -1770,41 +1764,41 @@ function App() {
   const handlename = (e) => {
     const name = e.target.value;
     setname(name);
-    console.log("set name to " + name);
+    if (generalSettings?.debugMode) console.log("set name to " + name);
   };
   const handleColor = (e) => {
     const color = e.target.value;
     setColor(color);
-    console.log("set color to " + color);
+    if (generalSettings?.debugMode) console.log("set color to " + color);
   };
   const handleLayerHeight = (e) => {
     const layerHeight = e.target.value;
     setLayerHeight(layerHeight);
-    console.log("set layerHeight to " + layerHeight);
+    if (generalSettings?.debugMode) console.log("set layerHeight to " + layerHeight);
   };
   const handleCureTime = (e) => {
     const cureTime = e.target.value;
     setCureTime(cureTime);
-    console.log("set cureTime to " + cureTime);
+    if (generalSettings?.debugMode) console.log("set cureTime to " + cureTime);
   };
 
   const handleemail = (e) => {
     const email = e.target.value;
 
     setemail(email);
-    console.log("set email to " + email);
+    if (generalSettings?.debugMode) console.log("set email to " + email);
   };
 
   const handlesupervisor = (e) => {
     const supervisor = e.target.value;
     setsupervisor(supervisor);
-    console.log("set supervisor to " + supervisor);
+    if (generalSettings?.debugMode) console.log("set supervisor to " + supervisor);
   };
 
   const handlePartNames = (e) => {
     const names = e.target.value;
     setpartnames(names);
-    console.log("set partNames to " + names);
+    if (generalSettings?.debugMode) console.log("set partNames to " + names);
   };
 
   const handleFilamentUsage = (e) => {
@@ -1820,7 +1814,7 @@ function App() {
 
     if ((usage === "") || (parseFloat(usage) < 100000)) {
       setFilamentUsage(usage);
-      console.log("set filament usage to " + usage);
+      if (generalSettings?.debugMode) console.log("set filament usage to " + usage);
     }
 
   };
@@ -1833,7 +1827,7 @@ function App() {
       document.body.classList.remove('disable-scroll');
     }
 
-    console.log("Set menuOpen to: " + menuOpen);
+    if (generalSettings?.debugMode) console.log("Set menuOpen to: " + menuOpen);
   };
 
   function formatDate(isoString, time) {
@@ -1848,13 +1842,13 @@ function App() {
   }
 
   const createHistoryRow = (job, isComprehensive, queue) => {
-    const ScrollCell = ({ html, width=null }) => (
+    const ScrollCell = ({ html, width = null }) => (
       <td style={{ padding: 0 }}>
         <div
           style={{
-            paddingLeft:'5px',
-            paddingRight:'5px',
-            width: width ? width+'px' : '100%',
+            paddingLeft: '5px',
+            paddingRight: '5px',
+            width: width ? width + 'px' : '100%',
             overflowX: 'auto',
             overflowY: 'hidden',
             whiteSpace: 'nowrap',
@@ -1907,7 +1901,7 @@ function App() {
                 </select>
               </td>}
               <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
-              <td>{job.files.split(',').map((link, index) => { return (<button style={{ cursor: 'pointer' }} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
+              <td>{job.files.split(/[,;]/).map((link, index) => { return (<button style={{ cursor: 'pointer' }} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
               <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
               {/* <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td> */}
             </>
@@ -1917,12 +1911,12 @@ function App() {
               {isComprehensive && <ScrollCell html={applyHighlight(job.printerName, queue)} width={100} />}
               <ScrollCell html={applyHighlight(job.partNames, queue)} width={400} />
               <ScrollCell html={applyHighlight(job.name, queue)} width={150} />
-              <ScrollCell html={applyHighlight(job.email, queue)} width={200} />
+              <ScrollCell html={applyHighlight(job.email, queue)} width={250} />
               <ScrollCell html={applyHighlight(job.supervisorName, queue)} width={150} />
               {!queue && <ScrollCell html={applyHighlight(job.personalFilament ? 'personal' : 'club', queue)} width={null} />}
               <ScrollCell html={applyHighlight(job.usage_g.toString(), queue)} width={null} />
               <td>
-                {job.files.split(',').map((link, i) => (
+                {job.files.split(/[,;]/).map((link, i) => (
                   <button
                     key={i}
                     style={{ cursor: 'pointer' }}
@@ -1960,12 +1954,18 @@ function App() {
     setFormData, pullFormData, formData, truncateString, handlename, name, supervisorPrint, email, handleemail,
     handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
-    filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight, cureTime, handleCureTime
+    filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight, cureTime,
+    handleCureTime, filamentSettings
+  }
+  const settingsArgs = {
+    adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackSubject, feedbackText, handleFeedbackSubjectChange,
+    handleFeedbackTextChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
+    handleOpenMenu, truncateStringWidth, memberList, setMemberList, formatDate, truncateString, showMsgForDuration,
+    setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings
   }
 
   return (
     <div className="App">
-
 
       {
         sidebarOpen ?
@@ -2114,7 +2114,7 @@ function App() {
               <div style={{ height: '80px' }} />
 
               {/* Comprehensive print history */}
-              <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
+              <PrintHistoryTable filteredHistoryList={filteredHistoryList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
                 createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
                 historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} historyPagesShowing={historyPagesShowing}
                 setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
@@ -2144,7 +2144,7 @@ function App() {
                   </select>
                   {" on this printer."}</div>
                   :
-                  "Use " + selectedPrinter.filamentType + " on this printer.")
+                  "Use " + (selectedPrinter.permColor ?? '') + ' ' + (selectedPrinter.filamentType == 'Resin' ? 'resin' : selectedPrinter.filamentType) + " on this printer.")
                 }
               </div>
             </div>
@@ -2196,9 +2196,6 @@ function App() {
                 <div>
                   {/* Checkbox to toggle email sending */}
                   <FormCheckbox activeCheckVal={sendEmail} handleChangeFunc={handleSendEmailChange} text={"Send Email"}></FormCheckbox>
-
-                  {/* Checkbox to toggle stl previews */}
-                  <FormCheckbox activeCheckVal={showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
                 </div>
               </div>
             }
@@ -2286,7 +2283,7 @@ function App() {
 
             {(((selectedPrinter.status?.slice(-4) === "busy")) && selectedPrinter.filamentType !== 'Resin') && <>
               <StlPreviewSection
-                showSTLPreviews={showSTLPreviews}
+                showSTLPreviews={generalSettings.showSTLPreviews}
                 curJob={curJob}
                 getDirectDownloadLink={getDirectDownloadLink}
                 truncateString={truncateString}
@@ -2303,9 +2300,6 @@ function App() {
 
                 {/* Checkbox to toggle supervisor print */}
                 <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
-
-                {/* Checkbox to toggle stl previews */}
-                <FormCheckbox activeCheckVal={showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
 
                 {/* Checkbox to toggle personal filament */}
                 {(selectedPrinter.filamentType !== 'Resin') &&
@@ -2337,7 +2331,7 @@ function App() {
                 <br />
 
                 <StlPreviewSection
-                  showSTLPreviews={showSTLPreviews}
+                  showSTLPreviews={generalSettings.showSTLPreviews}
                   curJob={{ 'files': files, 'partNames': partNames }}
                   getDirectDownloadLink={getDirectDownloadLink}
                   truncateString={truncateString}
@@ -2352,8 +2346,6 @@ function App() {
 
               {/* Checkbox to toggle supervisor print */}
               <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
-
-              <FormCheckbox activeCheckVal={showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
 
               {/* Checkbox to toggle personal filament */}
               {(selectedPrinter.filamentType !== 'Resin') &&
@@ -2396,7 +2388,7 @@ function App() {
               <br />
 
               <StlPreviewSection
-                showSTLPreviews={showSTLPreviews}
+                showSTLPreviews={generalSettings.showSTLPreviews}
                 curJob={{ 'files': files, 'partNames': partNames }}
                 getDirectDownloadLink={getDirectDownloadLink}
                 truncateString={truncateString}
@@ -2427,7 +2419,7 @@ function App() {
 
             {/* End printer status pages */}
 
-            {selectedPrinter && isAdmin && (printerNotes === null) && <div>
+            {selectedPrinter && (isAdmin || (selectedPrinter.status === 'broken') || (selectedPrinter.status === 'testing')) && (printerNotes === null) && <div>
               <div style={{ height: '20px' }}></div>
 
               <div className='notes-msg'>
@@ -2443,7 +2435,7 @@ function App() {
                 }
 
               </div>
-              <button onClick={() => { handleEditPrinterNotesClick() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Edit Notes</button>
+              {isAdmin && <button onClick={() => { handleEditPrinterNotesClick() }} style={{ marginTop: '10px', cursor: 'pointer', padding: '2px 5px' }}>Edit Notes</button>}
             </div>}
 
             {selectedPrinter && isAdmin && printerNotes !== null && <div>
@@ -2501,11 +2493,11 @@ function App() {
             <div style={{ height: "100px" }}></div>
 
             {/* print history table */}
-            <PrintHistoryTable historyList={historyList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
+            <PrintHistoryTable filteredHistoryList={filteredHistoryList} historySearch={historySearch} handleHistorySearch={handleHistorySearch} setHistorySearch={setHistorySearch}
               createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
               historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} historyPagesShowing={historyPagesShowing}
-                setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
-                sortAscending={sortAscending} setSortAscending={setSortAscending}></PrintHistoryTable>
+              setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
+              sortAscending={sortAscending} setSortAscending={setSortAscending}></PrintHistoryTable>
 
 
             <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
@@ -2527,25 +2519,13 @@ function App() {
         {menuOpen ? (
           <div className='menuBG visible' style={{ left: `${sidebarOpen ? sidebarWidth + 2 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)` }}>
             {
-              <Settings adminPswd={adminPswd} handlePswdChange={handlePswdChange}
-                isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
-                handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
-                serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
-                memberList={memberList} setMemberList={setMemberList} formatDate={formatDate} truncateString={truncateString}
-                showMsgForDuration={showMsgForDuration} setOrganizerLinks={setOrganizerLinks} />
+              <Settings settingsArgs={settingsArgs} />
             }
           </div>
         ) :
           (
             <div className='menuBG hidden' style={{ left: `${sidebarOpen ? sidebarWidth + 2 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)` }}>
-              <Settings adminPswd={adminPswd} handlePswdChange={handlePswdChange}
-                isAdmin={isAdmin} checkPswd={checkPswd} feedbackSubject={feedbackSubject} feedbackText={feedbackText}
-                handleFeedbackSubjectChange={handleFeedbackSubjectChange} handleFeedbackTextChange={handleFeedbackTextChange}
-                handleFeedbackClick={handleFeedbackClick} handleIsAdminChange={handleIsAdminChange}
-                serverURL={serverURL} setServerURL={setServerURL} menuOpen={menuOpen} truncateStringWidth={truncateStringWidth}
-                memberList={memberList} setMemberList={setMemberList} formatDate={formatDate} truncateString={truncateString}
-                showMsgForDuration={showMsgForDuration} />
+              <Settings settingsArgs={settingsArgs} />
             </div>
           )}
 
@@ -2572,7 +2552,6 @@ function App() {
 
     </div>
   );
-
 }
 
 
@@ -2582,11 +2561,11 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
       {showSTLPreviews ? (
         <ErrorBoundary>
           <div className="stl-previews">
-            {curJob && curJob.files.split(',').map((link, index) => {
+            {curJob && curJob.files.split(/[,;]/).map((link, index) => {
               let trimmedLink = link.trim();
 
               if (trimmedLink.startsWith('https://')) {
-                let partname = String(curJob.partNames)?.split(',')[index]
+                let partname = String(curJob.partNames)?.split(/[;,]/)[index]
 
                 return (
                   <div className="stl-preview" key={index}>
@@ -2601,9 +2580,9 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
         </ErrorBoundary>
       ) : (
         <>
-          {curJob && curJob.files.split(',').map((link, index) => {
+          {curJob && curJob.files.split(/[,;]/).map((link, index) => {
             if (link.trim().startsWith('https://')) {
-              let partname = curJob.partNames?.split(',')[index]
+              let partname = curJob.partNames?.split(/[,;]/)[index]
 
               return (
                 <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
@@ -2624,7 +2603,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
 
 
 
-function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, setHistorySearch,
+function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySearch, setHistorySearch,
   createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod, setHistoryPeriod,
   historyPagesShowing, setHistoryPagesShowing, historySort, setHistorySort, sortAscending, setSortAscending }) {
   let PRINTSPERPAGE = 50;
@@ -2654,7 +2633,7 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
     <div className="print-history">
       <div style={{ margin: '0px', padding: '0px', justifyContent: 'center', alignItems: 'center', display: 'flex', userSelect: 'none' }}>
         <div className='arrow-btn left' onClick={() => leftArrowClick(historyPeriod)}>&lt;</div>
-        <div style={{ width: "75%", maxWidth: '500px' }}> {title} [{historyList.length - historyList.filter(item => item.status === 'queued').length}] </div>
+        <div style={{ width: "75%", maxWidth: '500px' }}> {title} [{filteredHistoryList.length}] </div>
         <div className='arrow-btn right' onClick={() => rightArrowClick(historyPeriod)}>&gt;</div>
       </div>
 
@@ -2662,7 +2641,7 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
         <span className="search-bar">
           <img src={searchIcon} className='generic-icon'></img> Search
           <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
-          <button style={{ cursor: 'pointer' }} onClick={() => setHistorySearch('')}>Clear</button>
+          <button style={{ cursor: 'pointer' }} onClick={() => handleHistorySearch({ target: { value: '' } })}>Clear</button>
         </span>
 
         <span className='search-bar'>
@@ -2703,32 +2682,16 @@ function PrintHistoryTable({ historyList, historySearch, handleHistorySearch, se
             </tr>
           </thead>
           <tbody>
-            {historyList.slice(0, historyPagesShowing * PRINTSPERPAGE).map((job) => {
-              const containsSearch = Object.keys(job).some(key => {
-                let value = job[key]
-                if (key === 'timeStarted') {
-                  value = formatDate(value, true)
-                } else if (key === 'personalFilament') {
-                  value = value ? 'personal' : 'club'
-                } else if (key === 'usage_g') {
-                  value = value.toString()
-                }
-                return (typeof value === 'string' && value.toLowerCase().includes(historySearch.toLowerCase()))
-              }
-              );
-              if (!containsSearch || job.status === 'queued') {
-                return null;
-              }
-
+            {filteredHistoryList.slice(0, historyPagesShowing * PRINTSPERPAGE).map((job) => {
               return <tr className={`${job.status} history-row`} key={job.jobID}>
                 {createHistoryRow(job, isComprehensive, false)}
               </tr>
             })}
             {
-              (historyList.length > (historyPagesShowing * PRINTSPERPAGE)) && 
+              (filteredHistoryList.length > (historyPagesShowing * PRINTSPERPAGE)) &&
               <tr className="history-row completed">
-                {Array.from({ length: (selectedPrinter ? 11 : 12) }, (_, i) => (
-                  <td><button className="history-page-btn" key={i} onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
+                {Array.from({ length: (selectedPrinter ? (isAdmin ? 13 : 11) : (isAdmin ? 14 : 12)) }, (_, i) => (
+                  <td key={i}><button className="history-page-btn"  onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
                 ))}
               </tr>
             }

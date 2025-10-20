@@ -11,20 +11,23 @@ import linkIcon from '/images/link.svg';
 import addUser from '/images/add_user.svg';
 import searchIcon from '/images/search.svg'
 import sortIcon from '/images/sort.svg'
+import exitIcon from '/images/cancel.svg';
+import dollarIcon from '/images/dollar.svg';
+
 
 import discord_qr from '/images/3dpc_discord.png'
 
-function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
-  handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
-  memberList, setMemberList, truncateStringWidth, formatDate, truncateString, showMsgForDuration, setOrganizerLinks }) {
+function Settings({ settingsArgs }) {
+  let { adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
+    handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen, handleOpenMenu,
+    memberList, setMemberList, truncateStringWidth, formatDate, truncateString, showMsgForDuration, setOrganizerLinks,
+    FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings } = settingsArgs
 
   const [loginTextVisible, setLoginTextVisible] = useState(false);
   const [tempServerURL, setTempServerURL] = useState(serverURL);
 
-  const [localData, setLocalData] = useState({ filamentStock: 0, filamentThreshold: 15000 });
-  const [tempLocalData, setTempLocalData] = useState(localData);
+  const [tempLocalData, setTempLocalData] = useState({});
 
-  const [editingLocalData, setEditingLocalData] = useState([false, false]);
   const [editingMember, setEditingMember] = useState({});
   const [insertMember, setInsertMember] = useState({});
   const [memberSearch, setMemberSearch] = useState('');
@@ -60,7 +63,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
       e.target.tagName === 'INPUT' ||
       e.target.tagName === 'TEXTAREA';
     if (isInputFocused && (e.key === 'Enter')) {
-      console.log(e.target)
+      if (generalSettings?.debugMode) (e.target)
       if (e.target.id === 'edit') {
         handleEditClick(editingMember);
       } else if (e.target.id === 'insert') {
@@ -86,18 +89,17 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
   };
 
 
-  const saveLocalDataEdits = () => {
-    setEditingLocalData([false, false]);
-    setLocalData(tempLocalData);
+  const saveFilamentSettings = () => {
+    setFilamentSettings(tempLocalData.filamentSettings);
 
     // Call the server API to save the changes to disk
     Axios.post(`${serverURL}/api/setLocalData`, {
       localData: tempLocalData
     }).then((res) => {
       if (res.data.success) {
-        showMsgForDuration(`Successfully Saved Local Data.`, 'msg');
+        showMsgForDuration(`Saved Filament Settings`, 'msg');
       } else {
-        showMsgForDuration(`Error Saving Local Data.`, 'err');
+        showMsgForDuration(`Error Saving Filament Settings`, 'err');
       }
     })
   }
@@ -158,7 +160,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
   const handleMemberSearch = (e) => {
     const newSearch = e.target.value
     setMemberSearch(newSearch);
-    console.log("Set memberSearch to " + newSearch);
+    if (generalSettings?.debugMode) console.log("Set memberSearch to " + newSearch);
   }
 
   const memberInsert = (member) => {
@@ -182,7 +184,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
       return response.json();
     }).then(data => {
       refreshMembers();
-      console.log('Deleted member with id ' + memberID);
+      if (generalSettings?.debugMode) console.log('Deleted member with id ' + memberID);
     }).catch(error => {
       console.error('Error:', error);
     });
@@ -195,7 +197,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     } else {
       setEditingMember({ ...editingMember, [field]: newVal });
     }
-    console.log("Edited member " + field + " to " + newVal);
+    if (generalSettings?.debugMode) console.log("Edited member " + field + " to " + newVal);
   }
 
   const refreshMembers = () => {
@@ -222,7 +224,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
             const newEditingMember = { ...editingMember, memberID: -1 }
             setEditingMember(newEditingMember);
             refreshMembers();
-            console.log('Saved member in member table');
+            if (generalSettings?.debugMode) console.log('Saved member in member table');
           });
         } catch (error) {
           console.error("Error updating member: ", error);
@@ -231,7 +233,7 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     } else {
       // change the member to edit, discard previous changes
       setEditingMember(member);
-      console.log('Editing member: ', member);
+      if (generalSettings?.debugMode) console.log('Editing member: ', member);
     }
   }
 
@@ -246,18 +248,17 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
             return acc;
           }, {});
         }
-        console.log('got localData from disk:', response.data)
-        setLocalData(llocalData)
+        if (generalSettings?.debugMode) console.log('got localData from disk:', response.data)
         setTempLocalData(llocalData)
       });
     } catch (e) {
-      console.log('error in initializing localData: ', e.toString())
+      console.error('error in initializing localData: ', e.toString())
     }
   }, [menuOpen])
 
   const handleFilamentChange = (filament, dataField) => {
-    let cleaned_filament = filament.replace(/\D/g, '')
-    setTempLocalData({ ...tempLocalData, [dataField]: cleaned_filament });
+    let cleaned_filament = filament.replace(/[^\d.]/g, '')
+    setTempLocalData({ ...tempLocalData, filamentSettings: {...tempLocalData.filamentSettings, [dataField]: cleaned_filament} });
   }
 
   const updateOrganizerLink = (field, value) => {
@@ -268,7 +269,6 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     Axios.post(`${serverURL}/api/setLocalData`, {
       localData: { ...tempLocalData, organizerLinks: updatedLinks }
     }).then((res) => {
-      console.log(res)
       if (res.data.success) {
         showMsgForDuration(`Successfully Saved Link.`, 'msg');
       } else {
@@ -277,12 +277,39 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
     })
   }
 
+  const toggleSTLPreviews = () => {
+    updateGeneralSettings('showSTLPreviews', !generalSettings.showSTLPreviews);
+  }
+  const toggleDebugMode = () => {
+    updateGeneralSettings('debugMode', !generalSettings.debugMode);
+  }
+
+  const updateGeneralSettings = (key, value) => {
+    if (generalSettings?.debugMode) console.log('Updating general setting: ', key, ' = ', value);
+
+    //update localData
+    Axios.post(`${serverURL}/api/setLocalData`, {
+      localData: { ...localData, generalSettings: { ...localData.generalSettings, [key]: value } }
+    }).then((res) => {
+      if (generalSettings?.debugMode) console.log(res)
+      if (res.data.success) {
+        showMsgForDuration(`Successfully Updated ${key}`, 'msg');
+      } else {
+        showMsgForDuration(`Error Updating ${key}`, 'err');
+      }
+    })
+    setGeneralSettings(old => ({ ...old, [key]: value }));
+  }
+
+
+
 
   return (
     <div className='settings'>
       <div className='content-wrapper'>
         <div style={{ height: '75px' }}></div>
 
+        {/* Admin login */}
         <div className='settings-wrapper'>
           {!isAdmin ? <div>
             <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>Admin Login</b></div>
@@ -304,6 +331,17 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
 
             </div>}
         </div>
+
+        {/* General Settings */}
+        <div className='settings-wrapper'>
+          <div>
+            <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>General Settings</b></div>
+            <FormCheckbox activeCheckVal={generalSettings?.showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
+            <FormCheckbox activeCheckVal={generalSettings?.debugMode} handleChangeFunc={toggleDebugMode} text={"Debug Mode"}></FormCheckbox>
+
+          </div>
+        </div>
+
         {/* Admin-only settings */}
         {isAdmin && <div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large' }}><b>Admin-Only Settings</b></div>
@@ -320,7 +358,8 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
             onChange={(e) => setServerURL(e.target.value)} style={{ width: '500px', fontSize: 'large', marginBottom: '3px' }} /> */}
           <span className='input-wrapper'>
             <b>Server URL:</b>&nbsp;&nbsp;
-            <input id="URLInput" type="text" autoComplete='off' placeholder=" Server URL" value={tempServerURL} onChange={(e) => setTempServerURL(e.target.value)} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
+            <input id="URLInput" type="text" autoComplete='off' placeholder=" Server URL" value={tempServerURL} 
+            onChange={(e) => setTempServerURL(e.target.value)} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
             <button onClick={(e) => { setServerURL(tempServerURL) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Update</button>
           </span>
 
@@ -328,27 +367,45 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
           <hr style={{ borderTop: '1px solid grey', width: '100%' }} />
           <span className="input-wrapper">
             <img src={filamentSpool} alt="filament" className='generic-icon'></img>
-            <span className='admin-settings-label'>Filament Settings</span>
+            <span className='admin-settings-label'>Filament Stock</span>
           </span><br />
 
           <span className='input-wrapper' style={{ height: '25px' }}>
             <b className='input-label'>Lab Filament Stock:</b>&nbsp;&nbsp;
-            {editingLocalData[0] ? <><input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData.filamentStock} onChange={(e) => handleFilamentChange(e.target.value, 'filamentStock')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g</> :
-              <><p style={{ width: '80px' }}>{parseInt(localData.filamentStock).toLocaleString()}&nbsp;g</p>&nbsp;&nbsp;  </>
-            } &nbsp;
-            <button onClick={(e) => { editingLocalData[0] ? saveLocalDataEdits() : setEditingLocalData([true, false]) }} style={{ cursor: 'pointer' }}>{editingLocalData[0] ? 'Set' : 'Edit'}</button>
-            &nbsp;{editingLocalData[0] && <button onClick={(e) => { setEditingLocalData([false, false]) }} style={{ cursor: 'pointer' }}>{'Cancel'}</button>}
+            <input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData?.filamentSettings?.filamentStock} 
+            onChange={(e) => handleFilamentChange(e.target.value, 'filamentStock')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g
+            &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
+          </span><br />
+
+          <span className='input-wrapper' style={{ height: '25px' }}>
+            <b className='input-label'>Alert Threshold:</b>&nbsp;&nbsp;
+            <input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData?.filamentSettings?.filamentThreshold} 
+            onChange={(e) => handleFilamentChange(e.target.value, 'filamentThreshold')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g
+            &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
           </span>
 
-          <br />
-          <span className='input-wrapper' style={{ height: '30px' }}>
-            <b className='input-label'>Filament Threshold:</b>&nbsp;&nbsp;
-            {editingLocalData[1] ? <><input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData.filamentThreshold} onChange={(e) => handleFilamentChange(e.target.value, 'filamentThreshold')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g</> :
-              <><p style={{ width: '80px' }}>{parseInt(localData.filamentThreshold).toLocaleString()}&nbsp;g</p>&nbsp;&nbsp;  </>
-            } &nbsp;
-            <button onClick={(e) => { editingLocalData[1] ? saveLocalDataEdits() : setEditingLocalData([false, true]) }} style={{ cursor: 'pointer' }}>{editingLocalData[1] ? 'Set' : 'Edit'}</button>
-            &nbsp;{editingLocalData[1] && <button onClick={(e) => { setEditingLocalData([false, false]) }} style={{ cursor: 'pointer' }}>{'Cancel'}</button>}
+          {/* Filament Costs */}
+          <hr style={{ borderTop: '1px solid grey', width: '100%' }} />
+          <span className="input-wrapper">
+            <img src={dollarIcon} alt="links" className='generic-icon'></img>
+            <span className='admin-settings-label'>Filament Costs</span>
+          </span><br />
+
+          <span className='input-wrapper' style={{ height: '25px' }}>
+            <b className='input-label'>Resin Cost:</b>&nbsp;&nbsp;$
+            <input type="text" autoComplete='off' value={tempLocalData?.filamentSettings?.resinCost}
+            onChange={(e) => handleFilamentChange(e.target.value, 'resinCost')} style={{ width: '80px', fontSize: 'large' }}></input>/ml&nbsp;
+            &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
+          </span><br />
+          
+          <span className='input-wrapper' style={{ height: '25px' }}>
+            <b className='input-label'>FDM Cost:</b>&nbsp;&nbsp;$
+            <input type="text" autoComplete='off' value={tempLocalData?.filamentSettings?.fdmCost} 
+            onChange={(e) => handleFilamentChange(e.target.value, 'fdmCost')} style={{ width: '80px', fontSize: 'large' }}></input>/g&nbsp;
+            &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
           </span>
+
+
 
           {/* Organizer Links */}
           <hr style={{ borderTop: '1px solid grey', width: '100%' }} />
@@ -386,7 +443,10 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
             </span>
           ))}
 
+
+
         </div>}
+        {/* End admin settings */}
 
         <div className='settings-wrapper'>
 
@@ -518,10 +578,8 @@ function Settings({ adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackTex
         </div>
 
         <div style={{ height: '100px' }}></div>
-
-
       </div>
-      <div className='settings-header'><b>Settings</b></div>
+      <div className='settings-header'><b>Settings</b> <img className='settings-exit' src={exitIcon} onClick={() => handleOpenMenu()}></img></div>
     </div>
   );
 }

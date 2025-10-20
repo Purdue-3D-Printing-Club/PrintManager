@@ -10,7 +10,7 @@ const PrintForm = ({ printFormArgs }) => {
         handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
         filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
         filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight,
-        cureTime, handleCureTime } = printFormArgs
+        cureTime, handleCureTime, filamentSettings } = printFormArgs
 
         const [isMember, setIsMember] = useState(false);
 
@@ -105,7 +105,8 @@ const PrintForm = ({ printFormArgs }) => {
                 <input placeholder={filesPlaceholder} value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
             </div>
             <div style={{height:'30px'}}> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
-                {(((selectedPrinter.filamentType !== 'PLA')) || (!isMember && !supervisorPrint && !personalFilament)) && (` → $${(Math.round(filamentUsage) * (selectedPrinter.filamentType === 'Resin' ? 0.12 : 0.1)).toFixed(2)}`)} </div>
+                {(((selectedPrinter.filamentType !== 'PLA')) || (!isMember && !supervisorPrint && !personalFilament)) && (` → $${(Math.round(filamentUsage) * 
+                    (selectedPrinter.filamentType === 'Resin' ? filamentSettings.resinCost : filamentSettings.fdmCost)).toFixed(2)}`)} </div>
 
             <div style={{ marginTop: '15px' }}> -- Notes (Optional) --
                 <br />

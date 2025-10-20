@@ -832,8 +832,6 @@ app.get('/api/getFailureCount', (req, res) => {
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;
-    console.log(b);
-
     
     const dateTime = new Date(b.timeStarted);
     const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," + 
@@ -847,6 +845,7 @@ app.post('/api/insert', (req, res) => {
             res.status(500).send("Error accessing the database");
             return;
         }
+        
         connection.beginTransaction(function (err) {
             connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
             b.notes, b.partNames, b.email, b.personalFilament, b.color, b.layerHeight, b.selfPostProcess, 
