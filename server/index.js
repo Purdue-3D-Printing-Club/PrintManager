@@ -73,7 +73,8 @@ function saveLocalData(localData) {
 function createGdriveAuth(keyPath) {
     //console.log('keyPath: ', keyPath)
     const auth = new google.auth.GoogleAuth({
-        credentials: require(keyPath),
+        // credentials: require(keyPath),
+        keyFile: keyPath,
         scopes: ['https://www.googleapis.com/auth/drive.file'],
     });
 
