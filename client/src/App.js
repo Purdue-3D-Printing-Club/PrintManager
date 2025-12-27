@@ -379,7 +379,7 @@ function App() {
         let currentDate = new Date(startDate);
 
         while (currentDate <= new Date(endDate)) {
-          dateArray.push(formatDate(new Date(currentDate), false));
+          dateArray.push(formatDate(currentDate.toISOString(), false));
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
@@ -1311,7 +1311,6 @@ function App() {
   };
 
   const buildFormJob = () => {
-
     return ({
       files: truncateString(files, 512),
       usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
@@ -1830,15 +1829,50 @@ function App() {
     if (generalSettings?.debugMode) console.log("Set menuOpen to: " + menuOpen);
   };
 
-  function formatDate(isoString, time) {
+  // function formatDate(isoString, time) {
+  //   const date = new Date(isoString);
+  //   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+  //   const dd = String(date.getUTCDate()).padStart(2, '0');
+  //   const yyyy = date.getUTCFullYear();
+  //   const hh = String(date.getUTCHours() % 12 || 12).padStart(2, '0');
+  //   const min = String(date.getUTCMinutes()).padStart(2, '0');
+  //   const amOrPm = date.getUTCHours() >= 12 ? 'PM' : 'AM';
+  //   return time ? `${mm}/${dd}/${yyyy} ${hh}:${min} ${amOrPm}` : `${mm}/${dd}/${yyyy}`;
+  // }
+
+  function formatDate(utcString, time) {
+    // console.log('utcString: ', utcString)
+    let isoString = '';
+    if(utcString[utcString.length-1] == 'Z') {
+      isoString = utcString;
+    } else {
+      isoString = utcString.replace(' ', 'T') + 'Z';
+    }
+
+    // console.log('isoString: ', isoString)
+
     const date = new Date(isoString);
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    const yyyy = date.getFullYear();
-    const hh = String(date.getHours() % 12 || 12).padStart(2, '0');
-    const min = String(date.getMinutes()).padStart(2, '0');
-    const amOrPm = date.getHours() >= 12 ? 'PM' : 'AM';
-    return time ? `${mm}/${dd}/${yyyy} ${hh}:${min} ${amOrPm}` : `${mm}/${dd}/${yyyy}`;
+
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const parts = formatter.formatToParts(date);
+    const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+
+    let output = ''
+    if (!time) {
+      output = `${map.month}/${map.day}/${map.year}`;
+    }
+    output = `${map.month}/${map.day}/${map.year} ${map.hour}:${map.minute} ${map.dayPeriod}`;
+    // console.log('output: ', output)
+    return output;
   }
 
   const createHistoryRow = (job, isComprehensive, queue) => {

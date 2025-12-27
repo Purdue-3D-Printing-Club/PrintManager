@@ -17,7 +17,7 @@ const pool = mysql.createPool({
     user: "root",
     password: "rootpassword",
     database: "printmanagerdb2",
-    timezone: '-04:00',
+    timezone: '+00:00', // Store timestamps in UTC
     dateStrings: true
 })
 
@@ -833,7 +833,7 @@ app.get('/api/getFailureCount', (req, res) => {
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;
-    
+    console.log(b.timeStarted)
     const dateTime = new Date(b.timeStarted);
     const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," + 
         " status, name, supervisorName, notes, partNames, email, personalFilament, " + 

@@ -1,6 +1,6 @@
 .env
 keys
-*/node_modules/*
+node_modules
 localData.json
 log.txt
 package-lock.json
