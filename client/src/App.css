@@ -501,11 +501,22 @@ option {
   cursor: pointer;
 }
 
+.scrollcell {
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-X: auto;
+  overflow-Y: hidden;
+  white-space: nowrap;
+  display: block;
+  height: 22px;
+  scrollbar-width: none;
+}
 .form-data-wrapper {
   margin: auto;
   overflow-x: auto;
-  width: 50vw;
+  width: 60vw;
   margin-bottom: 10px;
+  height: 190px;
 }
 
 .form-data-table {

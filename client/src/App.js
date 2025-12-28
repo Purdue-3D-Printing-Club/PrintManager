@@ -22,9 +22,7 @@ import ErrorBoundary from './ErrorBoundary';
 
 function App() {
   const statusIconFolder = '/images/statusIcons';
-  // const SPECIAL_FILAMENT_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziM-dySFGyjXCtK9cWPntqvg8lFSVJPcJ9CjI7Vm5mJhTmyIbvZh7Wbht44pmfnwzoww/exec'
-  // const MAIN_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMTIphmSEMiWof46LvuMCZYyONi3wqAbaxzjKXTFxQ8gNQd84Wzct7GsidBwQjyQld/exec'
-
+  
   const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
   const [organizerLinks, setOrganizerLinks] = useState({});
   const [filamentSettings, setFilamentSettings] = useState({});
@@ -126,18 +124,6 @@ function App() {
   const context = canvas.getContext("2d");
   context.font = "16pt Trebuchet MS";
 
-  // const getFilenameFromLink = async (link) => {
-  //   try {
-  //     Axios.get(`${serverURL}/api/getFileName?link=${link}`).then((response) => {
-  //       if(generalSettings?.debugMode)  console.log('Got filename from server:', response);
-  //       return response.filename;
-  //     }).catch(error => {
-  //       console.error("Error getting filename from: ", error);
-  //     });
-  //   } catch (error) {
-  //     console.error("Error getting filename from: ", error);
-  //   }
-  // }
 
   const openToBusy = (status) => {
     return (status === 'admin') ? 'admin-busy' : (status === 'testing' ? 'testing-busy' : 'busy')
@@ -1566,61 +1552,98 @@ function App() {
     try {
       let specialFilament = selectedPrinter?.filamentType !== 'PLA';
 
-      // old macro: 'https://script.google.com/macros/s/AKfycbwdMweriskP6srd5gir1qYlA3jRoTxA2YiHcbCt7555LoqBs_BZT-OfKUJiP53kihQV/exec'
-
       const url = specialFilament ?
         organizerLinks.specialtyAppScriptURL :
         organizerLinks.mainAppScriptURL;
 
       setFormDataLoading(true);
-      fetch(url).then(response => response.json()).then(data => {
-        if (data !== null && data.length > 0) {
+      fetch(url).then(response => {
+        return response.json()
+      }).then(data => {
+        if (data !== null) {
           if (generalSettings?.debugMode) console.log('fetched form data: ',data);
           showMsgForDuration('Form Data Retrieved Successfully!', 'msg');
           setFormDataLoading(false);
 
+          // Extract the headers from the response object
+          let headers = data["headers"]
+          delete data["headers"]
+          if (generalSettings?.debugMode) console.log('form headers: ',headers);
+          
+          const questionKeyMap = {
+            timestamp: ["Timestamp"],
+            name: ["Name (First & Last)"],
+            email: ["Purdue Email"],
+            supervisorName: ["Officer/Lab Assistant Name", "Supervisor Name"],
+            filamentType: ["What type of material are you printing with?"],
+            files: ["Upload your .stl file here", "Upload your .stl file(s) here"],
+            partNames: ["What are the EXACT names of the file(s)?"],
+            notes: ["Please provide any details or requests about how you want your part to be printed."],
+            color: ["What color do you want?"],
+            layerHeight: ["What layer height? "],
+            selfPostProcess: ["Do you want to post process your own parts?"],
+            detailedPostProcess: ["Does this part require detailed post processing"],
+            cureTime: ["How long should the material cure for?"]
+          }
 
-          let formattedData = specialFilament ?
-            data.map((job) => {
+          let headerIndexMap = {}
+          Object.keys(questionKeyMap).forEach((key)=> {
+            let substrings = questionKeyMap[key];
+
+            // Find the column in the headers that matches the substring text from questionKeyMap
+            let matchingCol = headers.findIndex(header => substrings.some(sub=>header.includes(sub)))
+
+            headerIndexMap[key] = matchingCol
+          })
+          console.log('headerIndexMap: ', headerIndexMap)
+
+
+          //  let formattedData = specialFilament ?
+           let formattedData = Object.values(data).map((job) => {
               return ({
-                timestamp: job[0],
-                name: job[1],
-                email: job[2],
-                supervisorName: job[3],
-                filamentType: job[4],
-                files: job[5],
-                partNames: job[6],
-                notes: job[10],
-                color: job[11],
-                layerHeight: job[12],
-                selfPostProcess: job[13] == 'Yes',
-                detailedPostProcess: job[14] == 'Yes',
-                cureTime: job[15]
+                timestamp: job[headerIndexMap['timestamp']],
+                name: job[headerIndexMap['name']],
+                email: job[headerIndexMap['email']],
+                supervisorName: job[headerIndexMap['supervisorName']],
+                filamentType: job[headerIndexMap['filamentType']],
+                files: job[headerIndexMap['files']],
+                partNames: job[headerIndexMap['partNames']],
+                notes: job[headerIndexMap['notes']],
+                color: job[headerIndexMap['color']],
+                layerHeight: job[headerIndexMap['layerHeight']],
+                selfPostProcess: job[headerIndexMap['selfPostProcess']] == 'Yes',
+                detailedPostProcess: job[headerIndexMap['detailedPostProcess']] == 'Yes',
+                cureTime: job[headerIndexMap['cureTime']]
               })
-            }) :
-            data.map((job) => {
-              return ({
-                timestamp: job[0],
-                name: job[1],
-                email: job[2],
-                supervisorName: job[3],
-                files: job[4],
-                partNames: job[5],
-                notes: job[10]
-              })
-            })
-
-
+            }) 
+            // :
+          //   data.map((job) => {
+          //     return ({
+          //       timestamp: job[headerIndexMap['timestamp']],
+          //       name: job[headerIndexMap['name']],
+          //       email: job[headerIndexMap['email']],
+          //       supervisorName: job[headerIndexMap['supervisorName']],
+          //       files: job[headerIndexMap['files']],
+          //       partNames: job[headerIndexMap['partNames']],
+          //       notes: job[headerIndexMap['notes']],
+          //     })
+          //   })
+          
+            console.log('formattedData:',formattedData)
           setFormData(formattedData.reverse())
 
         } else {
+        if(generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
           showMsgForDuration('Error Filling Form...', 'err');
         }
       });
-    } catch (e) {
+    } catch (e) {        
+      if(generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
       showMsgForDuration('Error Filling Form...', 'err');
     }
   };
+
+
 
   useEffect(() => {
     // Log the messageQueue whenever it changes
@@ -1876,24 +1899,11 @@ function App() {
   }
 
   const createHistoryRow = (job, isComprehensive, queue) => {
-    const ScrollCell = ({ html, width = null }) => (
-      <td style={{ padding: 0 }}>
-        <div
-          style={{
-            paddingLeft: '5px',
-            paddingRight: '5px',
-            width: width ? width + 'px' : '100%',
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            whiteSpace: 'nowrap',
-            display: 'block',
-            height: '22px',
-            scrollbarWidth: 'none'
-          }}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      </td>
-    );
+     const ScrollCell = ({ html, width = null }) => (
+        <td style={{ padding: 0 }}>
+            <div className = "scrollcell" style={{width: width ? width + 'px' : '100%'}} dangerouslySetInnerHTML={{ __html: html }}/>
+        </td>
+        );
 
     return (
       <>
@@ -1976,12 +1986,14 @@ function App() {
     if (!text || !historySearch || queue) return truncatedText;
 
     const escapedSearch = historySearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
-    const regex = new RegExp(escapedSearch, 'i');
+    const regex = new RegExp(escapedSearch, 'gi');
 
-    // Replace the search term with a bold html tag around the matched text
     return truncatedText.replace(regex, (match) => {
-      return `<b style="color: rgb(40,200,40);">${match}</b>`;
-    });
+    return `<span style="
+      background-color: rgba(40,200,40,0.4);
+      border-radius: 2px;
+    ">${match}</span>`;
+  });
   };
 
   const printFormArgs = {
@@ -2314,8 +2326,10 @@ function App() {
 
 
             </div>}
-
-            {(((selectedPrinter.status?.slice(-4) === "busy")) && selectedPrinter.filamentType !== 'Resin') && <>
+            
+            {(((selectedPrinter.status?.slice(-4) === "busy")) ) && <> 
+             {/* && selectedPrinter.filamentType !== 'Resin' */}
+             
               <StlPreviewSection
                 showSTLPreviews={generalSettings.showSTLPreviews}
                 curJob={curJob}

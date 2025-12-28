@@ -1,20 +1,33 @@
 function retrieveLatestSubmissions() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const lastRow = sheet.getLastRow();
-  
-  // Determine the starting row for the last 5 submissions
-  const numRowsToRetrieve = 5;
-  const startRow = Math.max(2, lastRow - numRowsToRetrieve + 1); // Don't go below row 1
-  
-  // Get the range to fetch the last 5 submissions
-  const rowData = sheet.getRange(startRow, 1, lastRow - startRow + 1, sheet.getLastColumn()).getValues();
-  
-  Logger.log(rowData);  
-  return rowData;
+  const lastCol = sheet.getLastColumn();
+
+  const numRowsToRetrieve = 25;
+  const startRow = Math.max(2, lastRow - numRowsToRetrieve + 1);
+
+  // Read headers (row 1)
+  const headers = sheet
+    .getRange(1, 1, 1, lastCol)
+    .getValues()[0];
+
+  // Read data rows
+  const data = sheet
+    .getRange(startRow, 1, lastRow - startRow + 1, lastCol)
+    .getValues();
+
+  // Concatenate the header row with the data rows into one object
+  // The headers are extracted in the organizer and used for question-field mapping
+  data = {
+    headers,
+    ...data
+  }
+
+  return data;
 }
 
 function doGet() {
-  let output = retrieveLatestSubmissions();
-  return ContentService.createTextOutput(JSON.stringify(output))
+  return ContentService
+    .createTextOutput(JSON.stringify(retrieveLatestSubmissions()))
     .setMimeType(ContentService.MimeType.JSON);
 }

@@ -12,11 +12,17 @@ const PrintForm = ({ printFormArgs }) => {
         filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight,
         cureTime, handleCureTime, filamentSettings } = printFormArgs
 
+    const ScrollCell = ({ html, width = null }) => (
+        <td style={{ padding: 0 }}>
+            <div className = "scrollcell" style={{width: width ? width + 'px' : '100%'}} dangerouslySetInnerHTML={{ __html: html }}/>
+        </td>
+        );
+
         const [isMember, setIsMember] = useState(false);
 
         useEffect(() => {
             if(memberList && (email !== null)) {
-                setIsMember(memberList.map(m=>m.email).includes(email))
+                setIsMember(memberList.map(m=>m.email.toLowerCase()).includes(email.toLowerCase()))
             } else {
                 console.log('Warning in printForm: memberList or formData undefined')
             }
@@ -68,20 +74,21 @@ const PrintForm = ({ printFormArgs }) => {
                         {formData.map((job, index) => {
                             return <tr className={`history-row form-data-row`} onClick={() => { fillFormData(index) }} key={index}>
                                 <td> {formatTimestamp(job.timestamp)} </td>
-                                <td> {truncateString(job.partNames, 40)} </td>
-                                <td> {truncateString(job.name, 20)} </td>
-                                <td> {truncateString(job.email, 30)} </td>
-                                <td> {truncateString(job.supervisorName, 20)} </td>
+                                <ScrollCell html={job.partNames} width={250}/>
+                                <ScrollCell html={job.name} width={200}/>
+                                <ScrollCell html={job.email} width={200}/>
+                                <ScrollCell html={job.supervisorName} width={175}/>
+                                
                                 {(selectedPrinter.filamentType !== 'PLA') && <>
-                                    <td> {truncateString(job.filamentType, 20)} </td>
-                                    <td> {truncateString(job.color, 20)} </td>
-                                    <td> {truncateString(job.layerHeight, 20)} </td>
-                                    <td> {truncateString(job.selfPostProcess, 20)} </td>
-                                    <td> {truncateString(job.detailedPostProcess, 20)} </td>
-                                    <td> {truncateString(job.cureTime, 20)} </td>
+                                    <ScrollCell html={job.filamentType} width={100}/>
+                                    <ScrollCell html={job.color} width={100}/>
+                                    <ScrollCell html={job.layerHeight} width={100}/>
+                                    <ScrollCell html={job.selfPostProcess} width={100}/>
+                                    <ScrollCell html={job.detailedPostProcess} width={100}/>
+                                    <ScrollCell html={job.cureTime} width={100}/>
                                     </>}
-                                <td> {truncateString(job.notes, 128)} </td>
-                                <td> {truncateString(job.files, 256)} </td>
+                                <ScrollCell html={job.notes} width={320}/>
+                                <ScrollCell html={job.files} width={640}/>
                             </tr>
                         })}
                     </tbody>

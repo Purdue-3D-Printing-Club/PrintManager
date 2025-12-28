@@ -80,17 +80,20 @@ function Settings({ settingsArgs }) {
     if (!text || !memberSearch || queue) return truncatedText;
 
     const escapedSearch = memberSearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
-    const regex = new RegExp(escapedSearch, 'i');
+    const regex = new RegExp(escapedSearch, 'gi');
 
-    // Replace the search term with a bold html tag around the matched text
+    // Replace the search term with a highlight html tag around the matched text
     return truncatedText.replace(regex, (match) => {
-      return `<b style="color: rgb(40,200,40);">${match}</b>`;
+      return `<span style="
+        background-color: rgba(40,200,40,0.4);
+        border-radius: 2px;
+      ">${match}</span>`;
     });
   };
 
 
   const saveFilamentSettings = () => {
-    setFilamentSettings(tempLocalData.filamentSettings);
+    setFilamentSettings(tempLocalData?.filamentSettings);
 
     // Call the server API to save the changes to disk
     Axios.post(`${serverURL}/api/setLocalData`, {
@@ -101,6 +104,8 @@ function Settings({ settingsArgs }) {
       } else {
         showMsgForDuration(`Error Saving Filament Settings`, 'err');
       }
+    }).catch((e)=>{
+        showMsgForDuration(`Error Saving Filament Settings`, 'err');
     })
   }
 
@@ -267,7 +272,7 @@ function Settings({ settingsArgs }) {
   }
 
   const updateOrganizerLink = (field, value) => {
-    const updatedLinks = { ...tempLocalData.organizerLinks, [field]: value };
+    const updatedLinks = { ...tempLocalData?.organizerLinks, [field]: value };
 
     setOrganizerLinks(updatedLinks);
 
@@ -279,6 +284,8 @@ function Settings({ settingsArgs }) {
       } else {
         showMsgForDuration(`Error Saving Link.`, 'err');
       }
+    }).catch((e) => {
+      showMsgForDuration(`Error Saving Link.`, 'err');
     })
   }
 
@@ -294,7 +301,7 @@ function Settings({ settingsArgs }) {
 
     //update localData
     Axios.post(`${serverURL}/api/setLocalData`, {
-      localData: { ...tempLocalData, generalSettings: { ...tempLocalData.generalSettings, [key]: value } }
+      localData: { ...tempLocalData, generalSettings: { ...tempLocalData?.generalSettings, [key]: value } }
     }).then((res) => {
       if (generalSettings?.debugMode) console.log(res)
       if (res.data.success) {
@@ -437,7 +444,7 @@ function Settings({ settingsArgs }) {
                 type="text"
                 autoComplete="off"
                 placeholder={placeholder}
-                value={tempLocalData.organizerLinks[key] || ""}
+                value={tempLocalData?.organizerLinks?.[key] ?? ""}
                 onChange={(e) =>
                   setTempLocalData(old => ({
                     ...old,
@@ -451,7 +458,7 @@ function Settings({ settingsArgs }) {
               />
               &nbsp;
               <button
-                onClick={() => updateOrganizerLink(key, tempLocalData.organizerLinks[key])}
+                onClick={() => updateOrganizerLink(key, tempLocalData?.organizerLinks?.[key])}
                 style={{ fontSize: 'large', cursor: 'pointer' }}
               >
                 Update
