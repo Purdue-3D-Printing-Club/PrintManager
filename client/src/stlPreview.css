@@ -52,6 +52,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     height:fit-content;
+    width:75%;
     border-radius: 2px;
 }
 

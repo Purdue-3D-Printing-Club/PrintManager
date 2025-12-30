@@ -143,7 +143,7 @@ async function sendEmail(paramsObj) {
                 subject: subject,
                 body: {
                     contentType: "Text",
-                    content: text + '\n\nThis was an automated email sent by the lab organizer.'
+                    content: text + '\n\nThis email was automatically sent by the lab organizer.'
                 },
                 toRecipients: [{ emailAddress: { address: to } }],
             },
@@ -156,6 +156,7 @@ async function sendEmail(paramsObj) {
         return { success: false, msg: error.toString() }
     }
 }
+
 // Sends an email from purdue graph api when called
 app.post('/api/send-email', async (req, res) => {
     let rslt = await sendEmail(req.body)
@@ -753,7 +754,7 @@ app.get('/api/getfilamentdata', (req, res) => {
 });
 
 app.get('/api/getdailyprints', (req, res) => {
-    const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt, SUM(usage_g) AS sum, personalFilament FROM printjob GROUP BY DATE(timeStarted), personalFilament`;
+    const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt, SUM(usage_g) AS sum, paid FROM printjob GROUP BY DATE(timeStarted), paid`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -851,7 +852,7 @@ app.post('/api/insert', (req, res) => {
     const b = req.body;
     const dateTime = new Date(b.timeStarted);
     const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," + 
-        " status, name, supervisorName, notes, partNames, email, personalFilament, " + 
+        " status, name, supervisorName, notes, partNames, email, paid, " + 
         " color, layerHeight, selfPostProcess, detailedPostProcess, cureTime"+
         ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
@@ -864,7 +865,7 @@ app.post('/api/insert', (req, res) => {
         
         connection.beginTransaction(function (err) {
             connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
-            b.notes, b.partNames, b.email, b.personalFilament, b.color, b.layerHeight, b.selfPostProcess, 
+            b.notes, b.partNames, b.email, b.paid, b.color, b.layerHeight, b.selfPostProcess, 
             b.detailedPostProcess, b.cureTime], (err, result) => {
                 if (err) {
                     console.log(err);
@@ -1044,8 +1045,8 @@ app.put('/api/update', (req, res) => {
 });
 
 app.put('/api/updateJob', (req, res) => {
-    const { email, files, printerName, jobID, name, partNames, personalFilament, status, supervisorName, usage_g, notes } = req.body;
-    let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, printerName = ?, name = ?, partNames = ?, personalFilament = ?, status = ?, supervisorName = ?, usage_g = ?, notes=? WHERE jobID = ?`;
+    const { email, files, printerName, jobID, name, partNames, paid, status, supervisorName, usage_g, notes } = req.body;
+    let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, printerName = ?, name = ?, partNames = ?, paid = ?, status = ?, supervisorName = ?, usage_g = ?, notes=? WHERE jobID = ?`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -1054,7 +1055,7 @@ app.put('/api/updateJob', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlUpdate, [email, files, printerName, name, partNames, personalFilament, status, supervisorName, usage_g, notes, jobID], (err, result) => {
+            connection.query(sqlUpdate, [email, files, printerName, name, partNames, paid, status, supervisorName, usage_g, notes, jobID], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error updating database");

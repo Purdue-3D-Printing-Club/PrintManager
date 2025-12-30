@@ -40,7 +40,6 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
                         <option value="Availability">Availability</option>
                         <option value="Printer Name">Printer Name</option>
                         <option value="Printer Model">Printer Model</option>
-                        <option value="Filament Type">Filament Type</option>
                     </select>
                 </div>
 

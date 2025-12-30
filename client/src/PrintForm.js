@@ -10,7 +10,7 @@ const PrintForm = ({ printFormArgs }) => {
         handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
         filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
         filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight,
-        cureTime, handleCureTime, filamentSettings } = printFormArgs
+        cureTime, handleCureTime, filamentSettings, material, handleMaterial } = printFormArgs
 
     const ScrollCell = ({ html, width = null }) => (
         <td style={{ padding: 0 }}>
@@ -78,9 +78,9 @@ const PrintForm = ({ printFormArgs }) => {
                                 <ScrollCell html={job.name} width={200}/>
                                 <ScrollCell html={job.email} width={200}/>
                                 <ScrollCell html={job.supervisorName} width={175}/>
+                                <ScrollCell html={job.material} width={100}/>
                                 
                                 {(selectedPrinter.filamentType !== 'PLA') && <>
-                                    <ScrollCell html={job.filamentType} width={100}/>
                                     <ScrollCell html={job.color} width={100}/>
                                     <ScrollCell html={job.layerHeight} width={100}/>
                                     <ScrollCell html={job.selfPostProcess} width={100}/>
@@ -111,6 +111,23 @@ const PrintForm = ({ printFormArgs }) => {
                 <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
                 <input placeholder={filesPlaceholder} value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
             </div>
+            
+            <div style={{height:'2px'}}></div>
+            <div> Material: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <select style={{width:'158px', height:'30px', 'fontSize':'large'}} id="material" value={material} onChange={handleMaterial}>
+                        <option value="" disabled hidden>Select Material</option>
+                        {selectedPrinter?.material?.split(',').map((material)=>{
+                            return <option value={material}>{material}</option>
+                        })
+                        }
+                    </select>
+                    </div>
+            <div style={{height:'1px'}}></div>
+
+            <div> Color: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Clear" value={color} onChange={handleColor} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
+            <div> Layer Height: <input placeholder="25 μm" value={layerHeight} onChange={handleLayerHeight} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
+            <div> Cure Time: &nbsp;&nbsp;&nbsp; <input placeholder="1 minute" value={cureTime} onChange={handleCureTime} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
+            <div style={{height:'10px'}}></div>
+
             <div style={{height:'30px'}}> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {(selectedPrinter.filamentType === 'Resin') ? 'ml' : 'g'}
                 {(((selectedPrinter.filamentType !== 'PLA')) || (!isMember && !supervisorPrint && !personalFilament)) && (` → $${(Math.round(filamentUsage) * 
                     (selectedPrinter.filamentType === 'Resin' ? filamentSettings.resinCost : filamentSettings.fdmCost)).toFixed(2)}`)} </div>
@@ -121,10 +138,6 @@ const PrintForm = ({ printFormArgs }) => {
                 </div>
                 {(selectedPrinter.filamentType !== 'PLA') && <>
             <br/>
-            <div style={{height:'10px'}}></div>
-            <div> Color: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Clear" value={color} onChange={handleColor} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
-            <div> Layer Height: <input placeholder="25 μm" value={layerHeight} onChange={handleLayerHeight} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
-            <div> Cure Time: &nbsp;&nbsp;&nbsp; <input placeholder="1 minute" value={cureTime} onChange={handleCureTime} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
             <div style={{height:'10px'}}></div>
             </>}
             </div>

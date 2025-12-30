@@ -6,7 +6,7 @@ import ErrorBoundary from './ErrorBoundary';
 
 
 const LineChart = ({ argsObject, index }) => {
-    const { filledPersonalData, filledClubData, dateWindow } = argsObject;
+    const { filledPersonalData, filledClubData, filledPpgData, dateWindow } = argsObject;
 
     const lineRef = useRef(null);
     const dateLen = dateWindow.length;
@@ -53,12 +53,12 @@ const LineChart = ({ argsObject, index }) => {
     };
 
     useEffect(() => {
-        if (filledPersonalData && filledClubData && dateWindow) {
+        if (filledPersonalData && filledClubData && filledPpgData && dateWindow) {
             // console.log('filledPersonalData: ', filledPersonalData)
             // console.log('filledClubData: ', filledClubData)
             // console.log('dateWindow: ', dateWindow)
 
-            const createLineChart = (ref, filledPersonalData, filledClubData, dateWindow) => {
+            const createLineChart = (ref, filledPersonalData, filledClubData, filledPpgData, dateWindow) => {
 
                 // Destroy existing chart if it already exists
                 if (ref.current.chart) {
@@ -87,6 +87,14 @@ const LineChart = ({ argsObject, index }) => {
                             fill: true,
                             backgroundColor: 'rgba(75,192,192,0.1)',
                             borderColor: 'rgba(75, 192, 192, 1)',
+                            tension: 0.05,
+                        },
+                        {
+                            label: 'Pay-per-gram Filament',
+                            data: filledPpgData,
+                            fill: true,
+                            backgroundColor: 'rgba(75,192,192,0.1)',
+                            borderColor: 'rgba(87, 223, 102, 1)',
                             tension: 0.05,
                         }],
                     },
@@ -150,23 +158,21 @@ const LineChart = ({ argsObject, index }) => {
             let personalSubset = null;
             let clubSubset = null;
             let dateSubset = null;
+            let ppgSubset = null;
 
             if (sliderValues[0] === 0) {
                 personalSubset = filledPersonalData.slice(-sliderValues[1]);
                 clubSubset = filledClubData.slice(-sliderValues[1]);
+                ppgSubset = filledPpgData.slice(-sliderValues[1]);
                 dateSubset = dateWindow.slice(-sliderValues[1]);
             } else {
                 personalSubset = filledPersonalData.slice(-sliderValues[1], -sliderValues[0]);
                 clubSubset = filledClubData.slice(-sliderValues[1], -sliderValues[0]);
+                ppgSubset = filledPpgData.slice(-sliderValues[1], -sliderValues[0])
                 dateSubset = dateWindow.slice(-sliderValues[1], -sliderValues[0]);
             }
 
-
-            // console.log('personalSubset: ', personalSubset)
-            // console.log('clubSubset: ', clubSubset)
-            // console.log('dateSubset: ', dateSubset)
-
-            createLineChart(lineRef, personalSubset, clubSubset, dateSubset);
+            createLineChart(lineRef, personalSubset, clubSubset, ppgSubset, dateSubset);
         }
     })
 
@@ -241,13 +247,13 @@ const LineChart = ({ argsObject, index }) => {
                                             onChange={handleSliderChange}
                                             invert={true}
                                             renderThumb={(props, state) => {
-                                            const { key, ...rest } = props;
-                                            return (
-                                                <div key={key} {...rest}>
-                                                    {state.valueNow}
-                                                </div>
-                                            );
-                                        }} />
+                                                const { key, ...rest } = props;
+                                                return (
+                                                    <div key={key} {...rest}>
+                                                        {state.valueNow}
+                                                    </div>
+                                                );
+                                            }} />
                                     </ErrorBoundary>
 
                                 </div>

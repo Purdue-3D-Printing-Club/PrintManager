@@ -68,7 +68,7 @@ html::-webkit-scrollbar {
   border-radius: 5px;
   margin: auto;
   margin-top: 20px;
-  margin-bottom: 10px;
+  margin-bottom: 0px;
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
@@ -161,7 +161,7 @@ html::-webkit-scrollbar {
   min-width: 470px;
   flex-direction: column;
   position: relative;
-  background-color: rgb(222, 222, 222);
+  background-color: rgb(230, 230, 230);
   font-size: x-large;
   padding: 10px 30px 10px;
   border-radius: 5px;
@@ -506,7 +506,7 @@ option {
   margin-right: 20px;
   flex-wrap: wrap;
   justify-content: center;
-  
+
 }
 
 .scrollcell {

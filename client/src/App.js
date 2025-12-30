@@ -38,11 +38,13 @@ function App() {
 
   const [formData, setFormData] = useState(null)
   const [filamentUsage, setFilamentUsage] = useState('');
-  const [name, setname] = useState('');
-  const [email, setemail] = useState('');
-  const [supervisor, setsupervisor] = useState('');
-  const [files, setfiles] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [supervisor, setSupervisor] = useState('');
+  const [material, setMaterial] = useState('');
+  const [files, setFiles] = useState('');
   const [filesPlaceholder, setFilesPlaceholder] = useState('Google Drive Links');
+
   // Specialty filament form fields
   const [color, setColor] = useState('');
   const [layerHeight, setLayerHeight] = useState('');
@@ -50,8 +52,8 @@ function App() {
   const [detailedPostProcess, setDetailedPostProcess] = useState(false);
   const [cureTime, setCureTime] = useState('');
 
-  const [notes, setnotes] = useState('');
-  const [partNames, setpartnames] = useState('');
+  const [notes, setNotes] = useState('');
+  const [partNames, setPartNames] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [supervisorPrint, setSupervisorPrint] = useState(false);
   const [personalFilament, setPersonalFilament] = useState(false);
@@ -96,7 +98,8 @@ function App() {
     jobID: -1,
     name: '',
     partNames: '',
-    personalFilament: 0,
+    material: '',
+    paid: '',
     status: '',
     supervisorName: '',
     usage_g: 0,
@@ -120,6 +123,7 @@ function App() {
 
   const [linePersonalData, setLinePersonalData] = useState([]);
   const [lineClubData, setLineClubData] = useState([]);
+  const [linePpgData, setLinePpgData] = useState([]);
   const [lineDateWindow, setLineDateWindow] = useState([]);
 
   const popupTime = 8000;
@@ -407,8 +411,10 @@ function App() {
 
                   if (response2.data) {
                     const dailyData = response2.data.res;
-                    const personal = dailyData.filter(item => item.personalFilament)
-                    const club = dailyData.filter(item => !item.personalFilament)
+                    const personal = dailyData.filter(item => item.paid == 'personal')
+                    const club = dailyData.filter(item => item.paid == 'club')
+                    const ppg = dailyData.filter(item => item.paid == 'per-gram')
+
 
                     const startDate = dailyData.length > 0 ? dailyData[0].date : null;
                     const endDate = dailyData.length > 0 ? formatDate(new Date().toISOString(), false) : null; //dailyData[dailyData.length - 1].date
@@ -418,10 +424,13 @@ function App() {
                       // store the data needed for line chart 1
                       const personalDataMap1 = new Map(personal.map(day => [formatDate(day.date, false), day.cnt]));
                       const clubDataMap1 = new Map(club.map(day => [formatDate(day.date, false), day.cnt]));
+                      const ppgDataMap1 = new Map(ppg.map(day => [formatDate(day.date, false), day.cnt]));
+
 
                       // Fill in missing dates with 0
                       const filledPersonalCnt = allDates.map(date => personalDataMap1.get(date) || 0);
                       const filledClubCnt = allDates.map(date => clubDataMap1.get(date) || 0);
+                      const filledPpgCnt = allDates.map(date => ppgDataMap1.get(date) || 0);
 
                       //createLineChart(lineRef, filledPersonalCnt, filledClubCnt, allDates)
 
@@ -429,10 +438,12 @@ function App() {
                       // store the data needed for line chart 2
                       const personalDataMap2 = new Map(personal.map(day => [formatDate(day.date, false), day.sum]));
                       const clubDataMap2 = new Map(club.map(day => [formatDate(day.date, false), day.sum]));
+                      const ppgDataMap2 = new Map(ppg.map(day => [formatDate(day.date, false), day.sum]));
 
                       // Fill in missing dates with 0
                       const filledPersonalSum = allDates.map(date => personalDataMap2.get(date) || 0);
                       const filledClubSum = allDates.map(date => clubDataMap2.get(date) || 0);
+                      const filledPpgSum = allDates.map(date => ppgDataMap2.get(date) || 0);
 
                       //createLineChart(lineRef, filledPersonalSum, filledClubSum, allDates)
 
@@ -440,6 +451,8 @@ function App() {
                       // set the useState variables to the processed data
                       setLinePersonalData([filledPersonalCnt, filledPersonalSum]);
                       setLineClubData([filledClubCnt, filledClubSum]);
+                      setLinePpgData([filledPpgCnt, filledPpgSum]);
+
                       setLineDateWindow(allDates);
                     }
                   }
@@ -505,8 +518,6 @@ function App() {
       let value = job[key]
       if (key === 'timeStarted') {
         value = formatDate(value, true)
-      } else if (key === 'personalFilament') {
-        value = value ? 'personal' : 'club'
       } else if (key === 'usage_g') {
         value = value.toString()
       }
@@ -723,7 +734,7 @@ function App() {
       supervisor: truncateString(editingJob.supervisorName, 64),
       partNames: truncateString(editingJob.partNames, 256),
       email: truncateString(editingJob.email, 64),
-      personalFilament: editingJob.personalFilament,
+      paid: editingJob.paid,
       notes: truncateString(editingJob.notes, 256)
     }
 
@@ -812,19 +823,27 @@ function App() {
     if (generalSettings?.debugMode) console.log('now sorting printers by ' + newSort);
   }
 
-  const handleFilamentType = (e) => {
-    const newType = e.target.value;
-    updateTable("printer", "filamentType", selectedPrinter.printerName, newType, () => {
-      selectedPrinter.filamentType = newType;
+  const handleMaterial = (e) => {
+    const newMaterial = e.target.value;
+    setMaterial(newMaterial);
+    if (generalSettings?.debugMode) console.log('updated material to ' + newMaterial);
+  }
+
+  const handlePrinterMaterial = (e) => {
+    const newMaterial = e.target.value;
+    console.log(newMaterial)
+
+    updateTable("printer", "material", selectedPrinter.printerName, newMaterial, () => {
+      selectedPrinter.material = newMaterial;
       const updatedPrinterList = printerList.map(printer => {
         if (printer.printerName === selectedPrinter.printerName) {
-          return { ...printer, filamentType: newType };
+          return { ...printer, material: newMaterial };
         }
         return printer;
       });
       setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
     })
-    if (generalSettings?.debugMode) console.log('changed filament type to ' + newType);
+    if (generalSettings?.debugMode) console.log('changed material type to ' + newMaterial);
   }
 
   const handlePrinterNotes = (e) => {
@@ -856,14 +875,14 @@ function App() {
   }
 
   const clearFields = () => {
-    setname('');
+    setName('');
     setFilamentUsage('');
-    setemail('');
-    setsupervisor('');
-    setfiles('');
-    setnotes('');
-    setpartnames('');
-
+    setEmail('');
+    setSupervisor('');
+    setFiles('');
+    setNotes('');
+    setPartNames('');
+    setMaterial('');
     setColor('');
     setLayerHeight('');
     setDetailedPostProcess(false);
@@ -871,15 +890,15 @@ function App() {
     setCureTime('');
   }
   const autofillFields = (job) => {
-    setname(job.name);
+    setName(job.name);
     setFilamentUsage(job.usage_g);
-    setemail(job.email);
-    setsupervisor(job.supervisorName);
-    setpartnames(job.partNames);
-    setfiles(job.files);
-    setnotes(job.notes);
+    setEmail(job.email);
+    setSupervisor(job.supervisorName);
+    setPartNames(job.partNames);
+    setFiles(job.files);
+    setNotes(job.notes);
     setSupervisorPrint(job.name === job.supervisorName);
-    setPersonalFilament(job.personalFilament);
+    setPersonalFilament(job.paid === 'personal');
 
     setColor(job.color);
     setLayerHeight(job.layerHeight);
@@ -964,13 +983,6 @@ function App() {
           return (availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status));
         }
         return a.model.localeCompare(b.model);
-      });
-    } if (by === 'Filament Type') {
-      sortedPrinters = list.sort((a, b) => {
-        if (a.filamentType === b.filamentType) {
-          return (availabilityOrder.indexOf(a.status) - availabilityOrder.indexOf(b.status));
-        }
-        return a.filamentType.localeCompare(b.filamentType);
       });
     }
 
@@ -1062,6 +1074,12 @@ function App() {
     } else {
       return ("")
     }
+  }
+
+  const isSpecialty = (printer) => {
+    return !(printer?.material?.includes('PLA') ||
+        printer?.material?.includes('PETG') ||
+        printer?.material?.includes('TPU'));
   }
 
   const checkPswd = (given, actual) => {
@@ -1271,11 +1289,12 @@ function App() {
 
   const handleStartPrintClick = (queue = false) => {
     let matchingJob = ''
+    let isMember = memberList.map(m => m.email).includes(email)
 
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' &&
-        selectedPrinter.status !== 'testing' && selectedPrinter.filamentType !== 'Resin') {
+        selectedPrinter.status !== 'testing' && !selectedPrinter.material.includes('Resin')) {
         showMsgForDuration("This printer is not available!", 'err');
       } else if (selectedPrinter.status === 'admin' && !isAdmin) {
         showMsgForDuration("This printer is not available!", 'err');
@@ -1302,16 +1321,14 @@ function App() {
         showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
         showMsgForDuration("Resin queue is full! Print not queued.", 'err');
-      } else if (((selectedPrinter.filamentType === 'PETG') || (selectedPrinter.filamentType === 'TPU')) && !personalFilament) {
-        showMsgForDuration(`Warning: ${selectedPrinter.filamentType} costs $${filamentSettings.fdmCost} / g, even for members.\nPlease only use ${selectedPrinter.filamentType} filament on this printer!`, 'warn', popupTime + 5000);
-      } else if ((selectedPrinter.filamentType === 'Resin')) {
+      } else if (((material == 'TPU') || (material == 'PETG')) && !personalFilament) {
+        showMsgForDuration(`Warning: ${material} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
+      } else if ((material === 'Resin')) {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
-      } else if (queue) {
-        showMsgForDuration(`Warning: Resin prints cost $${filamentSettings.resinCost} / ml,\nEven for club members.`, 'warn', popupTime + 5000);
-      } else if ((selectedPrinter.filamentType === 'PLA') && !personalFilament && !memberList.map(m => m.email).includes(email) && !supervisorPrint) {
-        showMsgForDuration(`Warning: Non-member detected. Pay-per-gram\nthrough TooCool is required. Continue?`, 'warn', popupTime + 5000);
+      } else if ((material === 'PLA') && !personalFilament && !isMember && !supervisorPrint) {
+        showMsgForDuration(`Warning: Non-members must pay per gram\nthrough TooCool. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
         //clear all warning popups 
@@ -1325,6 +1342,8 @@ function App() {
   };
 
   const buildFormJob = () => {
+    let isMember = memberList.map(m => m.email).includes(email)
+
     return ({
       files: truncateString(files, 512),
       usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
@@ -1336,7 +1355,7 @@ function App() {
       notes: truncateString(notes, 256),
       partNames: truncateString(partNames, 256),
       email: truncateString(email, 64),
-      personalFilament: personalFilament,
+      paid: personalFilament ? 'personal' : isMember ? 'club' : 'per-gram',
       color: truncateString(color, 64),
       layerHeight: truncateString(layerHeight, 64),
       cureTime: truncateString(cureTime, 64),
@@ -1347,7 +1366,6 @@ function App() {
 
   const handleWarningClick = (notification) => {
     const { id, msg, type, replaceJob, msgPrinter, msgJob } = notification
-    const isResin = msgPrinter?.filamentType === 'Resin'
 
     setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
     if (replaceJob) {
@@ -1420,7 +1438,7 @@ function App() {
               console.error("Error fetching printer data: ", error);
             }
           });
-          if (formPrinter.filamentType !== 'Resin') { clearFields(); }
+          if (!formPrinter.material.includes('Resin')) { clearFields(); }
         } else {
           refreshHistory()
           clearFields();
@@ -1578,7 +1596,9 @@ function App() {
 
   const pullFormData = (e) => {
     try {
-      let specialFilament = selectedPrinter?.filamentType !== 'PLA';
+
+      let specialFilament = isSpecialty(selectedPrinter)
+      
 
       const url = specialFilament ?
         organizerLinks.specialtyAppScriptURL :
@@ -1603,7 +1623,7 @@ function App() {
             name: ["Name (First & Last)"],
             email: ["Purdue Email"],
             supervisorName: ["Officer/Lab Assistant Name", "Supervisor Name"],
-            filamentType: ["What type of material are you printing with?"],
+            material: ["What type of material are you printing with?"],
             files: ["Upload your .stl file here", "Upload your .stl file(s) here"],
             partNames: ["What are the EXACT names of the file(s)?"],
             notes: ["Please provide any details or requests about how you want your part to be printed."],
@@ -1626,14 +1646,13 @@ function App() {
           console.log('headerIndexMap: ', headerIndexMap)
 
 
-          //  let formattedData = specialFilament ?
           let formattedData = Object.values(data).map((job) => {
             return ({
               timestamp: job[headerIndexMap['timestamp']],
               name: job[headerIndexMap['name']],
               email: job[headerIndexMap['email']],
               supervisorName: job[headerIndexMap['supervisorName']],
-              filamentType: job[headerIndexMap['filamentType']],
+              material: job[headerIndexMap['material']] ?? 'PLA',
               files: job[headerIndexMap['files']],
               partNames: job[headerIndexMap['partNames']],
               notes: job[headerIndexMap['notes']],
@@ -1644,18 +1663,6 @@ function App() {
               cureTime: job[headerIndexMap['cureTime']]
             })
           })
-          // :
-          //   data.map((job) => {
-          //     return ({
-          //       timestamp: job[headerIndexMap['timestamp']],
-          //       name: job[headerIndexMap['name']],
-          //       email: job[headerIndexMap['email']],
-          //       supervisorName: job[headerIndexMap['supervisorName']],
-          //       files: job[headerIndexMap['files']],
-          //       partNames: job[headerIndexMap['partNames']],
-          //       notes: job[headerIndexMap['notes']],
-          //     })
-          //   })
 
           console.log('formattedData:', formattedData)
           setFormData(formattedData.reverse())
@@ -1721,12 +1728,12 @@ function App() {
     if (!job) {
       showMsgForDuration('Error: Form data not found', 'err', popupTime);
     }
-    setname(job.name);
-    setemail(job.email);
-    setsupervisor(job.supervisorName)
-    setfiles(job.files);
-    setnotes(job.notes);
-    setpartnames(job.partNames);
+    setName(job.name);
+    setEmail(job.email);
+    setSupervisor(job.supervisorName)
+    setFiles(job.files);
+    setNotes(job.notes);
+    setPartNames(job.partNames);
 
     setColor(job.color);
     setLayerHeight(job.layerHeight);
@@ -1744,7 +1751,7 @@ function App() {
 
   const handlefiles = (e) => {
     const files = e.target.value;
-    setfiles(files);
+    setFiles(files);
     if (generalSettings?.debugMode) console.log("set files to " + files);
   };
 
@@ -1755,7 +1762,7 @@ function App() {
 
   const handlenotes = (e) => {
     const notes = e.target.value;
-    setnotes(notes);
+    setNotes(notes);
     if (generalSettings?.debugMode) console.log("set notes to " + notes);
   };
 
@@ -1770,7 +1777,7 @@ function App() {
     // }
 
     // immediately clear the files state and update the placeholder
-    setfiles('');
+    setFiles('');
     setFilesPlaceholder('Uploading Parts to Google Drive...');
 
     //update the part names
@@ -1779,7 +1786,7 @@ function App() {
     });
     const fileNames = filesList.join(', ');
     if (fileNames) {
-      setpartnames(fileNames);
+      setPartNames(fileNames);
       if (generalSettings?.debugMode) console.log('set partnames to: ' + fileNames);
     }
 
@@ -1807,13 +1814,13 @@ function App() {
     // wait for all uploads to finish before setting the files to the google drive links returned by the server
     const newFileLinks = await Promise.all(uploadPromises);
 
-    setfiles(newFileLinks.join(', '));
+    setFiles(newFileLinks.join(', '));
     setFilesPlaceholder('Google Drive Links');
   };
 
   const handlename = (e) => {
     const name = e.target.value;
-    setname(name);
+    setName(name);
     if (generalSettings?.debugMode) console.log("set name to " + name);
   };
   const handleColor = (e) => {
@@ -1835,19 +1842,19 @@ function App() {
   const handleemail = (e) => {
     const email = e.target.value;
 
-    setemail(email);
+    setEmail(email);
     if (generalSettings?.debugMode) console.log("set email to " + email);
   };
 
   const handlesupervisor = (e) => {
     const supervisor = e.target.value;
-    setsupervisor(supervisor);
+    setSupervisor(supervisor);
     if (generalSettings?.debugMode) console.log("set supervisor to " + supervisor);
   };
 
   const handlePartNames = (e) => {
     const names = e.target.value;
-    setpartnames(names);
+    setPartNames(names);
     if (generalSettings?.debugMode) console.log("set partNames to " + names);
   };
 
@@ -1966,10 +1973,12 @@ function App() {
               <td><input type="text" className="history-edit" value={editingJob.name} onChange={(e) => handleJobEdit(e, "name")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.email} onChange={(e) => handleJobEdit(e, "email")}></input></td>
               <td><input type="text" className="history-edit" value={editingJob.supervisorName} onChange={(e) => handleJobEdit(e, "supervisorName")}></input></td>
+              <td><input type="text" className="history-edit" value={editingJob.material} onChange={(e) => handleJobEdit(e, "material")}></input></td>
               {!queue && <td>
-                <select id="personalFilament" style={{ width: "100%" }} value={editingJob.personalFilament} onChange={(e) => handleJobEdit(e, "personalFilament")}>
-                  <option value="0">club</option>
-                  <option value="1">personal</option>
+                <select id="paid" style={{ width: "100%" }} value={editingJob.paid} onChange={(e) => handleJobEdit(e, "paid")}>
+                  <option value="club">club</option>
+                  <option value="personal">personal</option>
+                  <option value="per-gram">per-gram</option>
                 </select>
               </td>}
               <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
@@ -1985,7 +1994,8 @@ function App() {
               <ScrollCell html={applyHighlight(job.name, queue)} width={150} />
               <ScrollCell html={applyHighlight(job.email, queue)} width={250} />
               <ScrollCell html={applyHighlight(job.supervisorName, queue)} width={150} />
-              {!queue && <ScrollCell html={applyHighlight(job.personalFilament ? 'personal' : 'club', queue)} width={null} />}
+              <ScrollCell html={applyHighlight(job.material, queue)} width={null} />
+              {!queue && <ScrollCell html={applyHighlight(job.paid, queue)} width={null} />}
               <ScrollCell html={applyHighlight(job.usage_g.toString(), queue)} width={null} />
               <td>
                 {job.files.split(/[,;]/).map((link, i) => (
@@ -2029,14 +2039,13 @@ function App() {
     handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
     filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight, cureTime,
-    handleCureTime, filamentSettings
+    handleCureTime, filamentSettings, material, handleMaterial
   }
   const settingsArgs = {
     adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackSubject, feedbackText, handleFeedbackSubjectChange,
     handleFeedbackTextChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
     handleOpenMenu, truncateStringWidth, memberList, setMemberList, formatDate, truncateString, showMsgForDuration,
     setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getHistoryPeriod, decSeason
-
   }
 
   return (
@@ -2151,8 +2160,14 @@ function App() {
               </div>}
               {loading === 'done' &&
                 <div className='chart-wrapper'>
-                  <LineChart argsObject={{ filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0], dateWindow: lineDateWindow }} index={1} />
-                  <LineChart argsObject={{ filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1], dateWindow: lineDateWindow }} index={2} />
+                  <LineChart argsObject={{
+                    filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0],
+                    filledPpgData: linePpgData[0], dateWindow: lineDateWindow
+                  }} index={1} />
+                  <LineChart argsObject={{
+                    filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1],
+                    filledPpgData: linePpgData[1], dateWindow: lineDateWindow
+                  }} index={2} />
                 </div>}
 
               {(loading === 'done') && <div className="pie">
@@ -2220,16 +2235,11 @@ function App() {
               <div style={{ flex: '1 1 auto', minWidth: 0, paddingLeft: '10px' }}>
                 {getStatMsg()}
                 <hr style={{ borderTop: '1px solid black', width: '100%' }} />
-                {(isAdmin ? <div> {"Use "}
-                  <select id="filamentType" value={selectedPrinter.filamentType} onChange={handleFilamentType}>
-                    <option value="PLA">PLA</option>
-                    <option value="PETG">PETG</option>
-                    <option value="TPU">TPU</option>
-                    <option value="Resin">Resin</option>
-                  </select>
-                  {" on this printer."}</div>
+                {(isAdmin ? <div> {"Material: "}
+                  <input type="text" value={selectedPrinter.material} onChange={handlePrinterMaterial}></input>
+                  </div>
                   :
-                  "Use " + (selectedPrinter.permColor ?? '') + ' ' + (selectedPrinter.filamentType == 'Resin' ? 'resin' : selectedPrinter.filamentType) + " on this printer.")
+                  "Material: " + selectedPrinter.material)
                 }
               </div>
             </div>
@@ -2263,7 +2273,7 @@ function App() {
                     </>
                   }
                   {
-                    selectedPrinter.filamentType !== "PLA" && <>
+                    isSpecialty(selectedPrinter) && <>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Color:</b> {curJob.color ?? 'N/A'}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
@@ -2274,7 +2284,6 @@ function App() {
                       <span>&nbsp;<b>Self Post-Process:</b> {curJob.selfPostProcess ? 'Yes' : 'No' ?? 'N/A'}</span>
                       <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
                       <span>&nbsp;<b>Detailed Post-Process:</b> {curJob.detailedPostProcess ? 'Yes' : 'No' ?? 'N/A'}</span>
-
                     </>
                   }
                 </div>
@@ -2303,8 +2312,7 @@ function App() {
                 }}>
                   <option value="" disabled hidden>Move Print</option>
                   {printerList.map((printer) => {
-                    if ((((printer.filamentType === 'Resin') && (selectedPrinter.filamentType === 'Resin')) || // both printers are resin
-                      ((printer.filamentType !== 'Resin') && (selectedPrinter.filamentType !== 'Resin')))   // OR both printers aren't resin 
+                    if ((printer.material.includes(curJob.material) && (curJob.material !== ''))   // The current job's material must be allowed for the new printer
                       && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {     // AND the printer must be available
                       return <>
                         <option value={printer.printerName}>{printer.printerName}</option>
@@ -2389,11 +2397,11 @@ function App() {
                 <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
 
                 {/* Checkbox to toggle personal filament */}
-                {(selectedPrinter.filamentType !== 'Resin') &&
+                {(!selectedPrinter.material.includes('Resin')) &&
                   <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
                 }
 
-                {selectedPrinter && (selectedPrinter.filamentType != 'PLA') && <>
+                {selectedPrinter && (isSpecialty(selectedPrinter)) && <>
                   <div>
                     <FormCheckbox activeCheckVal={selfPostProcess} handleChangeFunc={toggleSelfPostProcess} text={"Self Post-Process"}></FormCheckbox>
                     <FormCheckbox activeCheckVal={detailedPostProcess} handleChangeFunc={toggleDetailedPostProcess} text={"Detailed Post-Process"}></FormCheckbox>
@@ -2436,11 +2444,11 @@ function App() {
               <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
 
               {/* Checkbox to toggle personal filament */}
-              {(selectedPrinter.filamentType !== 'Resin') &&
+              {(!selectedPrinter.material.includes('Resin')) &&
                 <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
               }
 
-              {selectedPrinter && isAdmin && (selectedPrinter.filamentType != 'PLA') && <>
+              {(selectedPrinter && isAdmin && isSpecialty(selectedPrinter)) && <>
                 <div>
                   <FormCheckbox activeCheckVal={selfPostProcess} handleChangeFunc={toggleSelfPostProcess} text={"Self Post-Process"}></FormCheckbox>
                   <FormCheckbox activeCheckVal={detailedPostProcess} handleChangeFunc={toggleDetailedPostProcess} text={"Detailed Post-Process"}></FormCheckbox>
@@ -2677,7 +2685,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
                 <>
                   <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
                     <img className='status-icon ' src={`images/download.svg`}></img> {partname ? truncateString(partname.trim(), 24) : 'File ' + index}
-                  </button> <br />
+                  </button>
                 </>
               );
             } else {
@@ -2687,16 +2695,16 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
         </div>
       )}
       {
-        curJob.files.startsWith('https://') && 
-        <button className='printer-btn' style={{backgroundColor:"white"}} onClick={() => {
-        downloadAllFiles(curJob.files.split(/[,;]/).map((file) => {
-          return getDirectDownloadLink(file.trim())
-        }))
-      }}> 
-      <img className='status-icon ' src={`images/download.svg`}/> Download All Files
-       </button>
+        curJob?.files?.startsWith('https://') &&
+        <button className='printer-btn' style={{ backgroundColor: "white" }} onClick={() => {
+          downloadAllFiles(curJob.files.split(/[,;]/).map((file) => {
+            return getDirectDownloadLink(file.trim())
+          }))
+        }}>
+          <img className='status-icon ' src={`images/download.svg`} /> Download All Files
+        </button>
       }
-      
+
     </>
   );
 }
@@ -2718,8 +2726,8 @@ function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySe
       setHistoryPeriod(old => ({ ...old, year: old.year, seasonEnc: old.seasonEnc - 1 }))
     }
   }
-  function rightArrowClick(historyPeriod) {
 
+  function rightArrowClick(historyPeriod) {
     if (historyPeriod.seasonEnc === 2) {
       setHistoryPeriod(old => ({ ...old, year: old.year + 1, seasonEnc: 0 }))
     } else {
@@ -2776,11 +2784,11 @@ function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySe
               <th>Name</th>
               <th>Email</th>
               <th>Supervisor</th>
-              <th>Filament</th>
-              <th>Used {selectedPrinter?.filamentType === 'Resin' ? '(ml)' : '(g)'}</th>
+              <th>Material</th>
+              <th>Paid</th>
+              <th>Used {selectedPrinter?.material.includes('Resin') ? '(ml)' : '(g)'}</th>
               <th>Files</th>
               <th> Notes</th>
-              {/* <th>Files</th> */}
             </tr>
           </thead>
           <tbody>
