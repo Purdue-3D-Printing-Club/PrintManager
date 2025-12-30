@@ -21,7 +21,7 @@ function Settings({ settingsArgs }) {
   let { adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
     handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen, handleOpenMenu,
     memberList, setMemberList, truncateStringWidth, formatDate, truncateString, showMsgForDuration, setOrganizerLinks,
-    FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings } = settingsArgs
+    FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getHistoryPeriod, decSeason } = settingsArgs
 
   const [loginTextVisible, setLoginTextVisible] = useState(false);
   const [tempServerURL, setTempServerURL] = useState(serverURL);
@@ -33,6 +33,10 @@ function Settings({ settingsArgs }) {
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSort, setMemberSort] = useState('Email');
   const [sortAscending, setSortAscending] = useState(false);
+
+    let {year, seasonEnc} = getHistoryPeriod()
+    let curSeason = decSeason(seasonEnc)
+    let curYear = year
 
   const organizerLinksFields = [
     { key: "websiteURL", label: "Website:", placeholder: " Server URL" },
@@ -173,7 +177,9 @@ function Settings({ settingsArgs }) {
       lastUpdated: new Date().toISOString(),
       name: truncateString(member.name, 128),
       email: truncateString(member.email, 64),
-      discordUsername: truncateString(member.discordUsername, 128)
+      discordUsername: truncateString(member.discordUsername, 128),
+      season: curSeason,
+      year: curYear
     }).then(() => {
       refreshMembers();
       setInsertMember({ email: '', name: '', discordUsername: '', lastUpdated: '', memberID: -1 });
@@ -474,13 +480,14 @@ function Settings({ settingsArgs }) {
         <div className='settings-wrapper'>
 
           {/* Member List */}
-          <span className="input-wrapper">
+          <span className="input-wrapper" >
             <img src={groupIcon} alt="member-list" className='generic-icon'></img>
-            <span className='admin-settings-label' style={{ fontSize: '24px' }}>Club Members</span>
+            <span className='admin-settings-label' style={{ fontSize: '24px' }}>{`Club Members [${memberList.length}]`}</span>
           </span><br />
+          <span  style={{ fontSize: '18px'}}>{`${curSeason} ${curYear}`}</span>
 
           {/* Member list table */}
-          <div className="print-history" style={{ 'backgroundColor': '#ddddddff' }}>
+          <div className="print-history" style={{ 'backgroundColor': '#ddddddff', marginTop: '10px' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>
               <span className="search-bar">
                 <img src={searchIcon} className='generic-icon'></img> Search

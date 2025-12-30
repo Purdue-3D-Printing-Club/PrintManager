@@ -12,6 +12,8 @@ require('isomorphic-fetch');
 const fetch = require('node-fetch');
 const axios = require('axios');
 
+
+
 const pool = mysql.createPool({
     host: "localhost",
     user: "root",
@@ -41,6 +43,18 @@ const temp_folder = 'gdrive_uploads';
 const keyPath = process.env.GDRIVE_KEY_PATH;
 const gdriveFolderID = process.env.GDRIVE_FOLDER_ID;
 let drive = createGdriveAuth(keyPath);
+
+// get google drive metadata given the file id.
+// only works for directly uploaded files, not from google forms
+// async function getFileMetadata(fileId) {
+//     const res = await drive.files.get({
+//         fileId,
+//         fields: 'name,mimeType,size',
+//     });
+//     console.log(res.data)
+
+//     return res.data;
+// }
 
 const multer = require('multer');
 const upload = multer({ dest: `${temp_folder}/` });
@@ -234,6 +248,8 @@ app.get('/api/stream-stl', async (req, res) => {
     // console.log('directUrl:', directUrl);
     try {
         const response = await fetch(directUrl);
+
+
         if (!response.ok) {
             return res.status(500).send('Error fetching the STL file from Google Drive');
         }
@@ -454,7 +470,7 @@ app.get('/api/getDailyPrint', async (req, res) => {
 app.get('/api/get', (req, res) => {
     const sqlSelectPrinters = req.query.query;//"SELECT * FROM printer";
     if(!(sqlSelectPrinters && (typeof(sqlSelectPrinters) == 'string'))) { 
-        console.error('ERROR in /api/get: query is not present or not correct type (must be string)');
+        console.error('ERROR in /api/get: invalid query');
         return;
     }
     pool.getConnection((err, connection) => {
@@ -833,7 +849,6 @@ app.get('/api/getFailureCount', (req, res) => {
 
 app.post('/api/insert', (req, res) => {
     const b = req.body;
-    console.log(b.timeStarted)
     const dateTime = new Date(b.timeStarted);
     const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," + 
         " status, name, supervisorName, notes, partNames, email, personalFilament, " + 
@@ -864,6 +879,7 @@ app.post('/api/insert', (req, res) => {
     });
 
     // Now save the new filament amount to the file 
+    // TODO: only subtract filament if the job's filament type is PLA.
     let localData = loadLocalData()
     let newStock = Math.max(0, localData?.filamentStock - b.usage_g)
     saveLocalData({ ...localData, filamentStock: newStock })
@@ -886,7 +902,7 @@ app.post('/api/insertMember', (req, res) => {
     const b = req.body;
 
     const dateTime = new Date(b.lastUpdated);
-    const sqlInsert = "INSERT INTO member (lastUpdated, name, email, discordUsername) VALUES (?,?,?,?)";
+    const sqlInsert = "INSERT INTO member (lastUpdated, name, email, discordUsername, season, year) VALUES (?,?,?,?,?,?)";
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -895,7 +911,7 @@ app.post('/api/insertMember', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlInsert, [dateTime, b.name, b.email, b.discordUsername], (err, result) => {
+            connection.query(sqlInsert, [dateTime, b.name, b.email, b.discordUsername, b.season, b.year], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error inserting printjob");

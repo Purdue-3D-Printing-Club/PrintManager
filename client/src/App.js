@@ -2,12 +2,13 @@ import Axios from 'axios';
 import CryptoJS from 'crypto-js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
+import JSZip from "jszip";
+
 import './App.css';
+
 import exitIcon from '/images/cancel.svg';
 import searchIcon from '/images/search.svg';
 import sortIcon from '/images/sort.svg';
-
-
 import loadingGif from '/images/loading.gif';
 import xIcon from '/images/x.png';
 
@@ -20,9 +21,12 @@ import LineChart from './LineChart';
 import ErrorBoundary from './ErrorBoundary';
 
 
+
+
+
 function App() {
   const statusIconFolder = '/images/statusIcons';
-  
+
   const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
   const [organizerLinks, setOrganizerLinks] = useState({});
   const [filamentSettings, setFilamentSettings] = useState({});
@@ -105,7 +109,7 @@ function App() {
   const [potdStatus, setPotdStatus] = useState('loading')
   const hasFetchedDailyPrint = useRef(false);
 
-  const [generalSettings, setGeneralSettings] = useState({ })
+  const [generalSettings, setGeneralSettings] = useState({})
   const [printerNames, setPrinterNames] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
   const [supervisorData, setSupervisorData] = useState([]);
@@ -124,6 +128,16 @@ function App() {
   const context = canvas.getContext("2d");
   context.font = "16pt Trebuchet MS";
 
+  // downloads all files from one click
+  async function downloadAllFiles(urls) {
+    urls.forEach(url => {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.download = '';
+      a.click();
+    });
+  }
 
   const openToBusy = (status) => {
     return (status === 'admin') ? 'admin-busy' : (status === 'testing' ? 'testing-busy' : 'busy')
@@ -201,7 +215,9 @@ function App() {
   useEffect(() => {
     // member list
     try {
-      Axios.get(`${serverURL}/api/get?query=${"SELECT * FROM member"}`).then((response) => {
+      let { year, seasonEnc } = getHistoryPeriod()
+      let season = decSeason(seasonEnc)
+      Axios.get(`${serverURL}/api/get?query=SELECT * FROM member WHERE season = "${season}" AND year = ${year}`).then((response) => {
         let members = response.data.result
         if (generalSettings?.debugMode) console.log('member list: ', members);
 
@@ -272,12 +288,7 @@ function App() {
     }
 
     // Update the history period with the current date and refresh the history table
-    let now = new Date();
-    let newYear = now.getFullYear();
-
-    let normalizedDate = now.setFullYear(2000);
-    let newSeasonEnc = normalizedDate < seasonUpperBounds[0] ? 0 : normalizedDate < seasonUpperBounds[1] ? 1 : 2;
-    setHistoryPeriod({ year: newYear, seasonEnc: newSeasonEnc });
+    setHistoryPeriod(getHistoryPeriod());
 
     //Update the data that is shown
     if (selectedPrinter !== null && selectedPrinter !== undefined) {
@@ -384,7 +395,7 @@ function App() {
 
           try {
             Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
-              if (generalSettings?.debugMode) console.log('supervisor data: ',sortedData)
+              if (generalSettings?.debugMode) console.log('supervisor data: ', sortedData)
               setSupervisorData(response.data.res);
               Axios.get(`${serverURL}/api/getfilamentdata`).then((response) => {
                 if (generalSettings?.debugMode) console.log('filament name data: ', response.data.res)
@@ -392,7 +403,7 @@ function App() {
                 if (generalSettings?.debugMode) console.log()
 
                 Axios.get(`${serverURL}/api/getdailyprints`).then((response2) => {
-                  if (generalSettings?.debugMode) console.log("daily data: ",response2.data);
+                  if (generalSettings?.debugMode) console.log("daily data: ", response2.data);
 
                   if (response2.data) {
                     const dailyData = response2.data.res;
@@ -526,6 +537,23 @@ function App() {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   }
 
+
+  const getHistoryPeriod = () => {
+    let now = new Date();
+    let newYear = now.getFullYear();
+
+    let normalizedDate = now.setFullYear(2000);
+    let newSeasonEnc = normalizedDate < seasonUpperBounds[0] ? 0 : normalizedDate < seasonUpperBounds[1] ? 1 : 2;
+    return { year: newYear, seasonEnc: newSeasonEnc }
+  }
+
+  const decSeason = (seasonEnc) => {
+    return seasonEnc == 0 ? 'Spring' : seasonEnc == 1 ? 'Summer' : 'Fall'
+  }
+  const encSeason = (season) => {
+    return season == Spring ? 0 : season == 'Summer' ? 1 : 2
+  }
+
   // fetch the printer history or, if its null, get the comprehensive history
   const refreshHistory = async () => {
     if (generalSettings?.debugMode) console.log('historyPeriod:', historyPeriod)
@@ -573,7 +601,7 @@ function App() {
       // const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
       const newHistory = sortHistoryList(response.data.historyList, historySort);
       setHistoryList(newHistory);
-      if (generalSettings?.debugMode) console.log('Got unfiltered history list: ',newHistory);
+      if (generalSettings?.debugMode) console.log('Got unfiltered history list: ', newHistory);
       filterHistory(newHistory, historySearch);
     });
   }
@@ -1337,7 +1365,7 @@ function App() {
         //apply changes locally
         const updatedHistoryList = historyList.filter(job => !(job.jobID === replaceJob.jobID))
 
-        if (generalSettings?.debugMode) console.log('updated history list: ',updatedHistoryList)
+        if (generalSettings?.debugMode) console.log('updated history list: ', updatedHistoryList)
 
         setHistoryList(updatedHistoryList);
 
@@ -1561,15 +1589,15 @@ function App() {
         return response.json()
       }).then(data => {
         if (data !== null) {
-          if (generalSettings?.debugMode) console.log('fetched form data: ',data);
+          if (generalSettings?.debugMode) console.log('fetched form data: ', data);
           showMsgForDuration('Form Data Retrieved Successfully!', 'msg');
           setFormDataLoading(false);
 
           // Extract the headers from the response object
           let headers = data["headers"]
           delete data["headers"]
-          if (generalSettings?.debugMode) console.log('form headers: ',headers);
-          
+          if (generalSettings?.debugMode) console.log('form headers: ', headers);
+
           const questionKeyMap = {
             timestamp: ["Timestamp"],
             name: ["Name (First & Last)"],
@@ -1587,11 +1615,11 @@ function App() {
           }
 
           let headerIndexMap = {}
-          Object.keys(questionKeyMap).forEach((key)=> {
+          Object.keys(questionKeyMap).forEach((key) => {
             let substrings = questionKeyMap[key];
 
             // Find the column in the headers that matches the substring text from questionKeyMap
-            let matchingCol = headers.findIndex(header => substrings.some(sub=>header.includes(sub)))
+            let matchingCol = headers.findIndex(header => substrings.some(sub => header.includes(sub)))
 
             headerIndexMap[key] = matchingCol
           })
@@ -1599,24 +1627,24 @@ function App() {
 
 
           //  let formattedData = specialFilament ?
-           let formattedData = Object.values(data).map((job) => {
-              return ({
-                timestamp: job[headerIndexMap['timestamp']],
-                name: job[headerIndexMap['name']],
-                email: job[headerIndexMap['email']],
-                supervisorName: job[headerIndexMap['supervisorName']],
-                filamentType: job[headerIndexMap['filamentType']],
-                files: job[headerIndexMap['files']],
-                partNames: job[headerIndexMap['partNames']],
-                notes: job[headerIndexMap['notes']],
-                color: job[headerIndexMap['color']],
-                layerHeight: job[headerIndexMap['layerHeight']],
-                selfPostProcess: job[headerIndexMap['selfPostProcess']] == 'Yes',
-                detailedPostProcess: job[headerIndexMap['detailedPostProcess']] == 'Yes',
-                cureTime: job[headerIndexMap['cureTime']]
-              })
-            }) 
-            // :
+          let formattedData = Object.values(data).map((job) => {
+            return ({
+              timestamp: job[headerIndexMap['timestamp']],
+              name: job[headerIndexMap['name']],
+              email: job[headerIndexMap['email']],
+              supervisorName: job[headerIndexMap['supervisorName']],
+              filamentType: job[headerIndexMap['filamentType']],
+              files: job[headerIndexMap['files']],
+              partNames: job[headerIndexMap['partNames']],
+              notes: job[headerIndexMap['notes']],
+              color: job[headerIndexMap['color']],
+              layerHeight: job[headerIndexMap['layerHeight']],
+              selfPostProcess: job[headerIndexMap['selfPostProcess']] == 'Yes',
+              detailedPostProcess: job[headerIndexMap['detailedPostProcess']] == 'Yes',
+              cureTime: job[headerIndexMap['cureTime']]
+            })
+          })
+          // :
           //   data.map((job) => {
           //     return ({
           //       timestamp: job[headerIndexMap['timestamp']],
@@ -1628,17 +1656,17 @@ function App() {
           //       notes: job[headerIndexMap['notes']],
           //     })
           //   })
-          
-            console.log('formattedData:',formattedData)
+
+          console.log('formattedData:', formattedData)
           setFormData(formattedData.reverse())
 
         } else {
-        if(generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
+          if (generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
           showMsgForDuration('Error Filling Form...', 'err');
         }
       });
-    } catch (e) {        
-      if(generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
+    } catch (e) {
+      if (generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
       showMsgForDuration('Error Filling Form...', 'err');
     }
   };
@@ -1679,10 +1707,10 @@ function App() {
     if (printer) {
       if (selectedPrinter && (selectedPrinter.printerName === printer.printerName)) {
         selectPrinter(null);
-        if (generalSettings?.debugMode) console.log("unselected printer: ",printer);
+        if (generalSettings?.debugMode) console.log("unselected printer: ", printer);
       } else {
         selectPrinter(printer);
-        if (generalSettings?.debugMode) console.log("selected printer: ",printer);
+        if (generalSettings?.debugMode) console.log("selected printer: ", printer);
       }
     }
   };
@@ -1747,7 +1775,7 @@ function App() {
 
     //update the part names
     const filesList = files.map(file => {
-      return file.name.substring(0, file.name.lastIndexOf('.')) || file;
+      return file.name//.substring(0, file.name.lastIndexOf('.')) || file;
     });
     const fileNames = filesList.join(', ');
     if (fileNames) {
@@ -1866,7 +1894,7 @@ function App() {
   function formatDate(utcString, time) {
     // console.log('utcString: ', utcString)
     let isoString = '';
-    if(utcString[utcString.length-1] == 'Z') {
+    if (utcString[utcString.length - 1] == 'Z') {
       isoString = utcString;
     } else {
       isoString = utcString.replace(' ', 'T') + 'Z';
@@ -1899,11 +1927,11 @@ function App() {
   }
 
   const createHistoryRow = (job, isComprehensive, queue) => {
-     const ScrollCell = ({ html, width = null }) => (
-        <td style={{ padding: 0 }}>
-            <div className = "scrollcell" style={{width: width ? width + 'px' : '100%'}} dangerouslySetInnerHTML={{ __html: html }}/>
-        </td>
-        );
+    const ScrollCell = ({ html, width = null }) => (
+      <td style={{ padding: 0 }}>
+        <div className="scrollcell" style={{ width: width ? width + 'px' : '100%' }} dangerouslySetInnerHTML={{ __html: html }} />
+      </td>
+    );
 
     return (
       <>
@@ -1989,11 +2017,11 @@ function App() {
     const regex = new RegExp(escapedSearch, 'gi');
 
     return truncatedText.replace(regex, (match) => {
-    return `<span style="
+      return `<span style="
       background-color: rgba(40,200,40,0.4);
       border-radius: 2px;
     ">${match}</span>`;
-  });
+    });
   };
 
   const printFormArgs = {
@@ -2007,7 +2035,8 @@ function App() {
     adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackSubject, feedbackText, handleFeedbackSubjectChange,
     handleFeedbackTextChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
     handleOpenMenu, truncateStringWidth, memberList, setMemberList, formatDate, truncateString, showMsgForDuration,
-    setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings
+    setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getHistoryPeriod, decSeason
+
   }
 
   return (
@@ -2059,9 +2088,19 @@ function App() {
               <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
                 <ErrorBoundary>
                   {recentFiles.map((file, index) => {
-                    return (
-                      <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
-                    )
+                    if (generalSettings.showSTLPreviews) {
+                      return (
+                        <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
+                      )
+                    } else {
+                      return (
+                        <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(file.file.trim())}>
+                          <img className='status-icon ' src={`images/download.svg`}></img> {file.name ? truncateString(file.name.trim(), 24) : 'File ' + index}
+                        </button>
+                      )
+
+                    }
+
                   })
                   }
                 </ErrorBoundary>
@@ -2164,7 +2203,7 @@ function App() {
                 createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
                 historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} historyPagesShowing={historyPagesShowing}
                 setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
-                sortAscending={sortAscending} setSortAscending={setSortAscending} pageSize={generalSettings.pageSize}></PrintHistoryTable>
+                sortAscending={sortAscending} setSortAscending={setSortAscending} pageSize={generalSettings.pageSize} decSeason={decSeason}></PrintHistoryTable>
 
             </div>}
           </div>}
@@ -2248,7 +2287,6 @@ function App() {
 
 
             {/* Printer status pages: busy, available, admin, admin-busy, broken, and testing */}
-
             {((selectedPrinter.status?.slice(-4) === "busy")) && <div>
               <button onClick={() => { handlePrintDoneClick("completed", null) }} style={{ backgroundColor: "rgba(100, 246, 100,0.8)" }} className='printer-btn'>
                 <img className='status-icon' src={`images/check-circle.svg`}></img>Print Done</button>
@@ -2326,16 +2364,17 @@ function App() {
 
 
             </div>}
-            
-            {(((selectedPrinter.status?.slice(-4) === "busy")) ) && <> 
-             {/* && selectedPrinter.filamentType !== 'Resin' */}
-             
+
+            {(((selectedPrinter.status?.slice(-4) === "busy"))) && <>
+              {/* && selectedPrinter.filamentType !== 'Resin' */}
+
               <StlPreviewSection
                 showSTLPreviews={generalSettings.showSTLPreviews}
                 curJob={curJob}
                 getDirectDownloadLink={getDirectDownloadLink}
                 truncateString={truncateString}
                 serverURL={serverURL}
+                downloadAllFiles={downloadAllFiles}
               />
             </>}
 
@@ -2384,6 +2423,7 @@ function App() {
                   getDirectDownloadLink={getDirectDownloadLink}
                   truncateString={truncateString}
                   serverURL={serverURL}
+                  downloadAllFiles={downloadAllFiles}
                 />
               </div>
             </div>}
@@ -2441,6 +2481,7 @@ function App() {
                 getDirectDownloadLink={getDirectDownloadLink}
                 truncateString={truncateString}
                 serverURL={serverURL}
+                downloadAllFiles={downloadAllFiles = {}}
               />
             </div>}
 
@@ -2545,7 +2586,7 @@ function App() {
               createHistoryRow={createHistoryRow} selectedPrinter={selectedPrinter} isAdmin={isAdmin} formatDate={formatDate}
               historyPeriod={historyPeriod} setHistoryPeriod={setHistoryPeriod} historyPagesShowing={historyPagesShowing}
               setHistoryPagesShowing={setHistoryPagesShowing} historySort={historySort} setHistorySort={setHistorySort}
-              sortAscending={sortAscending} setSortAscending={setSortAscending} pageSize={generalSettings.pageSize}></PrintHistoryTable>
+              sortAscending={sortAscending} setSortAscending={setSortAscending} pageSize={generalSettings.pageSize} decSeason={decSeason}></PrintHistoryTable>
 
 
             <div className='printer-header-wrapper' style={{ width: `calc((100% - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
@@ -2603,7 +2644,7 @@ function App() {
 }
 
 
-function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, truncateString, serverURL }) {
+function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, truncateString, serverURL, downloadAllFiles }) {
   return (
     <>
       {showSTLPreviews ? (
@@ -2627,22 +2668,35 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
           </div>
         </ErrorBoundary>
       ) : (
-        <>
+        <div className='btn-group'>
           {curJob && curJob.files.split(/[,;]/).map((link, index) => {
             if (link.trim().startsWith('https://')) {
               let partname = curJob.partNames?.split(/[,;]/)[index]
 
               return (
-                <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
-                  <img className='status-icon ' src={`images/download.svg`}></img> {partname ? truncateString(partname.trim(), 24) : 'File ' + index}
-                </button>
+                <>
+                  <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
+                    <img className='status-icon ' src={`images/download.svg`}></img> {partname ? truncateString(partname.trim(), 24) : 'File ' + index}
+                  </button> <br />
+                </>
               );
             } else {
               return null;
             }
           })}
-        </>
+        </div>
       )}
+      {
+        curJob.files.startsWith('https://') && 
+        <button className='printer-btn' style={{backgroundColor:"white"}} onClick={() => {
+        downloadAllFiles(curJob.files.split(/[,;]/).map((file) => {
+          return getDirectDownloadLink(file.trim())
+        }))
+      }}> 
+      <img className='status-icon ' src={`images/download.svg`}/> Download All Files
+       </button>
+      }
+      
     </>
   );
 }
@@ -2654,7 +2708,7 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
 function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySearch, setHistorySearch,
   createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod, setHistoryPeriod,
   historyPagesShowing, setHistoryPagesShowing, historySort, setHistorySort, sortAscending, setSortAscending,
-  pageSize }) {
+  pageSize, decSeason }) {
 
 
   function leftArrowClick(historyPeriod) {
@@ -2674,7 +2728,7 @@ function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySe
   }
 
   let isComprehensive = !selectedPrinter;
-  let seasonText = historyPeriod.seasonEnc === 0 ? 'Spring' : historyPeriod.seasonEnc === 1 ? 'Summer' : 'Fall';
+  let seasonText = decSeason(historyPeriod.seasonEnc);
   let title = seasonText + ' ' + historyPeriod.year + ' ';
   title += selectedPrinter ? 'History' : 'Full History';
   return (<>
@@ -2739,7 +2793,7 @@ function PrintHistoryTable({ filteredHistoryList, historySearch, handleHistorySe
               (filteredHistoryList.length > (historyPagesShowing * pageSize)) &&
               <tr className="history-row completed">
                 {Array.from({ length: (selectedPrinter ? (isAdmin ? 13 : 11) : (isAdmin ? 14 : 12)) }, (_, i) => (
-                  <td key={i}><button className="history-page-btn"  onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
+                  <td key={i}><button className="history-page-btn" onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
                 ))}
               </tr>
             }
