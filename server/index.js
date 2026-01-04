@@ -24,11 +24,11 @@ const pool = mysql.createPool({
 })
 
 // printables filtering
-const {blacklist, whitelist} = require('./scraperFilter.json');
+const { blacklist, whitelist } = require('./scraperFilter.json');
 function buildWordRegex(words) {
-  words = words.concat(words.map(w => w+'s'));
-  const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  return new RegExp(`(?:^|[^a-zA-Z0-9])(${escaped.join("|")})(?=$|[^a-zA-Z0-9])`, "i");
+    words = words.concat(words.map(w => w + 's'));
+    const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return new RegExp(`(?:^|[^a-zA-Z0-9])(${escaped.join("|")})(?=$|[^a-zA-Z0-9])`, "i");
 }
 
 const blacklistRegex = buildWordRegex(blacklist);
@@ -433,18 +433,18 @@ async function getDownloadLinks(browser, printLinks) {
 
 // determine if a string should be blocked or not using the whitelist and blacklist
 function isBlocked(text) {
-  const lower = text.toLowerCase();
-  // Check for blacklist matches
-  if (!lower.match(blacklistRegex)) return false;
+    const lower = text.toLowerCase();
+    // Check for blacklist matches
+    if (!lower.match(blacklistRegex)) return false;
 
-  // Allow blacklisted words if there are also whitelisted words
-  if (lower.match(whitelistRegex)) {
-    return false;
-  }
+    // Allow blacklisted words if there are also whitelisted words
+    if (lower.match(whitelistRegex)) {
+        return false;
+    }
 
-//   console.log('blocked scraped print: ', text)
-  // Block strings that have blacklisted words only
-  return true;
+    //   console.log('blocked scraped print: ', text)
+    // Block strings that have blacklisted words only
+    return true;
 }
 
 app.get('/api/getDailyPrint', async (req, res) => {
@@ -455,7 +455,7 @@ app.get('/api/getDailyPrint', async (req, res) => {
             const printLinks = await getPrintLinks(browser);
 
             // filter the scraped prints based on the blacklist and whitelist globals
-            return printLinks.filter(p=>!isBlocked(p.name));;
+            return printLinks.filter(p => !isBlocked(p.name));;
         } catch (e) {
             console.error('Error in getDailyPrint: ', e);
             return [];
@@ -470,7 +470,7 @@ app.get('/api/getDailyPrint', async (req, res) => {
 
 app.get('/api/get', (req, res) => {
     const sqlSelectPrinters = req.query.query;//"SELECT * FROM printer";
-    if(!(sqlSelectPrinters && (typeof(sqlSelectPrinters) == 'string'))) { 
+    if (!(sqlSelectPrinters && (typeof (sqlSelectPrinters) == 'string'))) {
         console.error('ERROR in /api/get: invalid query');
         return;
     }
@@ -800,10 +800,10 @@ app.get('/api/getHistory', (req, res) => {
         //transaction with no isolation level: reads only (transaction ensures consistency)
         connection.beginTransaction(function (err) {
             const queryParams = [dateRangeString.startDate, dateRangeString.endDate]
-            if(value !== 'undefined') {
+            if (value !== 'undefined') {
                 queryParams.push(value);
             }
-            
+
             connection.query(sqlSelectHistory, queryParams, (errHistory, resultHistory) => {
                 if (errHistory) {
                     console.error(errHistory);
@@ -851,10 +851,10 @@ app.get('/api/getFailureCount', (req, res) => {
 app.post('/api/insert', (req, res) => {
     const b = req.body;
     const dateTime = new Date(b.timeStarted);
-    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," + 
-        " status, name, supervisorName, notes, partNames, email, paid, " + 
-        " color, layerHeight, selfPostProcess, detailedPostProcess, cureTime"+
-        ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," +
+        " status, name, supervisorName, notes, partNames, email, paid, " +
+        " color, layerHeight, selfPostProcess, detailedPostProcess, cureTime, material" +
+        ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -862,11 +862,11 @@ app.post('/api/insert', (req, res) => {
             res.status(500).send("Error accessing the database");
             return;
         }
-        
+
         connection.beginTransaction(function (err) {
             connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
-            b.notes, b.partNames, b.email, b.paid, b.color, b.layerHeight, b.selfPostProcess, 
-            b.detailedPostProcess, b.cureTime], (err, result) => {
+            b.notes, b.partNames, b.email, b.paid, b.color, b.layerHeight, b.selfPostProcess,
+            b.detailedPostProcess, b.cureTime, b.material], (err, result) => {
                 if (err) {
                     console.log(err);
                     res.status(500).send("Error inserting printjob");
@@ -879,11 +879,12 @@ app.post('/api/insert', (req, res) => {
         });
     });
 
-    // Now save the new filament amount to the file 
-    // TODO: only subtract filament if the job's filament type is PLA.
-    let localData = loadLocalData()
-    let newStock = Math.max(0, localData?.filamentStock - b.usage_g)
-    saveLocalData({ ...localData, filamentStock: newStock })
+    // Now save the new filament amount to the file if the material is PLA
+    if (b.material.toLowerCase().trim() === 'pla') {
+        let localData = loadLocalData()
+        let newStock = Math.max(0, localData?.filamentStock - b.usage_g)
+        saveLocalData({ ...localData, filamentStock: newStock })
+    }
 
     // send an email if we just crossed under the threshold
     if ((localData.filamentStock >= localData.filamentThreshold) && (newStock < localData.filamentThreshold)) {
@@ -945,7 +946,7 @@ app.delete('/api/cancelPrint/:printerName/:usage', (req, res) => {
                     connection.release();
                     return;
                 }
-                
+
                 // Refund the filament usage
                 let localData = loadLocalData();
                 let newStock = Math.max(0, parseInt(localData?.filamentStock) + parseInt(usageRefund));

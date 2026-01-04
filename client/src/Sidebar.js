@@ -12,7 +12,7 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
     const getPrinterInfo = (printer) => {
         switch (printerSort) {
             case "Printer Model": return printer.model
-            case "Filament Type": return printer.filamentType
+            // case "Filament Type": return printer.filamentType
             default: return printer.status
         }
     }

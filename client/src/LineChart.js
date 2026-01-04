@@ -93,7 +93,7 @@ const LineChart = ({ argsObject, index }) => {
                             label: 'Pay-per-gram Filament',
                             data: filledPpgData,
                             fill: true,
-                            backgroundColor: 'rgba(75,192,192,0.1)',
+                            backgroundColor: 'rgba(75,192,75,0.1)',
                             borderColor: 'rgba(87, 223, 102, 1)',
                             tension: 0.05,
                         }],

@@ -11,6 +11,7 @@ import searchIcon from '/images/search.svg';
 import sortIcon from '/images/sort.svg';
 import loadingGif from '/images/loading.gif';
 import xIcon from '/images/x.png';
+import noSignalIcon from '/images/no_signal.svg';
 
 import TrendingPrints from './TrendingPrints';
 import StlPreview from './StlPreview';
@@ -41,7 +42,8 @@ function App() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [supervisor, setSupervisor] = useState('');
-  const [material, setMaterial] = useState('');
+  const [jobMaterial, setJobMaterial] = useState('');
+
   const [files, setFiles] = useState('');
   const [filesPlaceholder, setFilesPlaceholder] = useState('Google Drive Links');
 
@@ -74,6 +76,7 @@ function App() {
 
   const [printerNotes, setPrinterNotes] = useState(null);
   const [printerSort, setPrinterSort] = useState('Availability');
+  const [tempPrinterMaterial, setTempPrinterMaterial] = useState('');
 
   const [messageQueue, setMessageQueue] = useState([]);
 
@@ -266,7 +269,7 @@ function App() {
     if (selectedPrinter) {
       // Calculate the new index after the state has updated
       const curIndex = printerList.findIndex(printer => printer.printerName === selectedPrinter.printerName);
-      // Scroll to the printer
+      // Smooth scroll to the printer
       if (curIndex !== -1 && printerRefs.current[curIndex]) {
         printerRefs.current[curIndex].current?.scrollIntoView({
           behavior: 'smooth',
@@ -278,18 +281,19 @@ function App() {
   }, [selectedPrinter, printerList]); // Run effect when selectedPrinter or printerList changes
 
   useEffect(() => {
-    if (generalSettings?.debugMode) console.log('fetching history...')
+    if (generalSettings?.debugMode) console.log('fetching hiFstory...')
     refreshHistory();
   }, [historyPeriod]);
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
     if (generalSettings?.debugMode) {
-      console.log('updating printer screen')
+      console.log('## Updating printer screen ##')
       console.log('selectedPrinter: ', selectedPrinter)
       console.log('printerList: ', printerList)
-      console.log('menuOpen: ', menuOpen)
     }
+    // reset the tempPrinterMaterial
+    setTempPrinterMaterial(selectedPrinter?.material ?? '')
 
     // Update the history period with the current date and refresh the history table
     setHistoryPeriod(getHistoryPeriod());
@@ -353,7 +357,7 @@ function App() {
             // let newDailyPrint = []; 
             // for (let fileno in dailyPrintTemp) {
             //   let fileName = dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('/') + 1).trim();
-            //   if(generalSettings?.debugMode)  console.log('trending print file name: ', fileName);
+            //   if (generalSettings?.debugMode)  console.log('trending print file name: ', fileName);
             //   newDailyPrint.push({
             //     "name": fileName,
             //     "file": dailyPrintTemp[fileno]
@@ -380,14 +384,20 @@ function App() {
         let currentDate = new Date(startDate);
 
         while (currentDate <= new Date(endDate)) {
-          dateArray.push(formatDate(currentDate.toISOString(), false));
+          // const yyyy = currentDate.getFullYear();
+          // const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+          // const dd = String(currentDate.getDate()).padStart(2, '0');
+
+          // dateArray.push(`${yyyy}-${mm}-${dd}`);
+
+          dateArray.push(formatDate(currentDate.toISOString(), false))
           currentDate.setDate(currentDate.getDate() + 1);
         }
 
         return dateArray;
       };
 
-      //if(generalSettings?.debugMode)  console.log(`### loading line chart ${index}...`)
+      //if (generalSettings?.debugMode)  console.log(`### loading line chart ${index}...`)
       try {
         Axios.get(`${serverURL}/api/getfreq`).then((response) => {
           if (generalSettings?.debugMode) console.log("frequencies: ", response.data);
@@ -418,6 +428,7 @@ function App() {
 
                     const startDate = dailyData.length > 0 ? dailyData[0].date : null;
                     const endDate = dailyData.length > 0 ? formatDate(new Date().toISOString(), false) : null; //dailyData[dailyData.length - 1].date
+
                     if (startDate && endDate) {
                       const allDates = generateDateRange(startDate, endDate);
 
@@ -503,10 +514,15 @@ function App() {
     };
   })
 
+  const materialAllowed = (printer, material) => {
+    return printer?.material?.trim()?.toLowerCase()?.includes(material?.trim()?.toLowerCase());
+  }
+
   const toggleSelfPostProcess = () => {
     if (generalSettings?.debugMode) console.log('setting selfPostProcess to ', !selfPostProcess);
     setSelfPostProcess(!selfPostProcess);
   }
+
   const toggleDetailedPostProcess = () => {
     if (generalSettings?.debugMode) console.log('setting detailedPostProcess to ', !detailedPostProcess);
     setDetailedPostProcess(!detailedPostProcess);
@@ -823,27 +839,29 @@ function App() {
     if (generalSettings?.debugMode) console.log('now sorting printers by ' + newSort);
   }
 
-  const handleMaterial = (e) => {
-    const newMaterial = e.target.value;
-    setMaterial(newMaterial);
-    if (generalSettings?.debugMode) console.log('updated material to ' + newMaterial);
+  const handleJobMaterial = (e) => {
+    const newJobMaterial = e.target.value;
+    setJobMaterial(newJobMaterial);
+    if (generalSettings?.debugMode) console.log('updated job material to ' + newJobMaterial);
   }
-
   const handlePrinterMaterial = (e) => {
-    const newMaterial = e.target.value;
-    console.log(newMaterial)
+    const newPrinterMaterial = e.target.value;
+    setTempPrinterMaterial(newPrinterMaterial);
+  }
+  const savePrinterMaterial = (newPrinterMaterial) => {
 
-    updateTable("printer", "material", selectedPrinter.printerName, newMaterial, () => {
-      selectedPrinter.material = newMaterial;
+    updateTable("printer", "material", selectedPrinter.printerName, newPrinterMaterial, () => {
+      selectedPrinter.material = newPrinterMaterial;
       const updatedPrinterList = printerList.map(printer => {
         if (printer.printerName === selectedPrinter.printerName) {
-          return { ...printer, material: newMaterial };
+          return { ...printer, material: newPrinterMaterial };
         }
         return printer;
       });
       setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
     })
-    if (generalSettings?.debugMode) console.log('changed material type to ' + newMaterial);
+    showMsgForDuration('Successfully updated printer material', 'msg');
+    if (generalSettings?.debugMode) console.log('changed printer material type to ' + newPrinterMaterial);
   }
 
   const handlePrinterNotes = (e) => {
@@ -882,7 +900,7 @@ function App() {
     setFiles('');
     setNotes('');
     setPartNames('');
-    setMaterial('');
+    setJobMaterial('');
     setColor('');
     setLayerHeight('');
     setDetailedPostProcess(false);
@@ -1062,7 +1080,7 @@ function App() {
     if ((selectedPrinter.status?.slice(-4) === 'busy') && curJob) {
       return ("This printer is busy printing: " + ((!curJob.partNames) ? 'No parts specified.' : truncateString(curJob.partNames, 80)))
     } else if (selectedPrinter.status === 'available') {
-      return ("This printer is available!")
+      return ("This printer is available.")
     } else if (selectedPrinter.status === 'broken') {
       return ("This printer is broken... (0_0)")
     } else if (selectedPrinter.status === 'testing') {
@@ -1070,16 +1088,17 @@ function App() {
     } else if ((selectedPrinter.status === 'admin') && !isAdmin) {
       return ("This printer is only available for admins. Please contact an officer or lab advisor to use it.")
     } else if ((selectedPrinter.status === 'admin') && isAdmin) {
-      return ("This printer is available for you to print on!")
+      return ("This printer is available for admins to print on.")
     } else {
       return ("")
     }
   }
 
   const isSpecialty = (printer) => {
-    return !(printer?.material?.includes('PLA') ||
-        printer?.material?.includes('PETG') ||
-        printer?.material?.includes('TPU'));
+    return !(printer?.material?.includes('PLA'));
+    //  ||
+    //   printer?.material?.includes('PETG') ||
+    //   printer?.material?.includes('TPU'));
   }
 
   const checkPswd = (given, actual) => {
@@ -1244,48 +1263,48 @@ function App() {
     });
   };
 
-  const releaseFromQueue = () => {
-    // get the latest queued print, and if it doesnt exist, show an error popup
-    let queue = historyList.filter(item => item.status === 'queued')
-    let toRelease = queue[queue.length - 1]
-    // edge case handling
-    if ((queue.length <= 0) || !toRelease) {
-      showMsgForDuration('No jobs in queue! Print not started.', 'err');
-      return;
-    }
-    if (!((selectedPrinter.status === 'available') || (selectedPrinter.status === 'admin'))) {
-      showMsgForDuration('Printer is busy! Finish current job first.', 'err');
-      return;
-    }
+  // const releaseFromQueue = () => {
+  //   // get the latest queued print, and if it doesnt exist, show an error popup
+  //   let queue = historyList.filter(item => item.status === 'queued')
+  //   let toRelease = queue[queue.length - 1]
+  //   // edge case handling
+  //   if ((queue.length <= 0) || !toRelease) {
+  //     showMsgForDuration('No jobs in queue! Print not started.', 'err');
+  //     return;
+  //   }
+  //   if (!((selectedPrinter.status === 'available') || (selectedPrinter.status === 'admin'))) {
+  //     showMsgForDuration('Printer is busy! Finish current job first.', 'err');
+  //     return;
+  //   }
 
-    // set the printJob status to statusArg
-    Axios.put(`${serverURL}/api/update`, {
-      table: "queue",
-      column: "status",
-      id: toRelease.jobID,
-      val: 'active'
-    }).then(() => {
-      // add the jobID to the printer
-      updateTable("printer", "currentJob", selectedPrinter.printerName, toRelease.jobID, () => {
-        //update the printer status
-        updateTable("printer", "status", selectedPrinter.printerName, openToBusy(selectedPrinter.status), () => {
-          const updatedPrinterList = printerList.map(printer => {
-            if (printer.printerName === selectedPrinter.printerName) {
-              let newPrinter = {
-                ...printer, status: openToBusy(selectedPrinter.status),
-                currentJob: toRelease.jobID
-              }
-              selectPrinter(newPrinter)
-              return newPrinter;
-            }
-            return printer;
-          });
-          setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
-          showMsgForDuration('Resin print successfully started!', 'msg')
-        })
-      });
-    });
-  }
+  //   // set the printJob status to statusArg
+  //   Axios.put(`${serverURL}/api/update`, {
+  //     table: "queue",
+  //     column: "status",
+  //     id: toRelease.jobID,
+  //     val: 'active'
+  //   }).then(() => {
+  //     // add the jobID to the printer
+  //     updateTable("printer", "currentJob", selectedPrinter.printerName, toRelease.jobID, () => {
+  //       //update the printer status
+  //       updateTable("printer", "status", selectedPrinter.printerName, openToBusy(selectedPrinter.status), () => {
+  //         const updatedPrinterList = printerList.map(printer => {
+  //           if (printer.printerName === selectedPrinter.printerName) {
+  //             let newPrinter = {
+  //               ...printer, status: openToBusy(selectedPrinter.status),
+  //               currentJob: toRelease.jobID
+  //             }
+  //             selectPrinter(newPrinter)
+  //             return newPrinter;
+  //           }
+  //           return printer;
+  //         });
+  //         setPrinterList(sortPrinterList(updatedPrinterList, printerSort));
+  //         showMsgForDuration('Resin print successfully started!', 'msg')
+  //       })
+  //     });
+  //   });
+  // }
 
   const handleStartPrintClick = (queue = false) => {
     let matchingJob = ''
@@ -1294,7 +1313,7 @@ function App() {
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' &&
-        selectedPrinter.status !== 'testing' && !selectedPrinter.material.includes('Resin')) {
+        selectedPrinter.status !== 'testing' && !materialAllowed(selectedPrinter, 'Resin')) {
         showMsgForDuration("This printer is not available!", 'err');
       } else if (selectedPrinter.status === 'admin' && !isAdmin) {
         showMsgForDuration("This printer is not available!", 'err');
@@ -1343,6 +1362,12 @@ function App() {
 
   const buildFormJob = () => {
     let isMember = memberList.map(m => m.email).includes(email)
+    let paid = ''
+    if (jobMaterial.toLowerCase() != 'pla') {
+      paid = personalFilament ? 'personal' : 'per-gram'
+    } else {
+      paid = personalFilament ? 'personal' : isMember ? 'club' : 'per-gram'
+    }
 
     return ({
       files: truncateString(files, 512),
@@ -1354,8 +1379,9 @@ function App() {
       supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
       notes: truncateString(notes, 256),
       partNames: truncateString(partNames, 256),
+      material: truncateString(jobMaterial, 32),
       email: truncateString(email, 64),
-      paid: personalFilament ? 'personal' : isMember ? 'club' : 'per-gram',
+      paid: paid,
       color: truncateString(color, 64),
       layerHeight: truncateString(layerHeight, 64),
       cureTime: truncateString(cureTime, 64),
@@ -1598,7 +1624,7 @@ function App() {
     try {
 
       let specialFilament = isSpecialty(selectedPrinter)
-      
+
 
       const url = specialFilament ?
         organizerLinks.specialtyAppScriptURL :
@@ -1643,16 +1669,21 @@ function App() {
 
             headerIndexMap[key] = matchingCol
           })
-          console.log('headerIndexMap: ', headerIndexMap)
+          if (generalSettings?.debugMode) console.log('headerIndexMap: ', headerIndexMap)
 
 
           let formattedData = Object.values(data).map((job) => {
+            // clean the job's material value
+            let material = job[headerIndexMap['material']] ?? 'PLA'
+            if (material.includes('Resin')) material = 'Resin'
+            material = material.trim()
+
             return ({
               timestamp: job[headerIndexMap['timestamp']],
               name: job[headerIndexMap['name']],
               email: job[headerIndexMap['email']],
               supervisorName: job[headerIndexMap['supervisorName']],
-              material: job[headerIndexMap['material']] ?? 'PLA',
+              material: material,
               files: job[headerIndexMap['files']],
               partNames: job[headerIndexMap['partNames']],
               notes: job[headerIndexMap['notes']],
@@ -1664,7 +1695,7 @@ function App() {
             })
           })
 
-          console.log('formattedData:', formattedData)
+          if (generalSettings?.debugMode) console.log('formattedData:', formattedData)
           setFormData(formattedData.reverse())
 
         } else {
@@ -1725,21 +1756,24 @@ function App() {
   const fillFormData = (index) => {
     // fill the form's fields with the data that was clicked
     let job = formData[index]
+
     if (!job) {
       showMsgForDuration('Error: Form data not found', 'err', popupTime);
-    }
-    setName(job.name);
-    setEmail(job.email);
-    setSupervisor(job.supervisorName)
-    setFiles(job.files);
-    setNotes(job.notes);
-    setPartNames(job.partNames);
+    } else {
+      setName(job.name);
+      setEmail(job.email);
+      setSupervisor(job.supervisorName)
+      setFiles(job.files);
+      setNotes(job.notes);
+      setPartNames(job.partNames);
+      setJobMaterial(job.material);
 
-    setColor(job.color);
-    setLayerHeight(job.layerHeight);
-    setSelfPostProcess(job.selfPostProcess);
-    setDetailedPostProcess(job.detailedPostProcess);
-    setCureTime(job.cureTime);
+      setColor(job.color);
+      setLayerHeight(job.layerHeight);
+      setSelfPostProcess(job.selfPostProcess);
+      setDetailedPostProcess(job.detailedPostProcess);
+      setCureTime(job.cureTime);
+    }
 
     //clear the form data table
     setFormData(null);
@@ -1927,9 +1961,9 @@ function App() {
     let output = ''
     if (!time) {
       output = `${map.month}/${map.day}/${map.year}`;
+    } else {
+      output = `${map.month}/${map.day}/${map.year} ${map.hour}:${map.minute} ${map.dayPeriod}`;
     }
-    output = `${map.month}/${map.day}/${map.year} ${map.hour}:${map.minute} ${map.dayPeriod}`;
-    // console.log('output: ', output)
     return output;
   }
 
@@ -2039,8 +2073,9 @@ function App() {
     handlesupervisor, partNames, handlePartNames, handleUpload, handleFilamentUsage, selectedPrinter,
     filamentUsage, files, notes, handlenotes, fillFormData, supervisor, handlefiles, formDataLoading,
     filesPlaceholder, memberList, personalFilament, color, handleColor, layerHeight, handleLayerHeight, cureTime,
-    handleCureTime, filamentSettings, material, handleMaterial
+    handleCureTime, filamentSettings, jobMaterial, handleJobMaterial, isSpecialty, materialAllowed
   }
+
   const settingsArgs = {
     adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackSubject, feedbackText, handleFeedbackSubjectChange,
     handleFeedbackTextChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
@@ -2074,7 +2109,10 @@ function App() {
           {(loading === 'error') && <div>
             <h1><b>Server Connection Failed</b></h1>
             <h3 style={{ 'fontSize': '22px' }}>Please consider restarting the PC if the issue persists.</h3><br />
-            <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
+            <img src={noSignalIcon} alt="error" style={{
+              filter: 'invert(16%) sepia(96%) saturate(7475%) hue-rotate(358deg) brightness(103%) contrast(114%)', // Recolor svg to red
+              width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px"
+            }} />
           </div>}
           {loading === 'done' &&
             <div>
@@ -2227,19 +2265,20 @@ function App() {
             <div style={{ height: "35px" }}></div>
             <div className='stat-msg' style={{ backgroundColor: getStatMsgColor(), display: 'flex', flexWrap: 'nowrap', }}>
               <img src={`/images/printers/${selectedPrinter.model}.jpg`} style={{
-                width: '110px', height: '110px', flex: '0 0 auto', border: '1px solid black', borderRadius: '5px', objectFit: 'contain', objectPosition: 'center', backgroundColor: '#fff'
+                width: '110px', height: '110px', flex: '0 0 auto', border: '1px solid #000000', borderRadius: '5px', objectFit: 'contain', objectPosition: 'center', backgroundColor: '#fff'
               }} onError={(e) => {
                 e.currentTarget.onerror = null;
                 e.currentTarget.src = '/images/printers/missing.jpg';
               }}></img>
               <div style={{ flex: '1 1 auto', minWidth: 0, paddingLeft: '10px' }}>
                 {getStatMsg()}
-                <hr style={{ borderTop: '1px solid black', width: '100%' }} />
-                {(isAdmin ? <div> {"Material: "}
-                  <input type="text" value={selectedPrinter.material} onChange={handlePrinterMaterial}></input>
-                  </div>
+                <hr style={{ borderTop: '1px solid #00000005', width: '100%' }} />
+                {(isAdmin ? <div> {"Allowed materials: "}
+                  <input style={{ fontSize: 'large', width: '250px' }} type="text" value={tempPrinterMaterial} onChange={handlePrinterMaterial} placeHolder="material1, material2, ..."></input>
+                  <button className='file-upload' style={{ fontSize: 'large' }} onClick={() => { savePrinterMaterial(tempPrinterMaterial) }}>Save</button>
+                </div>
                   :
-                  "Material: " + selectedPrinter.material)
+                  "Allowed materials: " + selectedPrinter.material)
                 }
               </div>
             </div>
@@ -2250,40 +2289,27 @@ function App() {
                 <div className='stat-msg info' style={{ backgroundColor: 'white', textAlign: 'left', flexDirection: 'column' }}>
                   {
                     curJob.name === curJob.supervisorName ? <>
-                      <span>&nbsp;<b>Supervisor Name:</b> {curJob.name}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Started:</b> {formatDate(curJob.timeStarted, true)}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Filament Used:</b> {curJob.usage_g}g</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
+                      <div><b>Supervisor Name:</b> {curJob.name}</div> <hr />
+                      <div><b>Started:</b> {formatDate(curJob.timeStarted, true)}</div><hr />
+                      <div><b>Filament Used:</b> {curJob.usage_g}g</div><hr />
+                      <div><b>Notes:</b> {curJob.notes}</div>
                     </> : <>
-                      <span>&nbsp;<b>Name:</b> {curJob.name}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Email:</b> {curJob.email}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Supervisor:</b> {curJob.supervisorName}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Started:</b> {formatDate(curJob.timeStarted, true)}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Filament Used:</b> {curJob.usage_g}g</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Notes:</b> {curJob.notes}</span>
+                      <div><b>Name:</b> {curJob.name}</div><hr />
+                      <div><b>Email:</b> {curJob.email}</div><hr />
+                      <div><b>Supervisor:</b> {curJob.supervisorName}</div><hr />
+                      <div><b>Started:</b> {formatDate(curJob.timeStarted, true)}</div><hr />
+                      <div><b>Filament Used:</b> {curJob.usage_g}g</div><hr />
+                      <div><b>Notes:</b> {curJob.notes}</div>
                     </>
                   }
                   {
                     isSpecialty(selectedPrinter) && <>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Color:</b> {curJob.color ?? 'N/A'}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Layer Height:</b> {curJob.layerHeight ?? 'N/A'}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Cure Time:</b> {curJob.cureTime ?? 'N/A'}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Self Post-Process:</b> {curJob.selfPostProcess ? 'Yes' : 'No' ?? 'N/A'}</span>
-                      <hr style={{ borderTop: '1px solid lightgray', width: '100%', marginTop: '5px' }} />
-                      <span>&nbsp;<b>Detailed Post-Process:</b> {curJob.detailedPostProcess ? 'Yes' : 'No' ?? 'N/A'}</span>
+                      <hr /><hr />
+                      <div><b>Color:</b> {curJob.color ?? 'N/A'}</div><hr />
+                      <div><b>Layer Height:</b> {curJob.layerHeight ?? 'N/A'}</div><hr />
+                      <div><b>Cure Time:</b> {curJob.cureTime ?? 'N/A'}</div><hr />
+                      <div><b>Self Post-Process:</b> {curJob.selfPostProcess ? 'Yes' : 'No' ?? 'N/A'}</div><hr />
+                      <div><b>Detailed Post-Process:</b> {curJob.detailedPostProcess ? 'Yes' : 'No' ?? 'N/A'}</div>
                     </>
                   }
                 </div>
@@ -2312,7 +2338,7 @@ function App() {
                 }}>
                   <option value="" disabled hidden>Move Print</option>
                   {printerList.map((printer) => {
-                    if ((printer.material.includes(curJob.material) && (curJob.material !== ''))   // The current job's material must be allowed for the new printer
+                    if ((printer.material.includes(curJob?.material) && (curJob?.material !== ''))   // The current job's material must be allowed for the new printer
                       && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {     // AND the printer must be available
                       return <>
                         <option value={printer.printerName}>{printer.printerName}</option>
@@ -2397,7 +2423,7 @@ function App() {
                 <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
 
                 {/* Checkbox to toggle personal filament */}
-                {(!selectedPrinter.material.includes('Resin')) &&
+                {(!materialAllowed(selectedPrinter, 'Resin')) &&
                   <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
                 }
 
@@ -2444,7 +2470,7 @@ function App() {
               <FormCheckbox activeCheckVal={supervisorPrint} handleChangeFunc={handleSupervisorPrintChange} text={"Supervisor Print"}></FormCheckbox>
 
               {/* Checkbox to toggle personal filament */}
-              {(!selectedPrinter.material.includes('Resin')) &&
+              {(!materialAllowed(selectedPrinter, 'Resin')) &&
                 <FormCheckbox activeCheckVal={personalFilament} handleChangeFunc={handlePersonalFilamentChange} text={"Personal Filament"}></FormCheckbox>
               }
 
@@ -2515,8 +2541,8 @@ function App() {
 
 
             {/* End printer status pages */}
-
-            {selectedPrinter && (isAdmin || (selectedPrinter.status === 'broken') || (selectedPrinter.status === 'testing')) && (printerNotes === null) && <div>
+            {/* && (isAdmin || (selectedPrinter.status === 'broken') || (selectedPrinter.status === 'testing')) */}
+            {selectedPrinter && (printerNotes === null) && <div>
               <div style={{ height: '20px' }}></div>
 
               <div className='notes-msg'>
@@ -2682,11 +2708,11 @@ function StlPreviewSection({ showSTLPreviews, curJob, getDirectDownloadLink, tru
               let partname = curJob.partNames?.split(/[,;]/)[index]
 
               return (
-                <>
-                  <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
+                <div key={index}>
+                  <button className="printer-btn" onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
                     <img className='status-icon ' src={`images/download.svg`}></img> {partname ? truncateString(partname.trim(), 24) : 'File ' + index}
                   </button>
-                </>
+                </div>
               );
             } else {
               return null;
