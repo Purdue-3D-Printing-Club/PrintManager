@@ -610,7 +610,7 @@ app.get('/api/getfreq', (req, res) => {
     GROUP BY printerName 
     HAVING printerName IS NOT NULL
     ORDER BY cnt DESC 
-    LIMIT 10)
+    LIMIT 6)
   
     UNION ALL
   
@@ -625,7 +625,7 @@ app.get('/api/getfreq', (req, res) => {
         GROUP BY printerName 
         HAVING printerName IS NOT NULL
         ORDER BY COUNT(*) DESC 
-        LIMIT 10) AS top_names
+        LIMIT 6) AS top_names
     ))
   `;
 
@@ -661,7 +661,7 @@ app.get('/api/getsupervisordata', (req, res) => {
     GROUP BY supervisorName 
     HAVING supervisorName IS NOT NULL
     ORDER BY cnt DESC 
-    LIMIT 10)
+    LIMIT 6)
   
     UNION ALL
   
@@ -676,7 +676,7 @@ app.get('/api/getsupervisordata', (req, res) => {
         GROUP BY supervisorName 
         HAVING supervisorName IS NOT NULL
         ORDER BY COUNT(*) DESC 
-        LIMIT 10) AS top_names
+        LIMIT 6) AS top_names
     ))
   `;
     pool.getConnection((err, connection) => {
@@ -710,7 +710,7 @@ app.get('/api/getfilamentdata', (req, res) => {
   WHERE name IS NOT NULL 
   GROUP BY name 
   ORDER BY sum DESC 
-  LIMIT 10)
+  LIMIT 6)
 
   UNION ALL
 
@@ -725,7 +725,7 @@ app.get('/api/getfilamentdata', (req, res) => {
       WHERE name IS NOT NULL 
       GROUP BY name 
       ORDER BY SUM(usage_g) DESC 
-      LIMIT 10
+      LIMIT 6
     ) AS top_names
   ))
 `;

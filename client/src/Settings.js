@@ -295,8 +295,8 @@ function Settings({ settingsArgs }) {
     })
   }
 
-  const toggleSTLPreviews = () => {
-    updateGeneralSettings('showSTLPreviews', !generalSettings.showSTLPreviews);
+  const toggleFilePreviews = () => {
+    updateGeneralSettings('showFilePreviews', !generalSettings.showFilePreviews);
   }
   const toggleDebugMode = () => {
     updateGeneralSettings('debugMode', !generalSettings.debugMode);
@@ -363,7 +363,7 @@ function Settings({ settingsArgs }) {
               &nbsp; <button onClick={(e) => { updateGeneralSettings('pageSize', tempLocalData?.generalSettings?.pageSize) }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
             </span><br />
 
-            <FormCheckbox activeCheckVal={generalSettings?.showSTLPreviews} handleChangeFunc={toggleSTLPreviews} text={"STL Previews"}></FormCheckbox>
+            <FormCheckbox activeCheckVal={generalSettings?.showFilePreviews} handleChangeFunc={toggleFilePreviews} text={"File Previews"}></FormCheckbox>
             <FormCheckbox activeCheckVal={generalSettings?.debugMode} handleChangeFunc={toggleDebugMode} text={"Debug Mode"}></FormCheckbox>
             <br/>
             
