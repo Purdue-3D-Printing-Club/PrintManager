@@ -67,6 +67,7 @@ function App() {
   const [memberList, setMemberList] = useState([]);
 
   const printerRefs = useRef([]);
+  const homeRef = useRef(null);
 
   const [printerNotes, setPrinterNotes] = useState(null);
   const [printerSort, setPrinterSort] = useState('Availability');
@@ -257,6 +258,11 @@ function App() {
           block: 'nearest'
         });
       }
+    } else {
+      homeRef.current.scrollIntoView({
+        behavior: 'smooth',
+          block: 'nearest'
+      });
     }
     setHistoryPagesShowing(1);
   }, [selectedPrinter, printerList]); // Run effect when selectedPrinter or printerList changes
@@ -1006,17 +1012,26 @@ function App() {
   }
 
   const movePrinter = (direction) => {
-    if (generalSettings?.debugMode) console.log('moving printer by arrow key...')
+    if (generalSettings?.debugMode) console.log('moving printer by arrow key: ', direction)
     if (generalSettings?.debugMode) console.log(selectedPrinter)
     if (selectedPrinter === null) {
-      handlePrinterClick(0);
+      if (direction === -1) {
+        handlePrinterClick(printerList.length - 1);
+      } else {
+        handlePrinterClick(0);
+      }
       return;
     }
+
     try {
       let curIndex = printerList.findIndex(printer => printer.printerName === selectedPrinter.printerName);
-      curIndex = (curIndex + direction) % printerList.length;
-      if (curIndex === -1) curIndex = printerList.length - 1;
-      handlePrinterClick(curIndex);
+      let newIndex = (curIndex + direction);
+
+      if ((newIndex > (printerList.length - 1)) || (newIndex < 0)) {
+        newIndex = curIndex;
+      }
+
+      handlePrinterClick(newIndex);
     } catch (e) {
       if (generalSettings?.debugMode) console.log('arrow press failed: printer not found in printerList:\n' + e)
     }
@@ -1290,11 +1305,11 @@ function App() {
           refreshHistory()
           clearFields();
         }
+        showMsgForDuration(queue ? 'Print job queued!' : `Print job successfully started!`, 'msg');
       }, 500).catch((error) => {
         showMsgForDuration(queue ? 'Error queueing print.' : `Error starting print.`, 'err');
         console.error('Error starting print: ', error.message);
       })
-      showMsgForDuration(queue ? 'Print job queued!' : `Print job successfully started!`, 'msg');
 
     } catch (error) {
       console.error('Error submitting printJob: ', error);
@@ -1927,7 +1942,7 @@ function App() {
         sidebarOpen ?
           <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
             handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}
-            printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} organizerLinks={organizerLinks} />
+            printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} homeRef={homeRef} organizerLinks={organizerLinks} />
           : <></>
       }
 
@@ -1936,7 +1951,7 @@ function App() {
         <div style={{ height: selectedPrinter ? '85px' : '55px' }}></div>
         {(!selectedPrinter && !menuOpen) &&
           <div className={`null`}>
-            No printer selected! <br /> Choose one from the printer list on the left.
+            Home page: No printer selected. <br /> Choose one from the printer list on the left.
           </div>
         }
         <HomeScreen homeScreenArgs={homeScreenArgs}></HomeScreen>
@@ -2364,6 +2379,7 @@ function App() {
 
 
 function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, truncateString, serverURL, downloadAllFiles }) {
+  let numFiles = curJob?.files?.split(',')?.length;
   return (
     <>
       {showFilePreviews ? (
@@ -2406,7 +2422,7 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
         </div>
       )}
       {
-        curJob?.files?.startsWith('https://') &&
+        (curJob?.files?.startsWith('https://')) && (numFiles > 1) && 
         <button className='printer-btn' style={{ backgroundColor: "white" }} onClick={() => {
           downloadAllFiles(curJob.files.split(/[,;]/).map((file) => {
             return getDirectDownloadLink(file.trim())

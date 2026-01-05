@@ -1,12 +1,9 @@
 
 .line-chart { 
   background-color: rgb(245, 245, 245);
-  padding: 0px 10px 5px 10px;
-  border-radius: 10px;
-  outline: 2px solid black;
-  width: 100%;
-  margin:20px 0px;
-}
+  max-height:100%;
+  margin:5px;
+  }
 
 .line-options {
   background-color: lightgray;

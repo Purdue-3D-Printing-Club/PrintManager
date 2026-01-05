@@ -23,7 +23,7 @@ function HomeScreen({ homeScreenArgs }) {
 
     const [pagesMounted, setPagesMounted] = useState([true, false]); // controls DOM mounting
     const [currentPage, setCurrentPage] = useState(0); // controls which page is visible
-
+    const [chartsOpen, setChartsOpen] = useState([false, false, false, false, false, false])
 
     // Summary data
     const [frequencies, setFrequencies] = useState([]);
@@ -204,6 +204,14 @@ function HomeScreen({ homeScreenArgs }) {
         }
     }, [selectedPrinter, serverURL, menuOpen, printerList])
 
+
+    const toggleChart = (chartIndex) => {
+        let newChartsOpen = [...chartsOpen];
+        newChartsOpen[chartIndex] = !newChartsOpen[chartIndex];
+        setChartsOpen(newChartsOpen);
+        if (generalSettings?.debugMode) console.log(`toggled chartsOpen[${chartIndex}] to ${newChartsOpen[chartIndex]}.`);
+    }
+
     const wrapperRef = useRef(null);
 
     const handlePageChange = (nextPage) => {
@@ -215,7 +223,7 @@ function HomeScreen({ homeScreenArgs }) {
         // Trigger slide
         setCurrentPage(nextPage);
 
-        // Wait for CSS transition to finish
+        // Wait for CSS transition to finish and dismount old page
         const onTransitionEnd = () => {
             const newPagesAfter = [false, false];
             newPagesAfter[nextPage] = true;
@@ -226,7 +234,6 @@ function HomeScreen({ homeScreenArgs }) {
 
         wrapperRef.current.addEventListener('transitionend', onTransitionEnd);
     };
-
 
 
 
@@ -319,26 +326,30 @@ function HomeScreen({ homeScreenArgs }) {
 
 
                     {/* Charts below */}
-                    {(loading === 'done') && <div className='pie'>
-                        <div className='pie-chart'>
-                            <h2>Total Number of Jobs Per Printer</h2>
-                            <Pie data={{
-                                labels: printerNames.map(name => truncateString(name, 15)),
-                                datasets: [{ data: frequencies, },
-                                { data: [], }],
-                            }}
+                    {loading === 'done' && <div>
+
+                        <CollapsibleChart index={0} title="Number of Jobs Per Printer"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'pie'}>
+                            <Pie
+                                data={{
+                                    labels: printerNames.map(name => truncateString(name, 15)),
+                                    datasets: [
+                                        { data: frequencies },
+                                        { data: [] }
+                                    ],
+                                }}
                                 options={{
-                                    maintainAspectRatio: true,
-                                    aspectRatio: 1,
                                     plugins: {
                                         legend: {
                                             position: 'right',
                                         },
                                     },
-                                }} />
-                        </div>
-                        <div className='pie-chart'>
-                            <h2>Total Filament Used Per Printer (g)</h2>
+                                }}
+                            />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={1} title="Filament Used Per Printer (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'pie'}>
                             <Pie data={{
                                 labels: printerNames.map(name => truncateString(name, 15)),
                                 datasets: [{ data: filamentSum, },
@@ -351,9 +362,70 @@ function HomeScreen({ homeScreenArgs }) {
                                         },
                                     },
                                 }} />
-                        </div>
-                    </div>}
+                        </CollapsibleChart>
 
+                        <CollapsibleChart index={2} title="Number of Prints By Day"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'line'}>
+                            <LineChart argsObject={{
+                                filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0],
+                                filledPpgData: linePpgData[0], dateWindow: lineDateWindow
+                            }} index={1} />
+
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={3} title="Filament Used By Day (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'line'}>
+                            <LineChart argsObject={{
+                                filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1],
+                                filledPpgData: linePpgData[1], dateWindow: lineDateWindow
+                            }} index={2} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={4} title="Number of Prints by Supervisor"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'pie'}>
+                            <Pie data={{
+                                labels: supervisorData.map((entry) => { return (truncateString(entry.supervisorName, 20)) }),
+                                datasets: [{
+                                    data: supervisorData.map((entry) => {
+                                        return (entry.cnt)
+                                    }),
+                                },
+                                { data: [], }],
+                            }} options={{
+                                plugins: {
+                                    legend: {
+                                        position: 'right',
+                                    },
+                                },
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={5} title="Filament Used per Person (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'pie'}>
+                            <Pie data={{
+                                labels: nameFilamentData.map((entry) => { return (truncateString(entry.name, 20)) }),
+                                datasets: [{
+                                    data: nameFilamentData.map((entry) => { return (entry.sum) }),
+                                },
+                                {
+                                    data: [],
+                                }
+                                ],
+                            }} options={{
+                                plugins: {
+                                    legend: {
+                                        position: 'right',
+                                    },
+                                },
+                            }} />
+                        </CollapsibleChart>
+
+                    </div>
+                    }
+
+
+                    {/*                     
+                    
                     {loading === 'done' &&
                         <div className='chart-wrapper'>
                             <LineChart argsObject={{
@@ -405,7 +477,9 @@ function HomeScreen({ homeScreenArgs }) {
                                 },
                             }} />
                         </div>
-                    </div>}
+                    </div>} 
+                    
+                    */}
 
 
 
@@ -424,6 +498,29 @@ function HomeScreen({ homeScreenArgs }) {
     </>);
 }
 
+
+function CollapsibleChart({ index, title, chartsOpen, toggleChart, children, type }) {
+    return (
+        <div className="chart-container">
+            <div
+                className="chart-header-container"
+                onClick={() => toggleChart(index)}
+            >
+                <div className="chart-header-text">{title}</div>
+                <div
+                    className={`chart-header-arrow ${chartsOpen[index] ? 'open' : 'closed'
+                        }`}
+                ></div>
+            </div>
+
+            {chartsOpen[index] && (
+                <div className={`chart-body ${type}`}>
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+}
 
 
 export default HomeScreen;

@@ -8,7 +8,7 @@ import formIcon from '/images/form_icon.png'
 
 
 const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width,
-    getStatusColor, printerSort, handlePrinterSort, printerRefs, organizerLinks }) => {
+    getStatusColor, printerSort, handlePrinterSort, printerRefs, homeRef, organizerLinks }) => {
     const getPrinterInfo = (printer) => {
         switch (printerSort) {
             case "Printer Model": return printer.model
@@ -47,9 +47,9 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
             <div style={{ height: '115px' }}></div>
 
             <div id='lowerBar'>
-                <div className={'sidePrinter'}
-                    onClick={() => handlePrinterClick(null)}
-                    style={{ backgroundColor: 'rgb(133, 169, 255)' }}> Home </div>
+                <div className={`sidePrinter ${!selectedPrinter ? 'selected' : ''}`}
+                    onClick={() => handlePrinterClick(null)} ref={homeRef}
+                    style={{ backgroundColor: 'rgba(162, 187, 247, 1)' }}> Home </div>
                 {printerList.map((printer, index) => {
                     return <div className={`sidePrinter ${(selectedPrinter && (selectedPrinter.printerName === printer.printerName)) ? 'selected' : ''}`}
                         key={index}

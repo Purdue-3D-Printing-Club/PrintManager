@@ -884,18 +884,18 @@ app.post('/api/insert', (req, res) => {
         let localData = loadLocalData()
         let newStock = Math.max(0, localData?.filamentStock - b.usage_g)
         saveLocalData({ ...localData, filamentStock: newStock })
-    }
 
-    // send an email if we just crossed under the threshold
-    if ((localData.filamentStock >= localData.filamentThreshold) && (newStock < localData.filamentThreshold)) {
-        let emailParams = {
-            to: 'print3d@purdue.edu',
-            subject: 'ALERT - Lab Filament Stock Low!',
-            text: `Warning: the lab organizer has detected that our filament stock has ` +
-                `just fallen below the minimum threshold of ${parseInt(localData.filamentThreshold).toLocaleString()}g.` +
-                `\n\nPlease consider restocking it soon!`
+        // send an email if we just crossed under the threshold
+        if ((localData?.filamentStock >= localData?.filamentThreshold) && (newStock < localData?.filamentThreshold)) {
+            let emailParams = {
+                to: 'print3d@purdue.edu',
+                subject: 'ALERT - Lab Filament Stock Low!',
+                text: `Warning: the lab organizer has detected that our filament stock has ` +
+                    `just fallen below the minimum threshold of ${parseInt(localData.filamentThreshold).toLocaleString()}g.` +
+                    `\n\nPlease consider restocking it soon!`
+            }
+            sendEmail(emailParams)
         }
-        sendEmail(emailParams)
     }
 });
 

@@ -128,9 +128,9 @@ const LineChart = ({ argsObject, index }) => {
                                 const { ctx, chartArea } = chart;
 
                                 // Fetch active tooltip elements
-                                const activeElements = chart.tooltip.getActiveElements();
+                                const activeElements = chart?.tooltip?.getActiveElements();
 
-                                if (activeElements.length > 0) {
+                                if (activeElements?.length > 0) {
                                     const { x } = activeElements[0].element;
 
                                     // Interpolate the line position to transition to the new position
@@ -174,7 +174,7 @@ const LineChart = ({ argsObject, index }) => {
 
             createLineChart(lineRef, personalSubset, clubSubset, ppgSubset, dateSubset);
         }
-    })
+    }, [dateRange, sliderRange, sliderValues])
 
 
 
@@ -183,8 +183,7 @@ const LineChart = ({ argsObject, index }) => {
             {
                 index === 1 ? <>
                     <div className='line-chart'>
-                        <h2 style={{ marginBottom: "10px" }}>Total Prints By Day</h2>
-                        <canvas ref={lineRef} width="400" height="300"></canvas>
+                        <canvas ref={lineRef}></canvas>
                         <div className="line-options">
                             <div className="slider-container">
                                 <ErrorBoundary>
@@ -223,12 +222,10 @@ const LineChart = ({ argsObject, index }) => {
                             </select>
                         </div>
                     </div>
-
                 </>
                     :
                     <>
                         <div className='line-chart'>
-                            <h2 style={{ marginBottom: "10px" }}>Total Filament Usage By Day (g)</h2>
                             <canvas ref={lineRef} width="400" height="300"></canvas>
                             <div className="line-options">
                                 <div className="slider-container">
