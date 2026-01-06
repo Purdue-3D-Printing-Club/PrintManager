@@ -7,6 +7,7 @@ import './App.css';
 import exitIcon from '/images/cancel.svg';
 import searchIcon from '/images/search.svg';
 import sortIcon from '/images/sort.svg';
+import homeIcon from '/images/home.svg'
 
 import StlPreview from './StlPreview';
 import Settings from './Settings';
@@ -24,6 +25,7 @@ function App() {
   const [serverURL, setServerURL] = useState("http://localhost:3001");// tailscale remote http://100.68.78.107
   const [organizerLinks, setOrganizerLinks] = useState({});
   const [filamentSettings, setFilamentSettings] = useState({});
+
 
   const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width set to 250
   const minSidebarWidth = 180;
@@ -84,7 +86,7 @@ function App() {
 
   const [historySearch, setHistorySearch] = useState('');
   const [historyPagesShowing, setHistoryPagesShowing] = useState(1);
-  const [historyPeriod, setHistoryPeriod] = useState({ year: 2025, seasonEnc: 2 }); // season encoding: 0-Spring, 1-Summer, 2-Fall
+  const [historySeason, setHistorySeason] = useState({ year: 2025, seasonEnc: 2 }); // season encoding: 0-Spring, 1-Summer, 2-Fall
   const seasonUpperBounds = [new Date(2000, 4, 20), new Date(2000, 7, 20), new Date(2000, 11, 31)] // The upper bounds for each season, assuming normalized year of 2000.
 
   const [historySort, setHistorySort] = useState('Time Started');
@@ -116,6 +118,19 @@ function App() {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
   context.font = "16pt Trebuchet MS";
+
+
+  const getCurHistoryPeriod = () => {
+    let now = new Date();
+    let newYear = now.getFullYear();
+
+    let normalizedDate = now.setFullYear(2000);
+    let newSeasonEnc = normalizedDate < seasonUpperBounds[0] ? 0 : normalizedDate < seasonUpperBounds[1] ? 1 : 2;
+    return { year: newYear, seasonEnc: newSeasonEnc }
+  }
+
+  const [endSeason, setEndSeason] = useState(getCurHistoryPeriod());
+
 
   // downloads all files from one click
   async function downloadAllFiles(urls) {
@@ -263,7 +278,7 @@ function App() {
     } else {
       homeRef.current.scrollIntoView({
         behavior: 'smooth',
-          block: 'nearest'
+        block: 'nearest'
       });
     }
     setHistoryPagesShowing(1);
@@ -272,7 +287,7 @@ function App() {
   useEffect(() => {
     if (generalSettings?.debugMode) console.log('fetching hiFstory...')
     refreshHistory();
-  }, [historyPeriod]);
+  }, [historySeason]);
 
   //update the printer screen when selectedPrinter changes
   useEffect(() => {
@@ -285,7 +300,7 @@ function App() {
     setTempPrinterMaterial(selectedPrinter?.material ?? '')
 
     // Update the history period with the current date and refresh the history table
-    setHistoryPeriod(getCurHistoryPeriod());
+    setHistorySeason(getCurHistoryPeriod());
 
     //Update the data that is shown
     if (selectedPrinter !== null && selectedPrinter !== undefined) {
@@ -394,14 +409,6 @@ function App() {
   }
 
 
-  const getCurHistoryPeriod = () => {
-    let now = new Date();
-    let newYear = now.getFullYear();
-
-    let normalizedDate = now.setFullYear(2000);
-    let newSeasonEnc = normalizedDate < seasonUpperBounds[0] ? 0 : normalizedDate < seasonUpperBounds[1] ? 1 : 2;
-    return { year: newYear, seasonEnc: newSeasonEnc }
-  }
 
   const decSeason = (seasonEnc) => {
     return seasonEnc == 0 ? 'Spring' : seasonEnc == 1 ? 'Summer' : 'Fall'
@@ -412,38 +419,42 @@ function App() {
 
   // fetch the printer history or, if its null, get the comprehensive history
   const refreshHistory = async () => {
-    if (generalSettings?.debugMode) console.log('historyPeriod:', historyPeriod)
+    if (generalSettings?.debugMode) console.log('historySeason:', historySeason)
     // get a start and end date from the history period
     let dateRangeString;
 
-    if (historyPeriod.seasonEnc === 0) { // Spring
+    // no date range string if we are in "Total" mode (year === -1)
+    if (historySeason.year === -1) {
+      dateRangeString = '';
+    }
+    else if (historySeason.seasonEnc === 0) { // Spring
       let end = new Date(seasonUpperBounds[0])
-      end.setFullYear(historyPeriod.year)
+      end.setFullYear(historySeason.year)
 
       dateRangeString = {
-        startDate: toMySQLDate(new Date(historyPeriod.year, 0, 1)),
+        startDate: toMySQLDate(new Date(historySeason.year, 0, 1)),
         endDate: toMySQLDate(end)
       }
-    } else if (historyPeriod.seasonEnc === 1) { // Summer
+    } else if (historySeason.seasonEnc === 1) { // Summer
       let start = new Date(seasonUpperBounds[0])
-      start.setFullYear(historyPeriod.year)
+      start.setFullYear(historySeason.year)
       let end = new Date(seasonUpperBounds[1])
-      end.setFullYear(historyPeriod.year)
+      end.setFullYear(historySeason.year)
       dateRangeString = {
         startDate: toMySQLDate(start),
         endDate: toMySQLDate(end)
       }
-    } else if (historyPeriod.seasonEnc === 2) { // Fall
+    } else if (historySeason.seasonEnc === 2) { // Fall
       let start = new Date(seasonUpperBounds[1])
-      start.setFullYear(historyPeriod.year)
+      start.setFullYear(historySeason.year)
       let end = new Date(seasonUpperBounds[2])
-      end.setFullYear(historyPeriod.year)
+      end.setFullYear(historySeason.year)
       dateRangeString = {
         startDate: toMySQLDate(start),
         endDate: toMySQLDate(end)
       }
     } else {
-      console.error(`ERROR in refreshHistory: Invalid season encoding in historyPeriod of ${historyPeriod.seasonEnc}`)
+      console.error(`ERROR in refreshHistory: Invalid season encoding in historySeason of ${historySeason.seasonEnc}`)
     }
 
     if (generalSettings?.debugMode) console.log(dateRangeString)
@@ -1695,16 +1706,19 @@ function App() {
     setName(name);
     if (generalSettings?.debugMode) console.log("set name to " + name);
   };
+
   const handleColor = (e) => {
     const color = e.target.value;
     setColor(color);
     if (generalSettings?.debugMode) console.log("set color to " + color);
   };
+
   const handleLayerHeight = (e) => {
     const layerHeight = e.target.value;
     setLayerHeight(layerHeight);
     if (generalSettings?.debugMode) console.log("set layerHeight to " + layerHeight);
   };
+
   const handleCureTime = (e) => {
     const cureTime = e.target.value;
     setCureTime(cureTime);
@@ -1759,17 +1773,6 @@ function App() {
     if (generalSettings?.debugMode) console.log("Set menuOpen to: " + menuOpen);
   };
 
-  // function formatDate(isoString, time) {
-  //   const date = new Date(isoString);
-  //   const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-  //   const dd = String(date.getUTCDate()).padStart(2, '0');
-  //   const yyyy = date.getUTCFullYear();
-  //   const hh = String(date.getUTCHours() % 12 || 12).padStart(2, '0');
-  //   const min = String(date.getUTCMinutes()).padStart(2, '0');
-  //   const amOrPm = date.getUTCHours() >= 12 ? 'PM' : 'AM';
-  //   return time ? `${mm}/${dd}/${yyyy} ${hh}:${min} ${amOrPm}` : `${mm}/${dd}/${yyyy}`;
-  // }
-
   function formatDate(utcString, time) {
     // console.log('utcString: ', utcString)
     let isoString = '';
@@ -1805,13 +1808,13 @@ function App() {
     return output;
   }
 
-  const createHistoryRow = (job, isComprehensive, queue) => {
-    const ScrollCell = ({ html, width = null }) => (
-      <td style={{ padding: 0 }}>
-        <div className="scrollcell" style={{ width: width ? width + 'px' : '100%' }} dangerouslySetInnerHTML={{ __html: html }} />
-      </td>
-    );
+  const ScrollCell = ({ html, width = null }) => (
+    <td style={{ padding: 0 }}>
+      <div className="scrollcell" style={{ width: width ? width + 'px' : '100%' }} dangerouslySetInnerHTML={{ __html: html }} />
+    </td>
+  );
 
+  const createHistoryRow = (job, isComprehensive, queue) => {
     return (
       <>
         {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
@@ -1827,7 +1830,7 @@ function App() {
             </button>
           </td>}
 
-        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), queue, 400) }} />
+        <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(job.timeStarted, true), queue, historySearch) }} />
 
 
         {
@@ -1860,15 +1863,15 @@ function App() {
             </>
             :
             <>
-              {!queue && <ScrollCell html={applyHighlight(job.status, queue)} width={100} />}
-              {isComprehensive && <ScrollCell html={applyHighlight(job.printerName, queue)} width={100} />}
-              <ScrollCell html={applyHighlight(job.partNames, queue)} width={400} />
-              <ScrollCell html={applyHighlight(job.name, queue)} width={150} />
-              <ScrollCell html={applyHighlight(job.email, queue)} width={250} />
-              <ScrollCell html={applyHighlight(job.supervisorName, queue)} width={150} />
-              <ScrollCell html={applyHighlight(job.material, queue)} width={null} />
-              {!queue && <ScrollCell html={applyHighlight(job.paid, queue)} width={null} />}
-              <ScrollCell html={applyHighlight(job.usage_g.toString(), queue)} width={null} />
+              {!queue && <ScrollCell html={applyHighlight(job.status, queue, historySearch)} width={100} />}
+              {isComprehensive && <ScrollCell html={applyHighlight(job.printerName, queue, historySearch)} width={100} />}
+              <ScrollCell html={applyHighlight(job.partNames, queue, historySearch)} width={400} />
+              <ScrollCell html={applyHighlight(job.name, queue, historySearch)} width={150} />
+              <ScrollCell html={applyHighlight(job.email, queue, historySearch)} width={250} />
+              <ScrollCell html={applyHighlight(job.supervisorName, queue, historySearch)} width={150} />
+              <ScrollCell html={applyHighlight(job.material, queue, historySearch)} width={null} />
+              {!queue && <ScrollCell html={applyHighlight(job.paid, queue, historySearch)} width={null} />}
+              <ScrollCell html={applyHighlight(job.usage_g.toString(), queue, historySearch)} width={null} />
               <td>
                 {job.files.split(/[,;]/).map((link, i) => (
                   <button
@@ -1880,7 +1883,7 @@ function App() {
                   </button>
                 ))}
               </td>
-              <ScrollCell html={applyHighlight(job.notes, queue, 600)} width={400} />
+              <ScrollCell html={applyHighlight(job.notes, queue, historySearch)} width={400} />
             </>
 
         }
@@ -1888,14 +1891,13 @@ function App() {
     )
   }
 
-
   // Highlight the search in the job's fields by wrapping it with <b>
-  const applyHighlight = (text, queue) => {
+  const applyHighlight = (text, queue, search) => {
     // const truncatedText = truncateStringWidth(text, pixelWidth);
     const truncatedText = text;
-    if (!text || !historySearch || queue) return truncatedText;
+    if (!text || !search || queue) return truncatedText;
 
-    const escapedSearch = historySearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
+    const escapedSearch = search.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
     const regex = new RegExp(escapedSearch, 'gi');
 
     return truncatedText.replace(regex, (match) => {
@@ -1906,20 +1908,50 @@ function App() {
     });
   };
 
+  function leftArrowClick(seasonPeriod, setSeasonPeriod) {
+    if (seasonPeriod.year === -1) {
+      setSeasonPeriod({ ...endSeason });
+      return;
+    }
+
+    if (seasonPeriod.seasonEnc === 0) {
+      setSeasonPeriod(old => ({ ...old, year: old.year - 1, seasonEnc: 2 }))
+    } else {
+      setSeasonPeriod(old => ({ ...old, year: old.year, seasonEnc: old.seasonEnc - 1 }))
+    }
+  }
+
+  function rightArrowClick(seasonPeriod, setSeasonPeriod) {
+    if ((seasonPeriod.year === endSeason.year) && (seasonPeriod.seasonEnc === endSeason.seasonEnc)) {
+      setSeasonPeriod((old) => ({ ...old, year: -1 }));
+    }
+    // Ignore right arrow clicks if its already in "Total" mode
+    if (seasonPeriod.year === -1) {
+      return;
+    }
+
+    if (seasonPeriod.seasonEnc === 2) {
+      setSeasonPeriod(old => ({ ...old, year: old.year + 1, seasonEnc: 0 }))
+    } else {
+      setSeasonPeriod(old => ({ ...old, year: old.year, seasonEnc: old.seasonEnc + 1 }))
+    }
+  }
 
   let pageSize = generalSettings.pageSize;
   const printHistoryArgs = {
     filteredHistoryList, historySearch, handleHistorySearch, setHistorySearch,
-    createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod,
-    setHistoryPeriod, historyPagesShowing, setHistoryPagesShowing, historySort,
-    setHistorySort, sortAscending, setSortAscending, pageSize, decSeason
+    createHistoryRow, selectedPrinter, isAdmin, formatDate, historySeason,
+    setHistorySeason, historyPagesShowing, setHistoryPagesShowing, historySort,
+    setHistorySort, sortAscending, setSortAscending, pageSize, decSeason, endSeason,
+    leftArrowClick, rightArrowClick
   }
 
   const homeScreenArgs = {
     sidebarOpen, sidebarWidth, loading, setLoading,
     selectedPrinter, menuOpen, truncateString,
     generalSettings, getDirectDownloadLink, serverURL, PrintHistoryTable, printHistoryArgs,
-    printerList, formatDate, getStatusColor, seasonUpperBounds, decSeason, getCurHistoryPeriod
+    printerList, formatDate, getStatusColor, seasonUpperBounds, decSeason,
+    getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick
   }
 
   const printFormArgs = {
@@ -1934,7 +1966,8 @@ function App() {
     adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackSubject, feedbackText, handleFeedbackSubjectChange,
     handleFeedbackTextChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
     handleOpenMenu, truncateStringWidth, memberList, setMemberList, formatDate, truncateString, showMsgForDuration,
-    setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getCurHistoryPeriod, decSeason
+    setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings,
+    getCurHistoryPeriod, decSeason, endSeason, leftArrowClick, rightArrowClick, applyHighlight, ScrollCell
   }
 
   return (
@@ -2424,7 +2457,7 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
         </div>
       )}
       {
-        (curJob?.files?.startsWith('https://')) && (numFiles > 1) && 
+        (curJob?.files?.startsWith('https://')) && (numFiles > 1) &&
         <button className='printer-btn' style={{ backgroundColor: "white" }} onClick={() => {
           downloadAllFiles(curJob.files.split(/[,;]/).map((file) => {
             return getDirectDownloadLink(file.trim())
@@ -2445,37 +2478,36 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
 function PrintHistoryTable({ printHistoryArgs }) {
   let {
     filteredHistoryList, historySearch, handleHistorySearch, setHistorySearch,
-    createHistoryRow, selectedPrinter, isAdmin, formatDate, historyPeriod,
-    setHistoryPeriod, historyPagesShowing, setHistoryPagesShowing, historySort,
-    setHistorySort, sortAscending, setSortAscending, pageSize, decSeason
+    createHistoryRow, selectedPrinter, isAdmin, formatDate, historySeason,
+    setHistorySeason, historyPagesShowing, setHistoryPagesShowing, historySort,
+    setHistorySort, sortAscending, setSortAscending, pageSize, decSeason, endSeason,
+    leftArrowClick, rightArrowClick
   } = printHistoryArgs;
 
-  function leftArrowClick(historyPeriod) {
-    if (historyPeriod.seasonEnc === 0) {
-      setHistoryPeriod(old => ({ ...old, year: old.year - 1, seasonEnc: 2 }))
-    } else {
-      setHistoryPeriod(old => ({ ...old, year: old.year, seasonEnc: old.seasonEnc - 1 }))
-    }
-  }
 
-  function rightArrowClick(historyPeriod) {
-    if (historyPeriod.seasonEnc === 2) {
-      setHistoryPeriod(old => ({ ...old, year: old.year + 1, seasonEnc: 0 }))
-    } else {
-      setHistoryPeriod(old => ({ ...old, year: old.year, seasonEnc: old.seasonEnc + 1 }))
-    }
-  }
 
   let isComprehensive = !selectedPrinter;
-  let seasonText = decSeason(historyPeriod.seasonEnc);
-  let title = seasonText + ' ' + historyPeriod.year + ' ';
-  title += selectedPrinter ? 'History' : 'Full History';
+  let seasonText = decSeason(historySeason.seasonEnc);
+  let title = seasonText + ' ' + historySeason.year + ' ';
+  if (historySeason.year === -1) title = 'All Time '
+  let append = selectedPrinter ? 'History' : 'Full History';
+  title += append
   return (<>
     <div className="print-history">
       <div style={{ margin: '0px', padding: '0px', justifyContent: 'center', alignItems: 'center', display: 'flex', userSelect: 'none' }}>
-        <div className='arrow-btn left' onClick={() => leftArrowClick(historyPeriod)}>&lt;</div>
-        <div style={{ width: "75%", maxWidth: '500px' }}> {title} [{filteredHistoryList.length}] </div>
-        <div className='arrow-btn right' onClick={() => rightArrowClick(historyPeriod)}>&gt;</div>
+        <div className='arrow-btn' style={((endSeason.year === historySeason.year) && (endSeason.seasonEnc === historySeason.seasonEnc)) ?
+          { opacity: '30%', cursor: 'default' } : {}} onClick={() => setHistorySeason({ ...endSeason })}>
+          <img src={homeIcon} style={{ width: '18px', height: '18px' }}></img>
+        </div>
+
+        <div className='arrow-btn left' onClick={() => leftArrowClick(historySeason, setHistorySeason)}>&lt;</div>
+        <div style={{ width: "75%", maxWidth: '500px' }}> {`${title} [${filteredHistoryList.length}]`} </div>
+
+        {historySeason.year !== -1 ?
+          <div className='arrow-btn right' onClick={() => rightArrowClick(historySeason, setHistorySeason)}>&gt;</div>
+          :
+          <div style={{ width: '48px' }} />
+        }
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>

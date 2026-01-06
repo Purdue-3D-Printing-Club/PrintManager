@@ -18,7 +18,7 @@ function HomeScreen({ homeScreenArgs }) {
     let { sidebarOpen, sidebarWidth, loading, setLoading, selectedPrinter, menuOpen,
         truncateString, generalSettings, getDirectDownloadLink, serverURL, PrintHistoryTable,
         printHistoryArgs, printerList, formatDate, getStatusColor, seasonUpperBounds,
-        decSeason, getCurHistoryPeriod,
+        decSeason, getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick
     } = homeScreenArgs;
 
 
@@ -48,7 +48,7 @@ function HomeScreen({ homeScreenArgs }) {
 
 
     let lineArgs = { dateWindow: lineDateWindow, seasonUpperBounds, formatDate }
-    let pieArgs = { decSeason, getCurHistoryPeriod }
+    let pieArgs = { decSeason, getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick }
 
     // useEffect hooks
     // pull the chart data from the server
@@ -318,7 +318,7 @@ function HomeScreen({ homeScreenArgs }) {
                     <div className="title-box" onClick={() => { handlePageChange(0) }}>
                         <div className="title-container">
                             <div className="slide-arrow left"></div>
-                            <h2 className="title-text">Back to Home</h2>
+                            <h2 className="title-text">Landing Page</h2>
                         </div>
                     </div>
 
@@ -326,40 +326,20 @@ function HomeScreen({ homeScreenArgs }) {
 
                     {/* Charts below */}
                     {loading === 'done' && <div>
+                        <div className='group-title'> General </div>
                         <CollapsibleChart index={0} title="Lab Printer Status Composition"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie'}>
                             <PieChart argsObject={{
                                 dataObj: printerStatuses,
                                 dataField: 'count',
-                                labelField:'status', 
+                                labelField: 'status',
                                 pieArgs: pieArgs,
                                 backgroundColor: printerStatuses.map(p => getStatusColor(p.status)),
                             }} />
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={1} title="Number of Jobs Per Printer"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
-                            <PieChart argsObject={{
-                                dataObj: printerObjs,
-                                dataField: 'cnt',
-                                labelField: 'printerName',
-                                pieArgs: pieArgs,
-                                seasonSelect: true,
-                            }} />
-                        </CollapsibleChart>
-
-                        <CollapsibleChart index={2} title="Filament Used Per Printer (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
-                            <PieChart argsObject={{
-                                dataObj: printerObjs,
-                                dataField: 'sum',
-                                labelField: 'printerName',
-                                pieArgs: pieArgs,
-                                seasonSelect: true,
-                            }} />
-                        </CollapsibleChart>
-
-                        <CollapsibleChart index={3} title="Number of Prints Over Time"
+                        <div className='group-title'> Line Charts </div>
+                        <CollapsibleChart index={1} title="Number of Prints Over Time"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line'}>
                             <LineChart argsObject={{
                                 filledPersonalData: linePersonalData[0],
@@ -370,7 +350,7 @@ function HomeScreen({ homeScreenArgs }) {
 
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={4} title="Filament Used Over Time (g)"
+                        <CollapsibleChart index={2} title="Filament Used Over Time (g)"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line'}>
                             <LineChart argsObject={{
                                 filledPersonalData: linePersonalData[1],
@@ -379,6 +359,30 @@ function HomeScreen({ homeScreenArgs }) {
                                 ...lineArgs
                             }} />
                         </CollapsibleChart>
+
+                        <div className='group-title'> Pie Charts </div>
+                        <CollapsibleChart index={3} title="Number of Jobs Per Printer"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
+                            <PieChart argsObject={{
+                                dataObj: printerObjs,
+                                dataField: 'cnt',
+                                labelField: 'printerName',
+                                pieArgs: pieArgs,
+                                seasonSelect: true,
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={4} title="Filament Used Per Printer (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
+                            <PieChart argsObject={{
+                                dataObj: printerObjs,
+                                dataField: 'sum',
+                                labelField: 'printerName',
+                                pieArgs: pieArgs,
+                                seasonSelect: true,
+                            }} />
+                        </CollapsibleChart>
+
 
                         <CollapsibleChart index={5} title="Number of Prints by Supervisor"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
@@ -391,7 +395,29 @@ function HomeScreen({ homeScreenArgs }) {
                             }} />
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={6} title="Filament Used per Person (g)"
+                        <CollapsibleChart index={6} title="Filament Used by Supervisor (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
+                            <PieChart argsObject={{
+                                dataObj: supervisorData,
+                                dataField: 'sum',
+                                labelField: 'supervisorName',
+                                pieArgs: pieArgs,
+                                seasonSelect: true,
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={7} title="Number of Prints by Person"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
+                            <PieChart argsObject={{
+                                dataObj: nameFilamentData,
+                                dataField: 'cnt',
+                                labelField: 'name',
+                                pieArgs: pieArgs,
+                                seasonSelect: true,
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={8} title="Filament Used by Person (g)"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
                             <PieChart argsObject={{
                                 dataObj: nameFilamentData,
@@ -408,7 +434,7 @@ function HomeScreen({ homeScreenArgs }) {
                     <div className="title-box" style={{ marginTop: '30px', marginBottom: '120px' }} onClick={() => { handlePageChange(0) }}>
                         <div className="title-container">
                             <div className="slide-arrow left"></div>
-                            <h2 className="title-text">Back to Home</h2>
+                            <h2 className="title-text">Landing Page</h2>
                         </div>
                     </div>
 

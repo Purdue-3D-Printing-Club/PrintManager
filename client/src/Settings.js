@@ -13,6 +13,7 @@ import searchIcon from '/images/search.svg'
 import sortIcon from '/images/sort.svg'
 import exitIcon from '/images/cancel.svg';
 import dollarIcon from '/images/dollar.svg';
+import homeIcon from '/images/home.svg'
 
 
 import discord_qr from '/images/3dpc_discord.png'
@@ -21,7 +22,9 @@ function Settings({ settingsArgs }) {
   let { adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
     handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen, handleOpenMenu,
     memberList, setMemberList, truncateStringWidth, formatDate, truncateString, showMsgForDuration, setOrganizerLinks,
-    FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getCurHistoryPeriod, decSeason } = settingsArgs
+    FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings,
+    getCurHistoryPeriod, decSeason, endSeason, leftArrowClick, rightArrowClick, applyHighlight, ScrollCell
+  } = settingsArgs
 
   const [loginTextVisible, setLoginTextVisible] = useState(false);
   const [tempServerURL, setTempServerURL] = useState(serverURL);
@@ -33,10 +36,11 @@ function Settings({ settingsArgs }) {
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSort, setMemberSort] = useState('Email');
   const [sortAscending, setSortAscending] = useState(false);
+  const [memberSeason, setMemberSeason] = useState({ ...endSeason });
+  const [viewingMemberList, setViewingMemberList] = useState(memberList);
+  const [isEndSeason, setIsEndSeason] = useState(true);
 
-    let {year, seasonEnc} = getCurHistoryPeriod()
-    let curSeason = decSeason(seasonEnc)
-    let curYear = year
+  let endSeasonText = decSeason(endSeason.seasonEnc)
 
   const organizerLinksFields = [
     { key: "websiteURL", label: "Website:", placeholder: " Server URL" },
@@ -53,6 +57,13 @@ function Settings({ settingsArgs }) {
       window.removeEventListener('keydown', handleKeyPress);
     };
   })
+
+  // update  the viewingMemberList whenever memberSeason changes
+  useEffect(() => {
+    refreshMembers();
+    setIsEndSeason((memberSeason.year === endSeason.year) && (memberSeason.seasonEnc === endSeason.seasonEnc));
+  }, [memberSeason])
+
 
   const toTime = (s) => {
     if (!s) return -Infinity;
@@ -77,23 +88,23 @@ function Settings({ settingsArgs }) {
   }
 
 
-  // Highlight the search in the job's fields by wrapping it with <b>
-  const applyHighlight = (text, queue, pixelWidth = 400) => {
-    const truncatedText = truncateStringWidth(text, pixelWidth);
+  // // Highlight the search in the job's fields by wrapping it with <b>
+  // const applyHighlight = (text, queue, pixelWidth = 400) => {
+  //   const truncatedText = truncateStringWidth(text, pixelWidth);
 
-    if (!text || !memberSearch || queue) return truncatedText;
+  //   if (!text || !memberSearch || queue) return truncatedText;
 
-    const escapedSearch = memberSearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
-    const regex = new RegExp(escapedSearch, 'gi');
+  //   const escapedSearch = memberSearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
+  //   const regex = new RegExp(escapedSearch, 'gi');
 
-    // Replace the search term with a highlight html tag around the matched text
-    return truncatedText.replace(regex, (match) => {
-      return `<span style="
-        background-color: rgba(40,200,40,0.4);
-        border-radius: 2px;
-      ">${match}</span>`;
-    });
-  };
+  //   // Replace the search term with a highlight html tag around the matched text
+  //   return truncatedText.replace(regex, (match) => {
+  //     return `<span style="
+  //       background-color: rgba(40,200,40,0.4);
+  //       border-radius: 2px;
+  //     ">${match}</span>`;
+  //   });
+  // };
 
 
   const saveFilamentSettings = () => {
@@ -108,14 +119,14 @@ function Settings({ settingsArgs }) {
       } else {
         showMsgForDuration(`Error Saving Filament Settings`, 'err');
       }
-    }).catch((e)=>{
-        showMsgForDuration(`Error Saving Filament Settings`, 'err');
+    }).catch((e) => {
+      showMsgForDuration(`Error Saving Filament Settings`, 'err');
     })
   }
 
 
   useEffect(() => {
-    setMemberList(sortMemberList(memberList, memberSort))
+    setViewingMemberList(sortMemberList(viewingMemberList, memberSort))
   }, [memberSort, sortAscending, menuOpen])
 
 
@@ -178,11 +189,14 @@ function Settings({ settingsArgs }) {
       name: truncateString(member.name, 128),
       email: truncateString(member.email, 64),
       discordUsername: truncateString(member.discordUsername, 128),
-      season: curSeason,
-      year: curYear
+      season: endSeasonText,
+      year: endSeason.year
     }).then(() => {
       refreshMembers();
-      setInsertMember({ email: '', name: '', discordUsername: '', lastUpdated: '', memberID: -1 });
+      setInsertMember({
+        email: '', name: '', discordUsername: '', seasonEnc: endSeason.seasonEnc,
+        year: endSeason.year, lastUpdated: '', memberID: -1
+      });
       showMsgForDuration("New Member Inserted!", 'msg');
     });
   }
@@ -212,10 +226,32 @@ function Settings({ settingsArgs }) {
   }
 
   const refreshMembers = () => {
-    let query = `SELECT * FROM member WHERE season = "${curSeason}" AND year = ${year}`
-    Axios.get(`${serverURL}/api/get?query=${query}`).then((response) => {
-      setMemberList(sortMemberList(response.data.result, memberSort));
-    });
+    try {
+      let query = `SELECT * FROM member WHERE season = "${decSeason(memberSeason.seasonEnc)}" AND year = ${memberSeason.year}`
+      if (memberSeason.year === -1) {
+        query = `SELECT * FROM member`
+      }
+
+      Axios.get(`${serverURL}/api/get?query=${query}`).then((response) => {
+        let members = response?.data?.result
+        if (generalSettings?.debugMode) console.log('viewing member list: ', members);
+
+        setViewingMemberList(sortMemberList(members, memberSort));
+        if (isEndSeason) {
+          setMemberList(sortMemberList(members, memberSort));
+        }
+      }).catch(e => {
+        console.error('Error in fetching viewing member list: ', e)
+      });
+    } catch (error) {
+      console.error("Error fetching viewing member list: ", error);
+    }
+
+    // let query = `SELECT * FROM member WHERE season = "${endSeasonText}" AND year = ${endSeason.year}`
+    // Axios.get(`${serverURL}/api/get?query=${query}`).then((response) => {
+
+    //   setMemberList(sortMemberList(response.data.result, memberSort));
+    // });
   }
 
   const handleEditClick = (member) => {
@@ -366,8 +402,8 @@ function Settings({ settingsArgs }) {
 
             <FormCheckbox activeCheckVal={generalSettings?.showFilePreviews} handleChangeFunc={toggleFilePreviews} text={"File Previews"}></FormCheckbox>
             <FormCheckbox activeCheckVal={generalSettings?.debugMode} handleChangeFunc={toggleDebugMode} text={"Debug Mode"}></FormCheckbox>
-            <br/>
-            
+            <br />
+
 
           </div>
         </div>
@@ -483,9 +519,28 @@ function Settings({ settingsArgs }) {
           {/* Member List */}
           <span className="input-wrapper" >
             <img src={groupIcon} alt="member-list" className='generic-icon'></img>
-            <span className='admin-settings-label' style={{ fontSize: '24px' }}>{`Club Members [${memberList.length}]`}</span>
+            <span className='admin-settings-label' style={{ fontSize: '24px' }}>{`Club Members [${viewingMemberList.length}]`}</span>
           </span><br />
-          <span  style={{ fontSize: '18px'}}>{`${curSeason} ${curYear}`}</span>
+
+          <div className="input-wrapper" style={{ margin: '0px' }}>
+            <div className='arrow-btn' style={isEndSeason ?
+              { opacity: '30%', cursor: 'default' } : {}} onClick={() => setMemberSeason({ ...endSeason })}>
+              <img src={homeIcon} style={{ width: '18px', height: '18px' }}></img>
+            </div>
+
+            <div className='arrow-btn' style={{ paddingLeft: '5px', paddingRight: '5px', borderRadius: '50px', fontSize: '18px' }}
+              onClick={() => leftArrowClick(memberSeason, setMemberSeason)}>&lt;</div>
+
+            <span style={{ fontSize: '18px', minWidth: '110px' }}>{memberSeason.year === -1 ? `All Time` :
+              `${decSeason(memberSeason.seasonEnc)} ${memberSeason.year}`}</span>
+
+            {memberSeason.year !== -1 ?
+              <div className='arrow-btn' style={{ paddingLeft: '5px', paddingRight: '5px', borderRadius: '50px', fontSize: '18px' }}
+                onClick={() => rightArrowClick(memberSeason, setMemberSeason)}>&gt;</div> :
+              <div style={{ width: '39px' }}></div>
+            }
+          </div>
+
 
           {/* Member list table */}
           <div className="print-history" style={{ 'backgroundColor': '#ddddddff', marginTop: '10px' }}>
@@ -514,24 +569,28 @@ function Settings({ settingsArgs }) {
                 <thead>
                   <tr>
                     <th></th>
-                    <th></th>
+                    {isEndSeason && <th></th>}
                     <th>Email</th>
                     <th>Name</th>
                     <th>Discord Username</th>
+                    <th>Season</th>
                     <th>Last Updated</th>
                   </tr>
                 </thead>
                 <tbody>
                   {/* Row to insert new member */}
-                  <tr style={{ backgroundColor: '#ffffffff' }}>
-                    <td><img src={addUser} className='generic-icon centeredIcon'></img></td>
-                    <td> <button onClick={() => { handleMemberInsertClick(insertMember) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
-                    <td><input id='insert' type="text" placeholder="newmember@purdue.edu" className="history-edit" style={{ 'width': '250px' }} value={insertMember.email ?? ''} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
-                    <td><input id='insert' type="text" placeholder="New Member" className="history-edit" style={{ 'width': '250px' }} value={insertMember.name ?? ''} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
-                    <td><input id='insert' type="text" placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }} value={insertMember.discordUsername ?? ''} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
-                    <td> N/A </td>
-                  </tr>
-                  {memberList.map((member) => {
+                  {(isEndSeason) &&
+                    <tr style={{ backgroundColor: '#ffffffff' }}>
+                      <td><img src={addUser} className='generic-icon centeredIcon'></img></td>
+                      <td> <button onClick={() => { handleMemberInsertClick(insertMember) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
+                      <td><input id='insert' type="text" placeholder="newmember@purdue.edu" className="history-edit" style={{ 'width': '250px' }} value={insertMember.email ?? ''} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
+                      <td><input id='insert' type="text" placeholder="New Member" className="history-edit" style={{ 'width': '250px' }} value={insertMember.name ?? ''} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
+                      <td><input id='insert' type="text" placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }} value={insertMember.discordUsername ?? ''} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
+                      <td> {`${decSeason(endSeason.seasonEnc)} ${endSeason.year}`} </td>
+                      <td> N/A </td>
+                    </tr>
+                  }
+                  {viewingMemberList.map((member) => {
                     const containsSearch = Object.keys(member).some(key => {
                       let value = member[key]
                       if (key === 'lastUpdated') {
@@ -546,7 +605,7 @@ function Settings({ settingsArgs }) {
 
                     return <tr className={`table-data-row`} key={member.memberID}>
                       <td><button style={{ 'width': '90%', 'marginLeft': '5%' }} onClick={() => { handleDeleteMember(member.memberID) }} className='history-btn'>delete</button></td>
-                      <td> <button onClick={() => { handleEditClick(member) }} className='history-btn'>{member.memberID !== editingMember.memberID ? 'edit' : 'save'}</button></td>
+                      {isEndSeason && <td> <button onClick={() => { handleEditClick(member) }} className='history-btn'>{member.memberID !== editingMember.memberID ? 'edit' : 'save'}</button></td>}
                       {
                         ((editingMember.memberID === member.memberID)) ?
                           <>
@@ -556,12 +615,13 @@ function Settings({ settingsArgs }) {
                           </>
                           :
                           <>
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.email, false, 300) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.name, false, 300) }} />
-                            <td dangerouslySetInnerHTML={{ __html: applyHighlight(member.discordUsername, false, 190) }} />
+                            <ScrollCell html={applyHighlight(member.email, false, memberSearch)} width={270} />
+                            <ScrollCell html={applyHighlight(member.name, false, memberSearch)} width={270} />
+                            <ScrollCell html={applyHighlight(member.discordUsername, false, memberSearch)} width={165} />
                           </>
                       }
-                      <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(member.lastUpdated, true), false, 400) }} />
+                      <ScrollCell html={applyHighlight(`${member.season} ${member.year}`, false, memberSearch)} width={125} />
+                      <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(member.lastUpdated, true), false, memberSearch) }} />
                     </tr>
                   })}
                 </tbody>

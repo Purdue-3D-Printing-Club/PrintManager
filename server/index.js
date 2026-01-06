@@ -858,11 +858,19 @@ app.get('/api/getdailyprints', (req, res) => {
 app.get('/api/getHistory', (req, res) => {
     const value = req.query.value;
     const field = req.query.field;
-    const dateRangeString = JSON.parse(req.query.dateRangeString);
+    const dateRangeObj = JSON.parse(req.query.dateRangeString);
 
-    let sqlSelectHistory = `SELECT * FROM printjob WHERE timeStarted >= ? AND timeStarted <= ?`;
+    let sqlSelectHistory = `SELECT * FROM printjob`;
+    if (dateRangeObj) {
+        sqlSelectHistory += ` WHERE timeStarted >= ? AND timeStarted <= ?`
+    }
+
     if (value !== 'undefined') {
-        sqlSelectHistory += ` AND ${field} = ?`
+        if (dateRangeObj) {
+            sqlSelectHistory += ` AND ${field} = ?`
+        } else {
+            sqlSelectHistory += ` WHERE ${field} = ?`
+        }
     }
     sqlSelectHistory += ';'
 
@@ -872,9 +880,14 @@ app.get('/api/getHistory', (req, res) => {
             res.status(500).send("Error accessing the database");
             return;
         }
+
         //transaction with no isolation level: reads only (transaction ensures consistency)
         connection.beginTransaction(function (err) {
-            const queryParams = [dateRangeString.startDate, dateRangeString.endDate]
+            let queryParams = []
+            if (dateRangeObj) [
+                queryParams = [dateRangeObj.startDate, dateRangeObj.endDate]
+            ]
+
             if (value !== 'undefined') {
                 queryParams.push(value);
             }
