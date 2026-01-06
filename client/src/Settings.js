@@ -21,7 +21,7 @@ function Settings({ settingsArgs }) {
   let { adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
     handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen, handleOpenMenu,
     memberList, setMemberList, truncateStringWidth, formatDate, truncateString, showMsgForDuration, setOrganizerLinks,
-    FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getHistoryPeriod, decSeason } = settingsArgs
+    FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getCurHistoryPeriod, decSeason } = settingsArgs
 
   const [loginTextVisible, setLoginTextVisible] = useState(false);
   const [tempServerURL, setTempServerURL] = useState(serverURL);
@@ -34,7 +34,7 @@ function Settings({ settingsArgs }) {
   const [memberSort, setMemberSort] = useState('Email');
   const [sortAscending, setSortAscending] = useState(false);
 
-    let {year, seasonEnc} = getHistoryPeriod()
+    let {year, seasonEnc} = getCurHistoryPeriod()
     let curSeason = decSeason(seasonEnc)
     let curYear = year
 
@@ -212,7 +212,8 @@ function Settings({ settingsArgs }) {
   }
 
   const refreshMembers = () => {
-    Axios.get(`${serverURL}/api/get?query=${'SELECT * FROM member'}`).then((response) => {
+    let query = `SELECT * FROM member WHERE season = "${curSeason}" AND year = ${year}`
+    Axios.get(`${serverURL}/api/get?query=${query}`).then((response) => {
       setMemberList(sortMemberList(response.data.result, memberSort));
     });
   }
@@ -340,7 +341,7 @@ function Settings({ settingsArgs }) {
                   <img src={eyeSlash} alt="invisible" className='visibility-icon no-select'></img>
                 }
               </span>
-              <input id="adminInput" type="text" autoComplete='off' placeholder=" Enter Admin Password..." value={adminPswd} onChange={handlePswdChange} style={{ width: '250px', fontSize: 'large' }} className={loginTextVisible ? "" : "customMasked"}></input> &nbsp;
+              <input id="adminInput" type="text" autoComplete='off' placeholder=" Enter Admin Password..." value={adminPswd ?? ' '} onChange={handlePswdChange} style={{ width: '250px', fontSize: 'large' }} className={loginTextVisible ? "" : "customMasked"}></input> &nbsp;
               <button onClick={() => { checkPswd(adminPswd, import.meta.env.VITE_ADMIN_PSWD) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Login</button>
             </span>
           </div>
@@ -358,7 +359,7 @@ function Settings({ settingsArgs }) {
             <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>General Settings</b></div>
             <span className='input-wrapper' style={{ height: '25px' }}>
               <b className='input-label'>History Page Size:</b>&nbsp;&nbsp;
-              <input type="text" autoComplete='off' placeholder="# of jobs/page" value={tempLocalData?.generalSettings?.pageSize}
+              <input type="text" autoComplete='off' placeholder="# of jobs/page" value={tempLocalData?.generalSettings?.pageSize ?? ' '}
                 onChange={(e) => handleGeneralNumericInput(e.target.value, 'pageSize', 'generalSettings')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;
               &nbsp; <button onClick={(e) => { updateGeneralSettings('pageSize', tempLocalData?.generalSettings?.pageSize) }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
             </span><br />
@@ -387,7 +388,7 @@ function Settings({ settingsArgs }) {
             onChange={(e) => setServerURL(e.target.value)} style={{ width: '500px', fontSize: 'large', marginBottom: '3px' }} /> */}
           <span className='input-wrapper'>
             <b>Server URL:</b>&nbsp;&nbsp;
-            <input id="URLInput" type="text" autoComplete='off' placeholder=" Server URL" value={tempServerURL}
+            <input id="URLInput" type="text" autoComplete='off' placeholder=" Server URL" value={tempServerURL ?? ' '}
               onChange={(e) => setTempServerURL(e.target.value)} style={{ width: '250px', fontSize: 'large' }}></input> &nbsp;
             <button onClick={(e) => { setServerURL(tempServerURL) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Update</button>
           </span>
@@ -401,7 +402,7 @@ function Settings({ settingsArgs }) {
 
           <span className='input-wrapper' style={{ height: '25px' }}>
             <b className='input-label'>Lab Filament Stock:</b>&nbsp;&nbsp;
-            <input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData?.filamentSettings?.filamentStock}
+            <input type="text" autoComplete='off' placeholder="In grams" value={tempLocalData?.filamentSettings?.filamentStock ?? 0}
               onChange={(e) => handleGeneralNumericInput(e.target.value, 'filamentStock', 'filamentSettings')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;g
             &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
           </span><br />
@@ -422,7 +423,7 @@ function Settings({ settingsArgs }) {
 
           <span className='input-wrapper' style={{ height: '25px' }}>
             <b className='input-label'>Resin Cost:</b>&nbsp;&nbsp;$
-            <input type="text" autoComplete='off' value={tempLocalData?.filamentSettings?.resinCost}
+            <input type="text" autoComplete='off' value={tempLocalData?.filamentSettings?.resinCost ?? 0.0}
               onChange={(e) => handleGeneralNumericInput(e.target.value, 'resinCost', 'filamentSettings')} style={{ width: '80px', fontSize: 'large' }}></input>/ml&nbsp;
             &nbsp; <button onClick={(e) => { saveFilamentSettings() }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
           </span><br />
@@ -491,7 +492,7 @@ function Settings({ settingsArgs }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>
               <span className="search-bar">
                 <img src={searchIcon} className='generic-icon'></img> Search
-                <input type="text" value={memberSearch} onChange={handleMemberSearch}></input>
+                <input type="text" value={memberSearch ?? ''} onChange={handleMemberSearch}></input>
                 <button style={{ cursor: 'pointer' }} onClick={() => setMemberSearch('')}>Clear</button>
               </span>
               <span className='search-bar'>
@@ -525,9 +526,9 @@ function Settings({ settingsArgs }) {
                   <tr style={{ backgroundColor: '#ffffffff' }}>
                     <td><img src={addUser} className='generic-icon centeredIcon'></img></td>
                     <td> <button onClick={() => { handleMemberInsertClick(insertMember) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
-                    <td><input id='insert' type="text" placeholder="newmember@purdue.edu" className="history-edit" style={{ 'width': '250px' }} value={insertMember.email} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
-                    <td><input id='insert' type="text" placeholder="New Member" className="history-edit" style={{ 'width': '250px' }} value={insertMember.name} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
-                    <td><input id='insert' type="text" placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }} value={insertMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
+                    <td><input id='insert' type="text" placeholder="newmember@purdue.edu" className="history-edit" style={{ 'width': '250px' }} value={insertMember.email ?? ''} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
+                    <td><input id='insert' type="text" placeholder="New Member" className="history-edit" style={{ 'width': '250px' }} value={insertMember.name ?? ''} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
+                    <td><input id='insert' type="text" placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }} value={insertMember.discordUsername ?? ''} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
                     <td> N/A </td>
                   </tr>
                   {memberList.map((member) => {
@@ -580,12 +581,12 @@ function Settings({ settingsArgs }) {
                 </tr>
               </thead>
               <tbody>
-                <tr><td>&nbsp;↑</td> <td>Move up one printer</td></tr>
-                <tr><td>&nbsp;↓</td> <td>Move down one printer</td></tr>
-                <tr><td>Enter</td> <td>Start a print</td></tr>
-                <tr><td>Backspace</td> <td>Exit menu / clear selection</td></tr>
-                <tr><td>c</td> <td>Clear popups</td></tr>
-                <tr><td>s</td> <td>Open/close settings</td></tr>
+                <tr><td>&nbsp;↑</td><td>Move up one printer</td></tr>
+                <tr><td>&nbsp;↓</td><td>Move down one printer</td></tr>
+                <tr><td>Enter</td><td>Start a print</td></tr>
+                <tr><td>Backspace</td><td>Exit menu / clear selection</td></tr>
+                <tr><td>c</td><td>Clear popups</td></tr>
+                <tr><td>s</td><td>Open/close settings</td></tr>
               </tbody>
             </table>
           </div>
@@ -594,7 +595,7 @@ function Settings({ settingsArgs }) {
         <div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large', marginBottom: '2px' }}><b>Feedback Drop-box</b></div>
           <div style={{ fontSize: 'medium', marginBottom: '10px', color: 'gray' }}>(Problems or suggestions,  emailed to print3d@purdue.edu)</div>
-          <input id="subjectInput" type="text" placeholder=" Enter Email Subject..." value={feedbackSubject}
+          <input id="subjectInput" type="text" placeholder=" Enter Email Subject..." value={feedbackSubject ?? ''}
             onChange={handleFeedbackSubjectChange} style={{ width: '500px', fontSize: 'large', marginBottom: '3px' }} />
           <textarea id="feedbackInput" placeholder=" Enter Feedback Here..." value={feedbackText} type="text"
             onChange={handleFeedbackTextChange} style={{ fontFamily: 'arial', width: '500px', height: '120px', fontSize: 'large', resize: 'none' }} />

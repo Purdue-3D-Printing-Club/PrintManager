@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Axios from 'axios';
-import { Pie } from 'react-chartjs-2';
 
 import LineChart from './LineChart';
+import PieChart from './PieChart';
+
 import ErrorBoundary from './ErrorBoundary';
 
 import loadingGif from '/images/loading.gif'
@@ -14,29 +15,31 @@ import StlPreview from './StlPreview';
 import './HomeScreen.css';
 
 function HomeScreen({ homeScreenArgs }) {
-    let { sidebarOpen, sidebarWidth, loading, setLoading,
-        selectedPrinter, menuOpen, truncateString, generalSettings, getDirectDownloadLink,
-        serverURL, PrintHistoryTable, printHistoryArgs, printerList, formatDate
+    let { sidebarOpen, sidebarWidth, loading, setLoading, selectedPrinter, menuOpen,
+        truncateString, generalSettings, getDirectDownloadLink, serverURL, PrintHistoryTable,
+        printHistoryArgs, printerList, formatDate, getStatusColor, seasonUpperBounds,
+        decSeason, getCurHistoryPeriod,
     } = homeScreenArgs;
+
+
+
 
     // Page control
 
     const [pagesMounted, setPagesMounted] = useState([true, false]); // controls DOM mounting
     const [currentPage, setCurrentPage] = useState(0); // controls which page is visible
-    const [chartsOpen, setChartsOpen] = useState([false, false, false, false, false, false])
+    const [chartsOpen, setChartsOpen] = useState([true, false, false, false, false, false, false])
 
     // Summary data
-    const [frequencies, setFrequencies] = useState([]);
     const [supervisorData, setSupervisorData] = useState([]);
     const [nameFilamentData, setNameFilamentData] = useState([]);
-    const [filamentSum, setFilamentSum] = useState([]);
-
+    const [printerStatuses, setPrinterStatuses] = useState({});
+    const [printerObjs, setPrinterObjs] = useState([]);
 
     const [recentFiles, setRecentFiles] = useState([]);
     const [dailyPrint, setDailyPrint] = useState([]);
     const [potdStatus, setPotdStatus] = useState('loading')
     const hasFetchedDailyPrint = useRef(false);
-    const [printerNames, setPrinterNames] = useState([]);
 
     const [linePersonalData, setLinePersonalData] = useState([]);
     const [lineClubData, setLineClubData] = useState([]);
@@ -44,6 +47,11 @@ function HomeScreen({ homeScreenArgs }) {
     const [lineDateWindow, setLineDateWindow] = useState([]);
 
 
+    let lineArgs = { dateWindow: lineDateWindow, seasonUpperBounds, formatDate }
+    let pieArgs = { decSeason, getCurHistoryPeriod }
+
+    // useEffect hooks
+    // pull the chart data from the server
     useEffect(() => {
         if (selectedPrinter || (printerList.length === 0)) {
             return;
@@ -76,19 +84,8 @@ function HomeScreen({ homeScreenArgs }) {
             try {
                 Axios.get(`${serverURL}/api/getDailyPrint`, { timeout: 180000 }).then((response) => {
                     let dailyPrintTemp = response.data;
-                    // let newDailyPrint = []; 
-                    // for (let fileno in dailyPrintTemp) {
-                    //   let fileName = dailyPrintTemp[fileno].slice(dailyPrintTemp[fileno].lastIndexOf('/') + 1).trim();
-                    //   if (generalSettings?.debugMode)  console.log('trending print file name: ', fileName);
-                    //   newDailyPrint.push({
-                    //     "name": fileName,
-                    //     "file": dailyPrintTemp[fileno]
-                    //   });
-                    // }
-
                     if (generalSettings?.debugMode) console.log('setting trending print: ', dailyPrintTemp);
                     setPotdStatus('done')
-                    // setDailyPrint({ 'parts': dailyPrintTemp, 'pageLink': response.data.pageLink, 'pageName': response.data.pageName });
                     setDailyPrint(dailyPrintTemp);
                 }).catch(e => {
                     setPotdStatus('error')
@@ -105,12 +102,6 @@ function HomeScreen({ homeScreenArgs }) {
             let currentDate = new Date(startDate);
 
             while (currentDate <= new Date(endDate)) {
-                // const yyyy = currentDate.getFullYear();
-                // const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
-                // const dd = String(currentDate.getDate()).padStart(2, '0');
-
-                // dateArray.push(`${yyyy}-${mm}-${dd}`);
-
                 dateArray.push(formatDate(currentDate.toISOString(), false))
                 currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -118,21 +109,21 @@ function HomeScreen({ homeScreenArgs }) {
             return dateArray;
         };
 
-        //if (generalSettings?.debugMode)  console.log(`### loading line chart ${index}...`)
         try {
-            Axios.get(`${serverURL}/api/getfreq`).then((response) => {
-                if (generalSettings?.debugMode) console.log("frequencies: ", response.data);
-                const sortedData = response.data.res;
+            Axios.get(`${serverURL}/api/getprinterdata`).then((response) => {
+                if (generalSettings?.debugMode) console.log("printer name data: ", response.data.res);
+                const printerData = response.data.res;
 
-                setPrinterNames(sortedData.map(printer => printer.printerName));
-                setFrequencies(sortedData.map(printer => printer.cnt));
-                setFilamentSum(sortedData.map(printer => printer.sum));
+                setPrinterObjs(printerData);
+                // setPrinterNames(sortedData.map(printer => printer.printerName));
+                // setFrequencies(sortedData.map(printer => printer.cnt));
+                // setFilamentSum(sortedData.map(printer => printer.sum));
 
                 try {
                     Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
-                        if (generalSettings?.debugMode) console.log('supervisor data: ', sortedData)
+                        if (generalSettings?.debugMode) console.log('supervisor data: ', response.data.res)
                         setSupervisorData(response.data.res);
-                        Axios.get(`${serverURL}/api/getfilamentdata`).then((response) => {
+                        Axios.get(`${serverURL}/api/getnamefilamentdata`).then((response) => {
                             if (generalSettings?.debugMode) console.log('filament name data: ', response.data.res)
                             setNameFilamentData(response.data.res);
                             if (generalSettings?.debugMode) console.log()
@@ -142,13 +133,12 @@ function HomeScreen({ homeScreenArgs }) {
 
                                 if (response2.data) {
                                     const dailyData = response2.data.res;
-                                    const personal = dailyData.filter(item => item.paid == 'personal')
-                                    const club = dailyData.filter(item => item.paid == 'club')
-                                    const ppg = dailyData.filter(item => item.paid == 'per-gram')
+                                    const personal = dailyData.filter(item => item.paid === 'personal')
+                                    const club = dailyData.filter(item => item.paid === 'club')
+                                    const ppg = dailyData.filter(item => item.paid === 'per-gram')
 
-
-                                    const startDate = dailyData.length > 0 ? dailyData[0].date : null;
-                                    const endDate = dailyData.length > 0 ? formatDate(new Date().toISOString(), false) : null; //dailyData[dailyData.length - 1].date
+                                    const startDate = dailyData.length > 0 ? formatDate(new Date(dailyData[0].date).toISOString()) : null;
+                                    const endDate = formatDate(new Date().toISOString());
 
                                     if (startDate && endDate) {
                                         const allDates = generateDateRange(startDate, endDate);
@@ -164,8 +154,6 @@ function HomeScreen({ homeScreenArgs }) {
                                         const filledClubCnt = allDates.map(date => clubDataMap1.get(date) || 0);
                                         const filledPpgCnt = allDates.map(date => ppgDataMap1.get(date) || 0);
 
-                                        //createLineChart(lineRef, filledPersonalCnt, filledClubCnt, allDates)
-
 
                                         // store the data needed for line chart 2
                                         const personalDataMap2 = new Map(personal.map(day => [formatDate(day.date, false), day.sum]));
@@ -176,9 +164,6 @@ function HomeScreen({ homeScreenArgs }) {
                                         const filledPersonalSum = allDates.map(date => personalDataMap2.get(date) || 0);
                                         const filledClubSum = allDates.map(date => clubDataMap2.get(date) || 0);
                                         const filledPpgSum = allDates.map(date => ppgDataMap2.get(date) || 0);
-
-                                        //createLineChart(lineRef, filledPersonalSum, filledClubSum, allDates)
-
 
                                         // set the useState variables to the processed data
                                         setLinePersonalData([filledPersonalCnt, filledPersonalSum]);
@@ -203,6 +188,20 @@ function HomeScreen({ homeScreenArgs }) {
             setLoading('error');
         }
     }, [selectedPrinter, serverURL, menuOpen, printerList])
+
+    // do client-side aggregation on the printer list to get the printer status data
+    useEffect(() => {
+        const statusCounts = printerList.reduce((acc, item) => {
+            const key = item.status;
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+        setPrinterStatuses(Object.entries(statusCounts).map(([status, count]) => ({ status, count })));
+    }, [printerList])
+
+
+
+
 
 
     const toggleChart = (chartIndex) => {
@@ -327,169 +326,92 @@ function HomeScreen({ homeScreenArgs }) {
 
                     {/* Charts below */}
                     {loading === 'done' && <div>
-
-                        <CollapsibleChart index={0} title="Number of Jobs Per Printer"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'pie'}>
-                            <Pie
-                                data={{
-                                    labels: printerNames.map(name => truncateString(name, 15)),
-                                    datasets: [
-                                        { data: frequencies },
-                                        { data: [] }
-                                    ],
-                                }}
-                                options={{
-                                    plugins: {
-                                        legend: {
-                                            position: 'right',
-                                        },
-                                    },
-                                }}
-                            />
-                        </CollapsibleChart>
-
-                        <CollapsibleChart index={1} title="Filament Used Per Printer (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'pie'}>
-                            <Pie data={{
-                                labels: printerNames.map(name => truncateString(name, 15)),
-                                datasets: [{ data: filamentSum, },
-                                { data: [], }],
-                            }}
-                                options={{
-                                    plugins: {
-                                        legend: {
-                                            position: 'right',
-                                        },
-                                    },
-                                }} />
-                        </CollapsibleChart>
-
-                        <CollapsibleChart index={2} title="Number of Prints By Day"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'line'}>
-                            <LineChart argsObject={{
-                                filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0],
-                                filledPpgData: linePpgData[0], dateWindow: lineDateWindow
-                            }} index={1} />
-
-                        </CollapsibleChart>
-
-                        <CollapsibleChart index={3} title="Filament Used By Day (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'line'}>
-                            <LineChart argsObject={{
-                                filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1],
-                                filledPpgData: linePpgData[1], dateWindow: lineDateWindow
-                            }} index={2} />
-                        </CollapsibleChart>
-
-                        <CollapsibleChart index={4} title="Number of Prints by Supervisor"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'pie'}>
-                            <Pie data={{
-                                labels: supervisorData.map((entry) => { return (truncateString(entry.supervisorName, 20)) }),
-                                datasets: [{
-                                    data: supervisorData.map((entry) => {
-                                        return (entry.cnt)
-                                    }),
-                                },
-                                { data: [], }],
-                            }} options={{
-                                plugins: {
-                                    legend: {
-                                        position: 'right',
-                                    },
-                                },
+                        <CollapsibleChart index={0} title="Lab Printer Status Composition"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie'}>
+                            <PieChart argsObject={{
+                                dataObj: printerStatuses,
+                                dataField: 'count',
+                                labelField:'status', 
+                                pieArgs: pieArgs,
+                                backgroundColor: printerStatuses.map(p => getStatusColor(p.status)),
                             }} />
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={5} title="Filament Used per Person (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} type={'pie'}>
-                            <Pie data={{
-                                labels: nameFilamentData.map((entry) => { return (truncateString(entry.name, 20)) }),
-                                datasets: [{
-                                    data: nameFilamentData.map((entry) => { return (entry.sum) }),
-                                },
-                                {
-                                    data: [],
-                                }
-                                ],
-                            }} options={{
-                                plugins: {
-                                    legend: {
-                                        position: 'right',
-                                    },
-                                },
+                        <CollapsibleChart index={1} title="Number of Jobs Per Printer"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
+                            <PieChart argsObject={{
+                                dataObj: printerObjs,
+                                dataField: 'cnt',
+                                labelField: 'printerName',
+                                pieArgs: pieArgs,
+                                seasonSelect: true,
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={2} title="Filament Used Per Printer (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
+                            <PieChart argsObject={{
+                                dataObj: printerObjs,
+                                dataField: 'sum',
+                                labelField: 'printerName',
+                                pieArgs: pieArgs,
+                                seasonSelect: true,
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={3} title="Number of Prints Over Time"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line'}>
+                            <LineChart argsObject={{
+                                filledPersonalData: linePersonalData[0],
+                                filledClubData: lineClubData[0],
+                                filledPpgData: linePpgData[0],
+                                ...lineArgs
+                            }} />
+
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={4} title="Filament Used Over Time (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line'}>
+                            <LineChart argsObject={{
+                                filledPersonalData: linePersonalData[1],
+                                filledClubData: lineClubData[1],
+                                filledPpgData: linePpgData[1],
+                                ...lineArgs
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={5} title="Number of Prints by Supervisor"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
+                            <PieChart argsObject={{
+                                dataObj: supervisorData,
+                                dataField: 'cnt',
+                                labelField: 'supervisorName',
+                                pieArgs: pieArgs,
+                                seasonSelect: true,
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={6} title="Filament Used per Person (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie seasonal'}>
+                            <PieChart argsObject={{
+                                dataObj: nameFilamentData,
+                                dataField: 'sum',
+                                labelField: 'name',
+                                pieArgs: pieArgs,
+                                seasonSelect: true,
                             }} />
                         </CollapsibleChart>
 
                     </div>
                     }
 
-
-                    {/*                     
-                    
-                    {loading === 'done' &&
-                        <div className='chart-wrapper'>
-                            <LineChart argsObject={{
-                                filledPersonalData: linePersonalData[0], filledClubData: lineClubData[0],
-                                filledPpgData: linePpgData[0], dateWindow: lineDateWindow
-                            }} index={1} />
-                            <LineChart argsObject={{
-                                filledPersonalData: linePersonalData[1], filledClubData: lineClubData[1],
-                                filledPpgData: linePpgData[1], dateWindow: lineDateWindow
-                            }} index={2} />
-                        </div>}
-
-                    {(loading === 'done') && <div className="pie">
-                        <div className='pie-chart'>
-                            <h2>Number of Prints By Supervisor</h2>
-                            <Pie data={{
-                                labels: supervisorData.map((entry) => { return (truncateString(entry.supervisorName, 20)) }),
-                                datasets: [{
-                                    data: supervisorData.map((entry) => {
-                                        return (entry.cnt)
-                                    }),
-                                },
-                                { data: [], }],
-                            }} options={{
-                                plugins: {
-                                    legend: {
-                                        position: 'right',
-                                    },
-                                },
-                            }} />
-                        </div>
-
-                        <div className='pie-chart'>
-                            <h2>Filament Used by Person (g)</h2>
-                            <Pie data={{
-                                labels: nameFilamentData.map((entry) => { return (truncateString(entry.name, 20)) }),
-                                datasets: [{
-                                    data: nameFilamentData.map((entry) => { return (entry.sum) }),
-                                },
-                                {
-                                    data: [],
-                                }
-                                ],
-                            }} options={{
-                                plugins: {
-                                    legend: {
-                                        position: 'right',
-                                    },
-                                },
-                            }} />
-                        </div>
-                    </div>} 
-                    
-                    */}
-
-
-
-
-                    <div className="title-box" style={{ marginTop: '10px', marginBottom: '20px' }} onClick={() => { handlePageChange(0) }}>
+                    <div className="title-box" style={{ marginTop: '30px', marginBottom: '120px' }} onClick={() => { handlePageChange(0) }}>
                         <div className="title-container">
                             <div className="slide-arrow left"></div>
                             <h2 className="title-text">Back to Home</h2>
                         </div>
                     </div>
+
                 </div>}
 
         </div>}
@@ -499,7 +421,7 @@ function HomeScreen({ homeScreenArgs }) {
 }
 
 
-function CollapsibleChart({ index, title, chartsOpen, toggleChart, children, type }) {
+function CollapsibleChart({ index, title, chartsOpen, toggleChart, children, bodyClass }) {
     return (
         <div className="chart-container">
             <div
@@ -508,13 +430,12 @@ function CollapsibleChart({ index, title, chartsOpen, toggleChart, children, typ
             >
                 <div className="chart-header-text">{title}</div>
                 <div
-                    className={`chart-header-arrow ${chartsOpen[index] ? 'open' : 'closed'
-                        }`}
+                    className={`chart-header-arrow ${chartsOpen[index] ? 'open' : 'closed'}`}
                 ></div>
             </div>
 
             {chartsOpen[index] && (
-                <div className={`chart-body ${type}`}>
+                <div className={`chart-body ${bodyClass}`}>
                     {children}
                 </div>
             )}

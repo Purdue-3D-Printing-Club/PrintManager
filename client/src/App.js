@@ -21,7 +21,7 @@ import HomeScreen from './HomeScreen';
 function App() {
   const statusIconFolder = '/images/statusIcons';
 
-  const [serverURL, setServerURL] = useState(" http://localhost:3001");// tailscale remote http://100.68.78.107
+  const [serverURL, setServerURL] = useState("http://localhost:3001");// tailscale remote http://100.68.78.107
   const [organizerLinks, setOrganizerLinks] = useState({});
   const [filamentSettings, setFilamentSettings] = useState({});
 
@@ -204,13 +204,15 @@ function App() {
   useEffect(() => {
     // member list
     try {
-      let { year, seasonEnc } = getHistoryPeriod()
-      let season = decSeason(seasonEnc)
-      Axios.get(`${serverURL}/api/get?query=SELECT * FROM member WHERE season = "${season}" AND year = ${year}`).then((response) => {
-        let members = response.data.result
+      let { year, seasonEnc } = getCurHistoryPeriod()
+      let curSeason = decSeason(seasonEnc)
+      let query = `SELECT * FROM member WHERE season = "${curSeason}" AND year = ${year}`
+      Axios.get(`${serverURL}/api/get?query=${query}`).then((response) => {
+        let members = response?.data?.result
         if (generalSettings?.debugMode) console.log('member list: ', members);
 
         setMemberList(members);
+
       }).catch(e => {
         console.error('Error in fetching member list: ', e)
       });
@@ -283,7 +285,7 @@ function App() {
     setTempPrinterMaterial(selectedPrinter?.material ?? '')
 
     // Update the history period with the current date and refresh the history table
-    setHistoryPeriod(getHistoryPeriod());
+    setHistoryPeriod(getCurHistoryPeriod());
 
     //Update the data that is shown
     if (selectedPrinter !== null && selectedPrinter !== undefined) {
@@ -392,7 +394,7 @@ function App() {
   }
 
 
-  const getHistoryPeriod = () => {
+  const getCurHistoryPeriod = () => {
     let now = new Date();
     let newYear = now.getFullYear();
 
@@ -1917,7 +1919,7 @@ function App() {
     sidebarOpen, sidebarWidth, loading, setLoading,
     selectedPrinter, menuOpen, truncateString,
     generalSettings, getDirectDownloadLink, serverURL, PrintHistoryTable, printHistoryArgs,
-    printerList, formatDate
+    printerList, formatDate, getStatusColor, seasonUpperBounds, decSeason, getCurHistoryPeriod
   }
 
   const printFormArgs = {
@@ -1932,7 +1934,7 @@ function App() {
     adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackSubject, feedbackText, handleFeedbackSubjectChange,
     handleFeedbackTextChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
     handleOpenMenu, truncateStringWidth, memberList, setMemberList, formatDate, truncateString, showMsgForDuration,
-    setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getHistoryPeriod, decSeason
+    setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings, getCurHistoryPeriod, decSeason
   }
 
   return (
@@ -2546,8 +2548,8 @@ function FormCheckbox({ activeCheckVal, handleChangeFunc, text }) {
   return (
     <>
       <label
-        className={`checkbox-container ${activeCheckVal ? 'active' : ''}`}>
-        <input type="checkbox" checked={activeCheckVal} onChange={handleChangeFunc} />
+        className={`checkbox-container ${!!activeCheckVal ? 'active' : ''}`}>
+        <input type="checkbox" checked={!!activeCheckVal} onChange={handleChangeFunc} />
         <span className="custom-checkbox"></span>
         <span style={{ userSelect: 'none' }} className="checkbox-label">{text}</span>
       </label>

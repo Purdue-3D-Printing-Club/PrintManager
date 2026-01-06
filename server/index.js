@@ -12,6 +12,9 @@ require('isomorphic-fetch');
 const fetch = require('node-fetch');
 const axios = require('axios');
 
+// The upper bounds for each season
+const seasonUpperBoundsStr = ['05-20', '08-20']
+
 
 
 const pool = mysql.createPool({
@@ -602,31 +605,55 @@ app.get('/api/getjob', (req, res) => {
     });
 });
 
-app.get('/api/getfreq', (req, res) => {
+app.get('/api/getprinterdata', (req, res) => {
     const sqlSelectFreq = `
-    (SELECT printerName, COUNT(*) AS cnt, SUM(usage_g) AS sum 
-    FROM printjob 
-    WHERE name IS NOT NULL 
-    GROUP BY printerName 
-    HAVING printerName IS NOT NULL
-    ORDER BY cnt DESC 
-    LIMIT 6)
-  
+    WITH seasonEncs AS (
+        SELECT
+            *,
+            CASE
+                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
+                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
+                ELSE 2
+            END AS seasonEnc,
+            YEAR(timeStarted) AS year
+        FROM printjob
+        WHERE printerName IS NOT NULL
+        AND name IS NOT NULL
+    ),
+    ranked AS (
+        SELECT
+            seasonEnc,
+            year,
+            printerName,
+            COUNT(*) AS cnt,
+            SUM(usage_g) AS sum,
+            ROW_NUMBER() OVER (
+                PARTITION BY seasonEnc, year
+                ORDER BY COUNT(*) DESC
+            ) AS rn
+        FROM seasonEncs
+        GROUP BY seasonEnc, year, printerName
+    )
+    SELECT
+        seasonEnc,
+        year,
+        printerName,
+        cnt,
+        sum
+    FROM ranked
+    WHERE rn <= 6
+
     UNION ALL
-  
-    (SELECT 'Other' AS name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
-    FROM printjob 
-    WHERE name IS NOT NULL 
-    AND printerName NOT IN (
-      SELECT printerName 
-      FROM (SELECT printerName
-        FROM printjob 
-        WHERE name IS NOT NULL 
-        GROUP BY printerName 
-        HAVING printerName IS NOT NULL
-        ORDER BY COUNT(*) DESC 
-        LIMIT 6) AS top_names
-    ))
+
+    SELECT
+        seasonEnc,
+        year,
+        'Other' AS printerName,
+        SUM(cnt) AS cnt,
+        SUM(sum) AS sum
+    FROM ranked
+    WHERE rn > 6
+    GROUP BY seasonEnc, year;
   `;
 
     pool.getConnection((err, connection) => {
@@ -655,29 +682,53 @@ app.get('/api/getfreq', (req, res) => {
 app.get('/api/getsupervisordata', (req, res) => {
     //const sqlSelectSupervisor = `SELECT supervisorName, COUNT(*) AS cnt FROM printjob GROUP BY supervisorName HAVING supervisorName IS NOT NULL`;
     const sqlSelectSupervisor = `
-    (SELECT supervisorName, COUNT(*) AS cnt, SUM(usage_g) AS sum 
-    FROM printjob 
-    WHERE name IS NOT NULL 
-    GROUP BY supervisorName 
-    HAVING supervisorName IS NOT NULL
-    ORDER BY cnt DESC 
-    LIMIT 6)
-  
+        WITH seasonEncs AS (
+        SELECT
+            *,
+            CASE
+                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
+                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
+                ELSE 2
+            END AS seasonEnc,
+            YEAR(timeStarted) AS year
+        FROM printjob
+        WHERE supervisorName IS NOT NULL
+        AND name IS NOT NULL
+    ),
+    ranked AS (
+        SELECT
+            seasonEnc,
+            year,
+            supervisorName,
+            COUNT(*) AS cnt,
+            SUM(usage_g) AS sum,
+            ROW_NUMBER() OVER (
+                PARTITION BY seasonEnc, year
+                ORDER BY COUNT(*) DESC
+            ) AS rn
+        FROM seasonEncs
+        GROUP BY seasonEnc, year, supervisorName
+    )
+    SELECT
+        seasonEnc,
+        year,
+        supervisorName,
+        cnt,
+        sum
+    FROM ranked
+    WHERE rn <= 6
+
     UNION ALL
-  
-    (SELECT 'Other' AS name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
-    FROM printjob 
-    WHERE supervisorName IS NOT NULL 
-    AND supervisorName NOT IN (
-      SELECT supervisorName 
-      FROM (SELECT supervisorName
-        FROM printjob 
-        WHERE name IS NOT NULL 
-        GROUP BY supervisorName 
-        HAVING supervisorName IS NOT NULL
-        ORDER BY COUNT(*) DESC 
-        LIMIT 6) AS top_names
-    ))
+
+    SELECT
+        seasonEnc,
+        year,
+        'Other' AS supervisorName,
+        SUM(cnt) AS cnt,
+        SUM(sum) AS sum
+    FROM ranked
+    WHERE rn > 6
+    GROUP BY seasonEnc, year;
   `;
     pool.getConnection((err, connection) => {
         if (err) {
@@ -702,32 +753,56 @@ app.get('/api/getsupervisordata', (req, res) => {
     });
 });
 
-app.get('/api/getfilamentdata', (req, res) => {
+app.get('/api/getnamefilamentdata', (req, res) => {
 
     const sqlSelectFilamentData = `
-  (SELECT name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
-  FROM printjob 
-  WHERE name IS NOT NULL 
-  GROUP BY name 
-  ORDER BY sum DESC 
-  LIMIT 6)
+   WITH seasonEncs AS (
+        SELECT
+            *,
+            CASE
+                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
+                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
+                ELSE 2
+            END AS seasonEnc,
+            YEAR(timeStarted) AS year
+        FROM printjob
+        WHERE name IS NOT NULL
+        AND name IS NOT NULL
+    ),
+    ranked AS (
+        SELECT
+            seasonEnc,
+            year,
+            name,
+            COUNT(*) AS cnt,
+            SUM(usage_g) AS sum,
+            ROW_NUMBER() OVER (
+                PARTITION BY seasonEnc, year
+                ORDER BY COUNT(*) DESC
+            ) AS rn
+        FROM seasonEncs
+        GROUP BY seasonEnc, year, name
+    )
+    SELECT
+        seasonEnc,
+        year,
+        name,
+        cnt,
+        sum
+    FROM ranked
+    WHERE rn <= 6
 
-  UNION ALL
+    UNION ALL
 
-  (SELECT 'Other' AS name, COUNT(*) AS cnt, SUM(usage_g) AS sum 
-  FROM printjob 
-  WHERE name IS NOT NULL 
-  AND name NOT IN (
-    SELECT name 
-    FROM (
-      SELECT name 
-      FROM printjob 
-      WHERE name IS NOT NULL 
-      GROUP BY name 
-      ORDER BY SUM(usage_g) DESC 
-      LIMIT 6
-    ) AS top_names
-  ))
+    SELECT
+        seasonEnc,
+        year,
+        'Other' AS name,
+        SUM(cnt) AS cnt,
+        SUM(sum) AS sum
+    FROM ranked
+    WHERE rn > 6
+    GROUP BY seasonEnc, year;
 `;
 
     pool.getConnection((err, connection) => {

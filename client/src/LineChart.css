@@ -1,5 +1,13 @@
 
-.line-chart { 
+.canvas-wrapper {
+ width:100%;
+ height:365px;
+}
+.line-chart canvas {
+  height: 100% !important;
+}
+
+.line-chart {
   background-color: rgb(245, 245, 245);
   max-height:100%;
   margin:5px;

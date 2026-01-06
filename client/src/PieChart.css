@@ -1,0 +1,25 @@
+.season-select-wrapper {
+    height:30px;
+    position: absolute;
+    bottom:5px;
+    left:0;
+    width:100%;
+    display: flex;
+    margin:auto;
+    justify-content: center;
+}
+
+.season-select {
+    margin: 0px;
+    padding: 0px;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    display:flex;
+    width:fit-content;
+}
+
+.arrow-btn{
+    outline: 1px solid black;
+}
+

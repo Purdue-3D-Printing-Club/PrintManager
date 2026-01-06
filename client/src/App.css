@@ -621,67 +621,6 @@ td {
 
 
 
-.title-box {
-  width: calc(100%-80px);
-  margin: 0px 20px 30px 20px;
-  background-color: rgb(255, 255, 255);
-  padding: 8px 20px;
-  outline: 2px solid black;
-  border-radius: 5px;
-  align-items: center;
-  justify-content: center;
-  display: flex;
-  cursor: pointer;
-  user-select: none;
-}
-
-.title-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: fit-content;
-  justify-content: center;
-
-}
-
-.title-text {
-  margin: 0;
-  flex: 1;
-  margin: 0px 10px 0px 10px;
-
-}
-
-.slide-arrow {
-  width: 10px;
-  height: 10px;
-  border-top: 3px solid black;
-  border-right: 3px solid black;
-  transition: transform 0.25s ease;
-  transform: translateX(0px);
-  margin: 0px 0px 0px 0px;
-}
-
-.slide-arrow.right {
-  transform: rotate(45deg);
-}
-
-.title-box:hover .slide-arrow.right {
-  transform: translateX(6px) rotate(45deg);
-}
-
-.slide-arrow.left {
-  transform: rotate(-135deg);
-}
-
-.title-box:hover .slide-arrow.left {
-  transform: translateX(-6px) rotate(-135deg);
-}
-
-.title-box:hover {
-  background-color: rgba(255, 255, 255, 0.9);
-  ;
-}
-
 .page-wrapper {
   display: flex;
   width: 200vw;
