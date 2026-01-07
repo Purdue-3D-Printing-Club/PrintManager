@@ -196,7 +196,13 @@ function HomeScreen({ homeScreenArgs }) {
             acc[key] = (acc[key] || 0) + 1;
             return acc;
         }, {});
-        setPrinterStatuses(Object.entries(statusCounts).map(([status, count]) => ({ status, count })));
+        setPrinterStatuses(Object.entries(statusCounts).map(([status, count]) => ({ status, count })).sort((a, b) => {
+           let diff = b.count - a.count;
+           if (diff === 0) {
+            diff = a.status.localeCompare(b.status);
+           }
+           return diff;
+        }));
     }, [printerList])
 
 

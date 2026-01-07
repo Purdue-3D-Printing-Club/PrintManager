@@ -279,7 +279,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                 },
                (xhr) => trackProgress(xhr),
                 () => {
-                  errorCallback  
+                  errorCallback();
                 }
             );
         };
