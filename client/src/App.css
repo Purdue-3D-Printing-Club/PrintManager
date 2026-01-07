@@ -313,7 +313,6 @@ html::-webkit-scrollbar {
   min-width: 350px;
   text-align: left;
   margin: auto;
-  background-color: white;
   padding: 5px;
   margin-top: 5px;
 }
@@ -581,6 +580,17 @@ td {
   font-size: large;
   text-align: left;
   white-space: nowrap;
+}
+th{
+  box-shadow:
+    inset 0 0.5px 0 black,
+    inset 0 -0.5px 0 black;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+
 }
 
 .form-data-table th {

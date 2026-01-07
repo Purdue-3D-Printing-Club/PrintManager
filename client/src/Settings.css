@@ -4,9 +4,9 @@
   border-radius: 5px;
   border: 2px solid rgb(118, 152, 255);
   margin: calc(50px + 2vh) auto 0px auto;
-  position:relative;
-  min-width:450px;
-  max-width:min(1100px, 95%);
+  position: relative;
+  min-width: 450px;
+  max-width: min(1100px, 95%);
 }
 
 .table-data-row:not(:hover) {
@@ -20,8 +20,9 @@
 
 /* Displays the characters as bullets */
 .customMasked {
-  -webkit-text-security: disc; 
+  -webkit-text-security: disc;
 }
+
 .content-wrapper {
   overflow: auto;
   width: 100%;
@@ -41,18 +42,19 @@
   white-space: nowrap;
   border-radius: 5px;
   border: 2px solid rgb(0, 0, 0);
-  padding-top:5px;
-  padding-bottom:0px;
+  padding-top: 5px;
+  padding-bottom: 0px;
 }
 
 .settings-exit {
-  width:40px;
-  height:40px;
-  position:absolute;
-  right:10px;
-  top:5px;
+  width: 40px;
+  height: 40px;
+  position: absolute;
+  right: 10px;
+  top: 5px;
   transition: opacity 0.1s ease;
 }
+
 .settings-exit:hover {
   cursor: pointer;
   opacity: 0.6;
@@ -68,12 +70,12 @@
   overflow-x: auto;
   margin-bottom: 30px;
   box-shadow: 0 0 3px 2px rgb(175, 175, 175);
-  overflow:hidden;
+  overflow: hidden;
 }
 
 .input-wrapper {
   display: inline-flex;
-  align-items:center;
+  align-items: center;
   margin-bottom: 5px;
   margin-top: 5px;
   font-size: large;
@@ -85,13 +87,14 @@
   text-align: right;
 }
 
-.generic-icon{
+.generic-icon {
   width: 35px;
-  height:30px;
-  margin:auto;
+  height: 30px;
+  margin: auto;
 }
-.centeredIcon{
-  display:flex;
+
+.centeredIcon {
+  display: flex;
   align-items: center;
   justify-content: center;
 }
@@ -101,21 +104,22 @@
   justify-content: center;
   align-items: left;
   font-weight: bold;
-  margin-left:15px;
+  margin-left: 15px;
 }
 
 .visibility-icon {
   width: 25px;
-  height:25px;
-  margin:auto;
-  margin-right:10px;
+  height: 25px;
+  margin: auto;
+  margin-right: 10px;
   cursor: pointer;
   opacity: 0.7;
   transition: scale 0.3s ease, opacity 0.3s ease;
 }
+
 .visibility-icon:hover {
   opacity: 1;
-  scale:  1.05;
+  scale: 1.05;
 }
 
 .hotkeys-wrapper-wrapper {
@@ -149,6 +153,13 @@
   font-size: large;
   position: sticky;
   top: 0;
+
+}
+
+th {
+  box-shadow:
+    inset 0 0.5px 0 black,
+    inset 0 -0.5px 0 black;
 }
 
 .hotkeys-wrapper td {
@@ -164,6 +175,7 @@
   border-radius: 8px;
 
 }
+
 .qr-wrapper h1 {
   color: white;
   background-color: black;
@@ -175,6 +187,6 @@
   width: 100%;
 }
 
-.arrow-btn{
-    outline: 1px solid black;
+.arrow-btn {
+  outline: 1px solid black;
 }

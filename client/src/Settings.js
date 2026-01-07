@@ -31,14 +31,18 @@ function Settings({ settingsArgs }) {
 
   const [tempLocalData, setTempLocalData] = useState({});
 
+  // member list data
   const [editingMember, setEditingMember] = useState({});
   const [insertMember, setInsertMember] = useState({});
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSort, setMemberSort] = useState('Email');
   const [sortAscending, setSortAscending] = useState(false);
+  const [memberPagesShowing, setMemberPagesShowing] = useState(1);
   const [memberSeason, setMemberSeason] = useState({ ...endSeason });
   const [viewingMemberList, setViewingMemberList] = useState(memberList);
   const [isEndSeason, setIsEndSeason] = useState(true);
+
+
 
   let endSeasonText = decSeason(endSeason.seasonEnc)
 
@@ -62,6 +66,7 @@ function Settings({ settingsArgs }) {
   useEffect(() => {
     refreshMembers();
     setIsEndSeason((memberSeason.year === endSeason.year) && (memberSeason.seasonEnc === endSeason.seasonEnc));
+    setMemberPagesShowing(1);
   }, [memberSeason])
 
 
@@ -590,7 +595,7 @@ function Settings({ settingsArgs }) {
                       <td> N/A </td>
                     </tr>
                   }
-                  {viewingMemberList.map((member) => {
+                  {viewingMemberList.slice(0, memberPagesShowing * tempLocalData?.generalSettings?.pageSize).map((member) => {
                     const containsSearch = Object.keys(member).some(key => {
                       let value = member[key]
                       if (key === 'lastUpdated') {
@@ -624,6 +629,14 @@ function Settings({ settingsArgs }) {
                       <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(member.lastUpdated, true), false, memberSearch) }} />
                     </tr>
                   })}
+                  {
+                    (viewingMemberList.length > (memberPagesShowing * tempLocalData?.generalSettings?.pageSize)) &&
+                    <tr className="history-row completed">
+                      {Array.from({ length: 7 }, (_, i) => (
+                        <td key={i}><button className="history-page-btn" onClick={() => setMemberPagesShowing(old => old + 1)}>...</button></td>
+                      ))}
+                    </tr>
+                  }
                 </tbody>
               </table>
             </div>

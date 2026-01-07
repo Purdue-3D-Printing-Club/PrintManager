@@ -1176,6 +1176,8 @@ function App() {
         showMsgForDuration("No Part Names! Print not started.", 'err');
       } else if (files.length === 0) {
         showMsgForDuration("No Files! Print not started.", 'err');
+      }else if (jobMaterial.length === 0) {
+        showMsgForDuration("No Material! Print not started.", 'err');
       }
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
         showMsgForDuration("No Filament Usage! Print not started.", 'err');
@@ -1189,14 +1191,14 @@ function App() {
         showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
         showMsgForDuration("Resin queue is full! Print not queued.", 'err');
-      } else if (((material == 'TPU') || (material == 'PETG')) && !personalFilament) {
-        showMsgForDuration(`Warning: ${material} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
-      } else if ((material === 'Resin')) {
+      } else if (((jobMaterial == 'TPU') || (jobMaterial == 'PETG')) && !personalFilament) {
+        showMsgForDuration(`Warning: ${jobMaterial} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
+      } else if ((jobMaterial === 'Resin')) {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
-      } else if ((material === 'PLA') && !personalFilament && !isMember && !supervisorPrint) {
-        showMsgForDuration(`Warning: Non-members must pay per gram\nthrough TooCool. Continue?`, 'warn', popupTime + 5000);
+      } else if ((jobMaterial === 'PLA') && !personalFilament && !isMember && !supervisorPrint) {
+        showMsgForDuration(`Warning: Non-members must pay per\ngram through TooCool. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
         //clear all warning popups 
@@ -2563,7 +2565,7 @@ function PrintHistoryTable({ printHistoryArgs }) {
             {
               (filteredHistoryList.length > (historyPagesShowing * pageSize)) &&
               <tr className="history-row completed">
-                {Array.from({ length: (selectedPrinter ? (isAdmin ? 13 : 11) : (isAdmin ? 14 : 12)) }, (_, i) => (
+                {Array.from({ length: (selectedPrinter ? (isAdmin ? 14 : 12) : (isAdmin ? 15 : 13)) }, (_, i) => (
                   <td key={i}><button className="history-page-btn" onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
                 ))}
               </tr>

@@ -133,7 +133,8 @@ const LineChart = ({ argsObject }) => {
                 plugins: {
                     legend: { position: 'bottom' },
                     tooltip: {
-                        intersect: true,   
+                        intersect: false,   
+                        mode: 'index'
                     },
                 },
                 scales: {
