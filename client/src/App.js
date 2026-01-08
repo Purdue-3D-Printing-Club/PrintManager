@@ -1705,10 +1705,12 @@ function App() {
           method: 'POST',
           body: formData
         });
+        const data = await response.json();
+
         if (!response.ok) {
+          showMsgForDuration(data.error, 'err');
           throw new Error(`Upload failed: ${response.statusText}`);
         }
-        const data = await response.json();
         return data.fileLink;
       } catch (error) {
         console.error('Error during upload:', error);

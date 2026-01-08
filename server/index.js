@@ -170,8 +170,65 @@ app.post('/api/send-email', async (req, res) => {
     }
 });
 
+// get the storage usage of the authenticated drive account
+async function getStorageUsagePercent(drive) {
+    const about = await drive.about.get({ fields: 'storageQuota' });
+    const quota = about.data.storageQuota;
+    const usage = parseInt(quota.usageInDrive || quota.usage, 10);
+    const limit = parseInt(quota.limit, 10);
+    if (!limit || limit === 0) {
+        return 1;
+    }
+    return usage / limit;
+}
+
+// deletes gdrive files older than daysOld
+async function deleteOldFiles(drive, daysOld = 7) {
+    const now = Date.now();
+    const cutoff = now - daysOld * 24 * 60 * 60 * 1000;
+
+    let pageToken = null;
+    do {
+        const res = await drive.files.list({
+            pageSize: 1000,
+            fields: 'nextPageToken, files(id, name, createdTime)',
+            pageToken,
+            q: `'me' in owners`, // only files owned by the service account
+        });
+
+        for (const file of res.data.files) {
+            const createdTime = new Date(file.createdTime).getTime();
+            
+            // TODO: Don't delete files we want to keep such as the sql data backup
+            if (createdTime < cutoff) {
+                try {
+                    await drive.files.delete({ fileId: file.id });
+                    console.log(`Deleted old file: ${file.name}`);
+                } catch (err) {
+                    console.error(`Failed to delete file ${file.name} (${file.id}):`, err.message);
+                }
+            }
+        }
+
+        pageToken = res.data.nextPageToken;
+    } while (pageToken);
+}
+
 // function to upload a file to Google Drive
 async function uploadFile(filePath, fileName, drive) {
+    // Check if we need to clean old files from gdrive storage
+    try {
+        let storageUsagePercent = await getStorageUsagePercent(drive);
+        console.log(`gdrive service account storage usage: ${(100 * storageUsagePercent).toFixed(4)}%`);
+        if (storageUsagePercent > 0.9) {
+            deleteOldFiles(drive, daysOld = 7);
+        }
+    } catch (error) {
+        console.error('Error cleaning old files if needed:', error.message);
+        throw error;
+    }
+
+    // upload the file
     try {
         const response = await drive.files.create({
             resource: {
@@ -190,7 +247,7 @@ async function uploadFile(filePath, fileName, drive) {
         // Return the file ID from the response
         return response.data.id;
     } catch (error) {
-        console.error('Error uploading file:', error);
+        console.error('Error uploading file:', error.message);
         throw error;
     }
 }
