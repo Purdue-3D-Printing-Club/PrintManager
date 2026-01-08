@@ -59,13 +59,15 @@
     min-height: 0;
     height:400px;
 }
-.chart-body.seasonal {
+.chart-body.pad-large {
     padding-bottom:45px;
 }
-.chart-body:not(.seasonal) {
+.chart-body.pad-med {
     padding-bottom:10px;
 }
-
+.chart-body.no-pad {
+    padding-bottom:0px;
+}
 
 .chart-body.line {
     display: block;

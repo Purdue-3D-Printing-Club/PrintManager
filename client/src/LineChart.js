@@ -4,11 +4,23 @@ import ReactSlider from 'react-slider';
 import './LineChart.css';
 import ErrorBoundary from './ErrorBoundary';
 
+import homeIcon from '/images/home.svg'
+
 
 const LineChart = ({ argsObject }) => {
-    const { filledPersonalData, filledClubData, filledPpgData, dateWindow, seasonUpperBounds,
-        formatDate,
+    const { data, type, dateWindow, seasonUpperBounds, formatDate, getCurHistoryPeriod, endSeason, decSeason,
+        leftArrowClick, rightArrowClick
     } = argsObject;
+
+    let { filledPersonalData, filledClubData, filledPpgData, filledDowData } = {};
+
+    if (type === 'filament') {
+        filledPersonalData = data.filledPersonalData;
+        filledClubData = data.filledClubData;
+        filledPpgData = data.filledPpgData;
+    } else if (type === 'dow') {
+        filledDowData = data.filledDowData;
+    }
 
     const lineRef = useRef(null);
     const dateLen = dateWindow.length;
@@ -16,8 +28,22 @@ const LineChart = ({ argsObject }) => {
     const [dateRange, setDateRange] = useState("Past 3 Months");
     const [aggregationLevel, setAggregationlevel] = useState("Daily");
 
+    // window data
     const [sliderRange, setSliderRange] = useState({ min: 0, max: dateLen ? Math.min(90, dateLen) : 90 });
     const [sliderValues, setSliderValues] = useState([0, dateLen ? Math.min(90, dateLen) : 90]);
+
+    // dow data
+    const [dowSeason, setDowSeason] = useState({ seasonEnc: 2, year: 2025 });
+    let dowList = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    let dowLabels = [];
+    for (let i = 0; i < 24; i++) {
+        dowLabels.push(`${String(i).padStart(2, "0")}:00`);
+    };
+
+    // initialize the dow season for dow charts
+    useEffect(() => {
+        setDowSeason(getCurHistoryPeriod())
+    }, [])
 
     // Linear regression using least squares
     function linearRegression(yValues) {
@@ -47,8 +73,6 @@ const LineChart = ({ argsObject }) => {
             return Math.max(value.toFixed(1), 0);
         });
     }
-
-
 
     const handleDropdownChange = (event) => {
         const value = event.target.value;
@@ -93,6 +117,64 @@ const LineChart = ({ argsObject }) => {
     // create the chart
     useEffect(() => {
         if (!lineRef.current) return;
+        let datasets;
+
+        if (type === 'filament') {
+            datasets = [
+                {
+                    label: 'Personal Filament', data: [], fill: true,
+                    backgroundColor: 'rgba(255,100,100,0.1)', borderColor: 'rgba(255, 100, 100, 1)', tension: 0.05,
+                },
+                {
+                    label: 'Club Filament', data: [], fill: true,
+                    backgroundColor: 'rgba(75,192,192,0.1)', borderColor: 'rgba(75, 192, 192, 1)', tension: 0.05,
+                },
+                {
+                    label: 'Pay-per-gram Filament', data: [], fill: true,
+                    backgroundColor: 'rgba(75,192,75,0.1)', borderColor: 'rgba(87, 223, 102, 1)', tension: 0.05,
+                },
+                {
+                    label: 'Total', data: [], fill: false,
+                    borderColor: 'rgba(0, 0, 0, 1)', tension: 0.05,
+                },
+                {
+                    label: 'Total Trend', data: [], fill: false,
+                    borderColor: 'rgba(0, 0, 0, 0.6)', borderDash: [20, 10], pointRadius: 0, tension: 0,
+                },
+            ]
+        } else if (type === 'dow') {
+            datasets = [
+                {
+                    label: 'Monday', data: [], fill: false,
+                    borderColor: '#FFD93D', tension: 0.05,
+                },
+                {
+                    label: 'Tuesday', data: [], fill: false,
+                    borderColor: '#6BCB77', tension: 0.05,
+                },
+                {
+                    label: 'Wednesday', data: [], fill: false,
+                    borderColor: '#4D96FF', tension: 0.05,
+                },
+                {
+                    label: 'Thursday', data: [], fill: false,
+                    borderColor: '#845EC2', tension: 0.05,
+                },
+                {
+                    label: 'Friday', data: [], fill: false,
+                    borderColor: '#FF9671', tension: 0.05,
+                },
+                {
+                    label: 'Saturday', data: [], fill: false,
+                    borderColor: '#00CFC1', tension: 0.05,
+                },
+                {
+                    label: 'Sunday', data: [], fill: false,
+                    borderColor: '#FF6B6B', tension: 0.05,
+                },
+            ]
+        }
+
 
         const ctx = lineRef.current.getContext('2d');
         let lastX = null;
@@ -100,31 +182,7 @@ const LineChart = ({ argsObject }) => {
             type: 'line',
             data: {
                 labels: [],
-                datasets: [
-                    {
-                        label: 'Personal Filament', data: [], fill: true,
-                        backgroundColor: 'rgba(255,100,100,0.1)', borderColor: 'rgba(255, 100, 100, 1)', tension: 0.05,
-                        pointHitRadius: 10,
-                    },
-                    {
-                        label: 'Club Filament', data: [], fill: true,
-                        backgroundColor: 'rgba(75,192,192,0.1)', borderColor: 'rgba(75, 192, 192, 1)', tension: 0.05,
-                        pointHitRadius: 10,
-                    },
-                    {
-                        label: 'Pay-per-gram Filament', data: [], fill: true,
-                        backgroundColor: 'rgba(75,192,75,0.1)', borderColor: 'rgba(87, 223, 102, 1)', tension: 0.05,
-                        pointHitRadius: 10,
-                    },
-                    {
-                        label: 'Total', data: [], fill: false,
-                        borderColor: 'rgba(0, 0, 0, 1)', tension: 0.05,pointHitRadius: 10,
-                    },
-                    {
-                        label: 'Total Trend', data: [], fill: false,
-                        borderColor: 'rgba(0, 0, 0, 0.6)', borderDash: [20, 10], pointRadius: 0, tension: 0,pointHitRadius: 10,
-                    },
-                ],
+                datasets: datasets,
             },
 
             options: {
@@ -133,7 +191,7 @@ const LineChart = ({ argsObject }) => {
                 plugins: {
                     legend: { position: 'bottom' },
                     tooltip: {
-                        intersect: false,   
+                        intersect: false,
                         mode: 'index'
                     },
                 },
@@ -172,47 +230,80 @@ const LineChart = ({ argsObject }) => {
         const chart = lineRef?.current?.chart;
         if (!chart) return;
 
-        let personalSubset, clubSubset, ppgSubset, dateSubset;
+        if (type === 'filament') {
 
-        // limit to the selected day range from the sliders
-        if (sliderValues[0] === 0) {
-            personalSubset = filledPersonalData.slice(-sliderValues[1]);
-            clubSubset = filledClubData.slice(-sliderValues[1]);
-            ppgSubset = filledPpgData.slice(-sliderValues[1]);
-            dateSubset = dateWindow.slice(-sliderValues[1]);
-        } else {
-            personalSubset = filledPersonalData.slice(-sliderValues[1], -sliderValues[0]);
-            clubSubset = filledClubData.slice(-sliderValues[1], -sliderValues[0]);
-            ppgSubset = filledPpgData.slice(-sliderValues[1], -sliderValues[0]);
-            dateSubset = dateWindow.slice(-sliderValues[1], -sliderValues[0]);
+            let personalSubset, clubSubset, ppgSubset, dateSubset;
+
+            // limit to the selected day range from the sliders
+            if (sliderValues[0] === 0) {
+                personalSubset = filledPersonalData.slice(-sliderValues[1]);
+                clubSubset = filledClubData.slice(-sliderValues[1]);
+                ppgSubset = filledPpgData.slice(-sliderValues[1]);
+                dateSubset = dateWindow.slice(-sliderValues[1]);
+            } else {
+                personalSubset = filledPersonalData.slice(-sliderValues[1], -sliderValues[0]);
+                clubSubset = filledClubData.slice(-sliderValues[1], -sliderValues[0]);
+                ppgSubset = filledPpgData.slice(-sliderValues[1], -sliderValues[0]);
+                dateSubset = dateWindow.slice(-sliderValues[1], -sliderValues[0]);
+            }
+
+            // aggregate over the chosen level and assign back to the subset variables
+            let aggregatedData = aggregateByLevel(dateSubset, personalSubset, clubSubset, ppgSubset, aggregationLevel);
+            //  console.log(`${aggregationLevel} aggregated data: `, aggregatedData);
+            personalSubset = Object.entries(aggregatedData).map(o => o[1].personal)
+            ppgSubset = Object.entries(aggregatedData).map(o => o[1].ppg)
+            clubSubset = Object.entries(aggregatedData).map(o => o[1].club)
+            dateSubset = Object.entries(aggregatedData).map(o => o[0])
+
+
+            const totalData = ppgSubset.map((_, i) =>
+                parseInt(personalSubset[i]) +
+                parseInt(clubSubset[i]) +
+                parseInt(ppgSubset[i])
+            );
+
+            const totalTrend = linearRegression(totalData);
+
+            chart.data.labels = dateSubset;
+            chart.data.datasets[0].data = personalSubset;
+            chart.data.datasets[1].data = clubSubset;
+            chart.data.datasets[2].data = ppgSubset;
+            chart.data.datasets[3].data = totalData;
+            chart.data.datasets[4].data = totalTrend;
+        } else if (type === 'dow') {
+            console.log('filledDowData: ', filledDowData);
+            let dowSubset;
+            if (dowSeason.year === -1) {
+                dowSubset = filledDowData
+            } else {
+                dowSubset = filledDowData.filter(o => {
+                    return (o.year === dowSeason.year) && (o.seasonEnc === dowSeason.seasonEnc);
+                })
+            }
+
+
+            chart.data.labels = dowLabels;
+            for (let i = 0; i < 7; i++) {
+                let dowReduced = dowSubset.filter(o => {
+                    return o.dow == i
+                }).reduce((acc, { hour, cnt }) => {
+                    acc[hour] = (acc[hour] || 0) + cnt;
+                    return acc;
+                }, {})
+
+                let dowReducedArr = Object.keys(dowReduced).map(h => ({
+                    hour: Number(h),
+                    cnt: dowReduced[h]
+                }));
+
+                let dowFiltered = dowReducedArr.sort((a, b) => (a.hour - b.hour)).map(o => o.cnt)
+                chart.data.datasets[i].data = dowFiltered;
+            }
         }
 
-        // aggregate over the chosen level and assign back to the subset variables
-        let aggregatedData = aggregateByLevel(dateSubset, personalSubset, clubSubset, ppgSubset, aggregationLevel);
-        //  console.log(`${aggregationLevel} aggregated data: `, aggregatedData);
-        personalSubset = Object.entries(aggregatedData).map(o => o[1].personal)
-        ppgSubset = Object.entries(aggregatedData).map(o => o[1].ppg)
-        clubSubset = Object.entries(aggregatedData).map(o => o[1].club)
-        dateSubset = Object.entries(aggregatedData).map(o => o[0])
-
-
-        const totalData = ppgSubset.map((_, i) =>
-            parseInt(personalSubset[i]) +
-            parseInt(clubSubset[i]) +
-            parseInt(ppgSubset[i])
-        );
-
-        const totalTrend = linearRegression(totalData);
-
-        chart.data.labels = dateSubset;
-        chart.data.datasets[0].data = personalSubset;
-        chart.data.datasets[1].data = clubSubset;
-        chart.data.datasets[2].data = ppgSubset;
-        chart.data.datasets[3].data = totalData;
-        chart.data.datasets[4].data = totalTrend;
 
         chart.update('none');
-    }, [sliderValues, dateRange, aggregationLevel]);
+    }, [sliderValues, dateRange, aggregationLevel, dowSeason]);
 
 
 
@@ -227,6 +318,8 @@ const LineChart = ({ argsObject }) => {
         return `${season} ${year}`;
     }
 
+
+    // aggregates the filament data at a given aggregation level
     const aggregateByLevel = (dates, personal, club, ppg, period) => {
         const aggregatedData = {};
 
@@ -272,59 +365,89 @@ const LineChart = ({ argsObject }) => {
 
 
 
-
-
-
-
     return (
         <div className="canvas-wrapper">
 
             <div className='line-chart'>
                 <canvas ref={lineRef}></canvas>
-                <div className="line-options">
-                    <div className="slider-container">
-                        <ErrorBoundary>
-                            <ReactSlider
-                                min={sliderRange.min}
-                                max={sliderRange.max}
-                                markClassName='custom-mark'
-                                className="custom-slider"
-                                trackClassName="custom-track"
-                                marks
-                                thumbClassName="custom-thumb"
-                                pearling
-                                minDistance={3}
-                                value={sliderValues}
-                                onChange={handleSliderChange}
-                                invert={true}
-                                renderThumb={(props, state) => {
-                                    const { key, ...rest } = props;
-                                    return (
-                                        <div key={key} {...rest}>
-                                            {state.valueNow}
-                                        </div>
-                                    );
-                                }}
-                            />
+                {
+                    type === 'filament' &&
 
-                        </ErrorBoundary>
+                    <div className="line-options">
+                        <div className="slider-container">
+                            <ErrorBoundary>
+                                <ReactSlider
+                                    min={sliderRange.min}
+                                    max={sliderRange.max}
+                                    markClassName='custom-mark'
+                                    className="custom-slider"
+                                    trackClassName="custom-track"
+                                    marks
+                                    thumbClassName="custom-thumb"
+                                    pearling
+                                    minDistance={3}
+                                    value={sliderValues}
+                                    onChange={handleSliderChange}
+                                    invert={true}
+                                    renderThumb={(props, state) => {
+                                        const { key, ...rest } = props;
+                                        return (
+                                            <div key={key} {...rest}>
+                                                {(state.valueNow > 999) ? '...' : state.valueNow}
+                                            </div>
+                                        );
+                                    }}
+                                />
 
+                            </ErrorBoundary>
+
+                        </div>
+
+                        <select className='line-window-select' value={dateRange} onChange={handleDropdownChange}>
+                            <option value="Past Week">Past Week</option>
+                            <option value="Past Month">Past Month</option>
+                            <option value="Past 3 Months">Past 3 Months</option>
+                            <option value="Past Year">Past Year</option>
+                            <option value="All Time">All Time</option>
+                        </select>
+                        <select className='line-window-select' value={aggregationLevel} onChange={handleAggregationLevelChange}>
+                            <option value="Daily">Daily</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Monthly">Monthly</option>
+                            <option value="Seasonal">Seasonal</option>
+                        </select>
                     </div>
+                }
 
-                    <select className='line-window-select' value={dateRange} onChange={handleDropdownChange}>
-                        <option value="Past Week">Past Week</option>
-                        <option value="Past Month">Past Month</option>
-                        <option value="Past 3 Months">Past 3 Months</option>
-                        <option value="Past Year">Past Year</option>
-                        <option value="All Time">All Time</option>
-                    </select>
-                    <select className='line-window-select' value={aggregationLevel} onChange={handleAggregationLevelChange}>
-                        <option value="Daily">Daily</option>
-                        <option value="Weekly">Weekly</option>
-                        <option value="Monthly">Monthly</option>
-                        <option value="Seasonal">Seasonal</option>
-                    </select>
-                </div>
+
+                {
+                    type === 'dow' &&
+                    <div className="season-select-wrapper-line">
+                        <div className="season-select">
+                            <div className='arrow-btn' style={((dowSeason.year === endSeason.year) && (dowSeason.seasonEnc === endSeason.seasonEnc)) ?
+                                { opacity: '30%', cursor: 'default' } : {}} onClick={() => setDowSeason({ ...endSeason })}>
+                                <img src={homeIcon} style={{ width: '18px', height: '18px' }}></img>
+                            </div>
+
+                            <div className='arrow-btn' style={{ paddingLeft: '5px', paddingRight: '5px', borderRadius: '50px', fontSize: '18px' }}
+                                onClick={() => leftArrowClick(dowSeason, setDowSeason)}>&lt;</div>
+                            <div style={{ minWidth: "100px", maxWidth: '500px' }}> {(dowSeason.year === -1) ?
+                                'All Time Total' :
+                                `${decSeason(dowSeason.seasonEnc)} ${dowSeason.year}`
+                            }
+                            </div>
+                            {dowSeason.year !== -1 ?
+                                <div className='arrow-btn' style={{ paddingLeft: '5px', paddingRight: '5px', borderRadius: '50px', fontSize: '18px' }}
+                                    onClick={() => rightArrowClick(dowSeason, setDowSeason)}>&gt;</div> :
+                                <div style={{ width: '39px' }}></div>
+                            }
+                        </div>
+                    </div>
+                }
+
+
+
+
             </div>
         </div >
     )

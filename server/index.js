@@ -214,7 +214,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     } finally {
         // delete the temporary file
         fs.unlink(file.path, (err) => {
-            if (err) console.error(`Error deleting temp file ${file.path}:`, err);
+            if (err) console.error(`Error deleting temp file ${file.path}:`, err.message);
         });
     }
 });
@@ -265,7 +265,7 @@ app.get('/api/stream-stl', async (req, res) => {
         res.send(buffer);
 
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Error streaming stl:', err.message);
         res.status(500).send('Server error');
     }
 });
@@ -479,7 +479,7 @@ app.get('/api/get', (req, res) => {
     }
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -519,7 +519,7 @@ app.get('/api/getRecentFiles', (req, res) => {
         connection.beginTransaction(function (err) {
             connection.query(sqlSelectRecentFiles, (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error accessing recent files data");
                     connection.release();
                     return;
@@ -556,7 +556,7 @@ app.get('/api/getCurrentJob', (req, res) => {
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -564,7 +564,7 @@ app.get('/api/getCurrentJob', (req, res) => {
         connection.beginTransaction(function (err) {
             connection.query(sqlSelectCurrentJob, [printerName], (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error accessing printjob current job data");
                     connection.release();
 
@@ -584,7 +584,7 @@ app.get('/api/getjob', (req, res) => {
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -593,7 +593,7 @@ app.get('/api/getjob', (req, res) => {
         connection.beginTransaction(function (err) {
             connection.query(sqlSelectJob, [jobID], (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error accessing printjob data");
                     connection.release();
                     return;
@@ -605,9 +605,11 @@ app.get('/api/getjob', (req, res) => {
     });
 });
 
-app.get('/api/getprinterdata', (req, res) => {
-    const sqlSelectFreq = `
-    WITH seasonEncs AS (
+
+const buildPieChartQuery = (aggField) => {
+    return (
+        `
+     WITH seasonEncs AS (
         SELECT
             *,
             CASE
@@ -617,14 +619,14 @@ app.get('/api/getprinterdata', (req, res) => {
             END AS seasonEnc,
             YEAR(timeStarted) AS year
         FROM printjob
-        WHERE printerName IS NOT NULL
+        WHERE ${aggField} IS NOT NULL
         AND name IS NOT NULL
     ),
     ranked AS (
         SELECT
             seasonEnc,
             year,
-            printerName,
+            ${aggField},
             COUNT(*) AS cnt,
             SUM(usage_g) AS sum,
             ROW_NUMBER() OVER (
@@ -632,33 +634,38 @@ app.get('/api/getprinterdata', (req, res) => {
                 ORDER BY COUNT(*) DESC
             ) AS rn
         FROM seasonEncs
-        GROUP BY seasonEnc, year, printerName
+        GROUP BY seasonEnc, year, ${aggField}
     )
     SELECT
         seasonEnc,
         year,
-        printerName,
+        ${aggField},
         cnt,
         sum
     FROM ranked
-    WHERE rn <= 6
+    WHERE rn <= 9
 
     UNION ALL
 
     SELECT
         seasonEnc,
         year,
-        'Other' AS printerName,
+        'Other' AS ${aggField},
         SUM(cnt) AS cnt,
         SUM(sum) AS sum
     FROM ranked
-    WHERE rn > 6
+    WHERE rn > 9
     GROUP BY seasonEnc, year;
-  `;
+    `
+    );
+}
+
+app.get('/api/getprinterdata', (req, res) => {
+    const sqlSelectFreq = buildPieChartQuery('printerName');
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -667,7 +674,7 @@ app.get('/api/getprinterdata', (req, res) => {
         connection.beginTransaction(function (err) {
             connection.query(sqlSelectFreq, (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error accessing printjob freq data");
                     connection.release();
                     return;
@@ -681,58 +688,10 @@ app.get('/api/getprinterdata', (req, res) => {
 
 app.get('/api/getsupervisordata', (req, res) => {
     //const sqlSelectSupervisor = `SELECT supervisorName, COUNT(*) AS cnt FROM printjob GROUP BY supervisorName HAVING supervisorName IS NOT NULL`;
-    const sqlSelectSupervisor = `
-        WITH seasonEncs AS (
-        SELECT
-            *,
-            CASE
-                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
-                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
-                ELSE 2
-            END AS seasonEnc,
-            YEAR(timeStarted) AS year
-        FROM printjob
-        WHERE supervisorName IS NOT NULL
-        AND name IS NOT NULL
-    ),
-    ranked AS (
-        SELECT
-            seasonEnc,
-            year,
-            supervisorName,
-            COUNT(*) AS cnt,
-            SUM(usage_g) AS sum,
-            ROW_NUMBER() OVER (
-                PARTITION BY seasonEnc, year
-                ORDER BY COUNT(*) DESC
-            ) AS rn
-        FROM seasonEncs
-        GROUP BY seasonEnc, year, supervisorName
-    )
-    SELECT
-        seasonEnc,
-        year,
-        supervisorName,
-        cnt,
-        sum
-    FROM ranked
-    WHERE rn <= 6
-
-    UNION ALL
-
-    SELECT
-        seasonEnc,
-        year,
-        'Other' AS supervisorName,
-        SUM(cnt) AS cnt,
-        SUM(sum) AS sum
-    FROM ranked
-    WHERE rn > 6
-    GROUP BY seasonEnc, year;
-  `;
+    const sqlSelectSupervisor = buildPieChartQuery('supervisorName');
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -741,7 +700,7 @@ app.get('/api/getsupervisordata', (req, res) => {
         connection.beginTransaction(function (err) {
             connection.query(sqlSelectSupervisor, (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error accessing printjob supervisor data");
                     connection.release();
                     return;
@@ -755,59 +714,11 @@ app.get('/api/getsupervisordata', (req, res) => {
 
 app.get('/api/getnamefilamentdata', (req, res) => {
 
-    const sqlSelectFilamentData = `
-   WITH seasonEncs AS (
-        SELECT
-            *,
-            CASE
-                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
-                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
-                ELSE 2
-            END AS seasonEnc,
-            YEAR(timeStarted) AS year
-        FROM printjob
-        WHERE name IS NOT NULL
-        AND name IS NOT NULL
-    ),
-    ranked AS (
-        SELECT
-            seasonEnc,
-            year,
-            name,
-            COUNT(*) AS cnt,
-            SUM(usage_g) AS sum,
-            ROW_NUMBER() OVER (
-                PARTITION BY seasonEnc, year
-                ORDER BY COUNT(*) DESC
-            ) AS rn
-        FROM seasonEncs
-        GROUP BY seasonEnc, year, name
-    )
-    SELECT
-        seasonEnc,
-        year,
-        name,
-        cnt,
-        sum
-    FROM ranked
-    WHERE rn <= 6
-
-    UNION ALL
-
-    SELECT
-        seasonEnc,
-        year,
-        'Other' AS name,
-        SUM(cnt) AS cnt,
-        SUM(sum) AS sum
-    FROM ranked
-    WHERE rn > 6
-    GROUP BY seasonEnc, year;
-`;
+    const sqlSelectFilamentData = buildPieChartQuery('name');
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -816,7 +727,7 @@ app.get('/api/getnamefilamentdata', (req, res) => {
         connection.beginTransaction(function (err) {
             connection.query(sqlSelectFilamentData, (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error accessing printjob supervisor data");
                     connection.release();
                     return;
@@ -833,7 +744,7 @@ app.get('/api/getdailyprints', (req, res) => {
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -842,7 +753,97 @@ app.get('/api/getdailyprints', (req, res) => {
         connection.beginTransaction(function (err) {
             connection.query(sqlSelectDaily, (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
+                    res.status(500).send("Error accessing printjob freq data");
+                    connection.release();
+                    return;
+                }
+                res.send({ res: result });
+                connection.release();
+            });
+        });
+    });
+});
+
+
+app.get('/api/getdowprints', (req, res) => {
+    const sqlSelectDaily = `
+    WITH seasonEncs AS (
+    SELECT
+        *,
+        CASE    
+            WHEN (MONTH(timeStarted) > 3 AND MONTH(timeStarted) < 11)
+                OR (MONTH(timeStarted) = 3 AND DAYOFMONTH(timeStarted) - WEEKDAY(timeStarted) >= 8)
+                OR (MONTH(timeStarted) = 11 AND DAYOFMONTH(timeStarted) - WEEKDAY(timeStarted) < 1)
+            THEN DATE_ADD(timeStarted, INTERVAL -4 HOUR) -- EDT
+            ELSE DATE_ADD(timeStarted, INTERVAL -5 HOUR) -- EST
+        END AS local,
+            CASE
+            WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
+            WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
+            ELSE 2
+        END AS seasonEnc,
+        YEAR(timeStarted) AS year
+    FROM printjob
+    ),
+    agg AS (
+        SELECT 
+            seasonEnc, 
+            year, 
+            HOUR(timeStarted) AS hour, 
+            WEEKDAY(timeStarted) AS dow, 
+            COUNT(*) AS cnt
+        FROM seasonEncs
+        GROUP BY seasonEnc, year, hour, dow
+    ),
+    hours AS (
+        SELECT 0 AS hour UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+        UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7
+        UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11
+        UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
+        UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19
+        UNION ALL SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23
+    ),
+    dows AS (
+        SELECT 0 AS dow UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+        UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+    ),
+    seasons AS (
+        SELECT DISTINCT seasonEnc, year FROM seasonEncs
+    ),
+    full_grid AS (
+        SELECT s.seasonEnc, s.year, h.hour, d.dow
+        FROM seasons s
+        CROSS JOIN hours h
+        CROSS JOIN dows d
+    )
+    SELECT 
+        g.seasonEnc, 
+        g.year, 
+        g.hour, 
+        g.dow, 
+        COALESCE(a.cnt, 0) AS cnt
+    FROM full_grid g
+    LEFT JOIN agg a
+        ON a.seasonEnc = g.seasonEnc
+        AND a.year = g.year
+        AND a.hour = g.hour
+        AND a.dow = g.dow
+    ORDER BY g.seasonEnc, g.year, g.dow, g.hour;
+    `;
+
+    pool.getConnection((err, connection) => {
+        if (err) {
+            console.error('Error getting connection from pool:', err.message);
+            res.status(500).send("Error accessing the database");
+            return;
+        }
+
+        //transaction with no isolation level: reads only (transaction ensures consistency)
+        connection.beginTransaction(function (err) {
+            connection.query(sqlSelectDaily, (err, result) => {
+                if (err) {
+                    console.log(err.message);
                     res.status(500).send("Error accessing printjob freq data");
                     connection.release();
                     return;
@@ -876,7 +877,7 @@ app.get('/api/getHistory', (req, res) => {
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -915,7 +916,7 @@ app.get('/api/getFailureCount', (req, res) => {
     const sqlSelectFailureCount = `SELECT COUNT(*) AS cnt FROM printjob WHERE partNames = ? AND name = ? AND status = "failed"`
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -946,7 +947,7 @@ app.post('/api/insert', (req, res) => {
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -956,7 +957,7 @@ app.post('/api/insert', (req, res) => {
             b.notes, b.partNames, b.email, b.paid, b.color, b.layerHeight, b.selfPostProcess,
             b.detailedPostProcess, b.cureTime, b.material], (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error inserting printjob");
                     connection.release();
                     return;
@@ -996,14 +997,14 @@ app.post('/api/insertMember', (req, res) => {
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
         connection.beginTransaction(function (err) {
             connection.query(sqlInsert, [dateTime, b.name, b.email, b.discordUsername, b.season, b.year], (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error inserting printjob");
                     connection.release();
                     return;
@@ -1022,14 +1023,14 @@ app.delete('/api/cancelPrint/:printerName/:usage', (req, res) => {
     const sqlDelete = 'DELETE FROM printJob WHERE printerName=? AND status = "active"';
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
         connection.beginTransaction(function (err) {
             connection.query(sqlDelete, printerName, (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error deleting printJob");
                     connection.release();
                     return;
@@ -1053,14 +1054,14 @@ app.delete('/api/deleteJob/:jobID', (req, res) => {
     const sqlDelete = 'DELETE FROM printJob WHERE jobID=?';
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
         connection.beginTransaction(function (err) {
             connection.query(sqlDelete, jobID, (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error deleting printJob");
                     connection.release();
                     return;
@@ -1076,14 +1077,14 @@ app.delete('/api/deleteMember/:memberID', (req, res) => {
     const sqlDelete = 'DELETE FROM member WHERE memberID=?';
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
         connection.beginTransaction(function (err) {
             connection.query(sqlDelete, memberID, (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error deleting printJob");
                     connection.release();
                     return;
@@ -1113,14 +1114,14 @@ app.put('/api/update', (req, res) => {
     }
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
         connection.beginTransaction(function (err) {
             connection.query(sqlUpdate, [val, id], (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error updating database");
                     connection.release();
                     return;
@@ -1134,19 +1135,21 @@ app.put('/api/update', (req, res) => {
 });
 
 app.put('/api/updateJob', (req, res) => {
-    const { email, files, printerName, jobID, name, partNames, paid, status, supervisorName, usage_g, notes } = req.body;
-    let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, printerName = ?, name = ?, partNames = ?, paid = ?, status = ?, supervisorName = ?, usage_g = ?, notes=? WHERE jobID = ?`;
+    const j = req.body;
+    let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, printerName = ?, name = ?, partNames = ?, paid = ?, status = ?, supervisorName = ?,
+     material=?, usage_g = ?, notes=?, color=?, layerHeight=?, cureTime=?, selfPostProcess=?, detailedPostProcess=? WHERE jobID = ?`;
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlUpdate, [email, files, printerName, name, partNames, paid, status, supervisorName, usage_g, notes, jobID], (err, result) => {
+            connection.query(sqlUpdate, [j.email, j.files, j.printerName, j.name, j.partNames, j.paid, j.status, j.supervisorName,
+            j.material, j.usage_g, j.notes, j.color, j.layerHeight, j.cureTime, j.selfPostProcess, j.detailedPostProcess, j.jobID], (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error updating database");
                     connection.release();
                     return;
@@ -1165,7 +1168,7 @@ app.put('/api/updateMember', (req, res) => {
 
     pool.getConnection((err, connection) => {
         if (err) {
-            console.error('Error getting connection from pool:', err);
+            console.error('Error getting connection from pool:', err.message);
             res.status(500).send("Error accessing the database");
             return;
         }
@@ -1173,7 +1176,7 @@ app.put('/api/updateMember', (req, res) => {
         connection.beginTransaction(function (err) {
             connection.query(sqlUpdate, [name, email, new Date(lastUpdated), discordUsername, memberID], (err, result) => {
                 if (err) {
-                    console.log(err);
+                    console.log(err.message);
                     res.status(500).send("Error updating database");
                     connection.release();
                     return;

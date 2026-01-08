@@ -133,14 +133,15 @@ function App() {
 
 
   // downloads all files from one click
-  async function downloadAllFiles(urls) {
-    urls.forEach(url => {
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.download = '';
-      a.click();
-    });
+  async function downloadAllFiles(urlsString) {
+    urlsString.split(/[,;]/).map((file) => getDirectDownloadLink(file.trim()))
+      .forEach(url => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.download = '';
+        a.click();
+      });
   }
 
   const openToBusy = (status) => {
@@ -581,18 +582,8 @@ function App() {
 
 
   const handleEditClick = (job) => {
-    const editingJobFilt = {
-      jobID: editingJob.jobID,
-      files: truncateString(editingJob.files, 512),
-      usage_g: Math.round(parseFloat(editingJob.usage_g)) > 2147483647 ? 2147483647 : Math.round(parseFloat(editingJob.usage_g)),
-      status: editingJob.status,
-      name: truncateString(editingJob.name, 64),
-      supervisor: truncateString(editingJob.supervisorName, 64),
-      partNames: truncateString(editingJob.partNames, 256),
-      email: truncateString(editingJob.email, 64),
-      paid: editingJob.paid,
-      notes: truncateString(editingJob.notes, 256)
-    }
+    console.log(' edit clicked, job: ', job)
+    const editingJobFilt = sanitizeJob(editingJob, false);
 
     let refPrinter = selectedPrinter;
 
@@ -611,6 +602,9 @@ function App() {
 
     // save the edits
     if (editingJobFilt.jobID === job.jobID) {
+      if(generalSettings?.debugMode) console.log('editingJobFilt: ', editingJobFilt)
+      if(generalSettings?.debugMode) console.log('editingJob: ', editingJob)
+
       if (!printerList.map(printer => printer.printerName).includes(editingJob.printerName)) {
         if (generalSettings?.debugMode) console.log('Cannot set new printer name: Printer does not exist!')
         showMsgForDuration(`Cannot save job: Printer "${editingJob.printerName}" doesn't exist!`, 'err');
@@ -1176,7 +1170,7 @@ function App() {
         showMsgForDuration("No Part Names! Print not started.", 'err');
       } else if (files.length === 0) {
         showMsgForDuration("No Files! Print not started.", 'err');
-      }else if (jobMaterial.length === 0) {
+      } else if (jobMaterial.length === 0) {
         showMsgForDuration("No Material! Print not started.", 'err');
       }
       else if ((filamentUsage === 0) || (filamentUsage === "")) {
@@ -1211,6 +1205,33 @@ function App() {
     };
   };
 
+  const sanitizeJob = (job, isFromForm=false) => {
+    let sanitized = {
+      jobID: job.jobID,
+      files: truncateString(job.files, 1024),
+      usage_g: Math.round(parseFloat(job.usage_g)) > 2147483647 ? 2147483647 : Math.round(parseFloat(job.usage_g)),
+      status: job.status,
+      name: truncateString(job.name, 64),
+      supervisor: truncateString(job.supervisorName, 64),
+      material: truncateString(job.material, 32),
+      partNames: truncateString(job.partNames, 256),
+      email: truncateString(job.email, 64),
+      paid: job.paid,
+      notes: truncateString(job.notes, 1024),
+      color: truncateString(job.color, 64),
+      layerHeight: truncateString(job.layerHeight, 64),
+      cureTime: truncateString(job.cureTime, 64),
+      selfPostProcess: job.selfPostProcess,
+      detailedPostProcess: job.detailedPostProcess,
+    }
+    if (isFromForm) {
+      sanitized = { ...sanitized, timeStarted: new Date().toISOString() }
+    } else {
+      sanitized = { ...sanitized, jobID: job.jobID, printerName:job.printerName }
+    }
+    return sanitized
+  }
+
   const buildFormJob = () => {
     let isMember = memberList.map(m => m.email).includes(email)
     let paid = ''
@@ -1220,25 +1241,24 @@ function App() {
       paid = personalFilament ? 'personal' : isMember ? 'club' : 'per-gram'
     }
 
-    return ({
-      files: truncateString(files, 512),
-      usage_g: Math.round(parseFloat(filamentUsage)) > 2147483647 ? 2147483647 : Math.round(parseFloat(filamentUsage)),
-      timeStarted: new Date().toISOString(),
-      // status: selectedPrinter?.filamentType === 'Resin' ? "queued" : "active",
+    let formJob = {
+      files: files,
+      usage_g: filamentUsage,
       status: "active",
-      name: truncateString(name, 64),
-      supervisor: supervisorPrint ? truncateString(name, 64) : truncateString(supervisor, 64),
-      notes: truncateString(notes, 256),
-      partNames: truncateString(partNames, 256),
-      material: truncateString(jobMaterial, 32),
-      email: truncateString(email, 64),
+      name: name,
+      supervisor: supervisorPrint ? name : supervisor,
+      material: jobMaterial,
+      partNames: partNames,
+      email: email,
       paid: paid,
-      color: truncateString(color, 64),
-      layerHeight: truncateString(layerHeight, 64),
-      cureTime: truncateString(cureTime, 64),
+      notes: notes,
+      color: color,
+      layerHeight: layerHeight,
+      cureTime: cureTime,
       selfPostProcess: selfPostProcess,
       detailedPostProcess: detailedPostProcess,
-    })
+    }
+    return sanitizeJob(formJob, true);
   }
 
   const handleWarningClick = (notification) => {
@@ -1816,7 +1836,7 @@ function App() {
     </td>
   );
 
-  const createHistoryRow = (job, isComprehensive, queue) => {
+  const createHistoryRow = (job, isComprehensive, isSpecialty, queue) => {
     return (
       <>
         {isAdmin && <td><button onClick={() => { handleDeleteJob(job.jobID) }} className='history-btn'>delete</button></td>}
@@ -1859,9 +1879,22 @@ function App() {
                 </select>
               </td>}
               <td><input type="text" className="history-edit" value={editingJob.usage_g} onChange={(e) => handleJobEdit(e, "usage_g")}></input></td>
-              <td>{job.files.split(/[,;]/).map((link, index) => { return (<button style={{ cursor: 'pointer' }} onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>{index + 1}</button>) })}</td>
-              <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
-              {/* <td><input type="text" className="history-edit" value={editingJob.files} onChange={(e) => handleJobEdit(e, "files")}></input></td> */}
+              <td style={{ padding: '0px' }}><button style={{ cursor: 'pointer', display: 'flex', margin: 'auto', paddingRight: '0px' }} onClick={() => downloadAllFiles(job.files)}>
+                <img className='status-icon' style={{ width: '18px', height: '18px' }} src={`images/download.svg`}></img>
+              </button></td>              <td><input type="text" className="history-edit" value={editingJob.notes} onChange={(e) => handleJobEdit(e, "notes")}></input></td>
+              {(isSpecialty || isComprehensive) && <>
+                <td><input type="text" className="history-edit" value={editingJob.color} onChange={(e) => handleJobEdit(e, "color")}></input></td>
+                <td><input type="text" className="history-edit" value={editingJob.layerHeight} onChange={(e) => handleJobEdit(e, "layerHeight")}></input></td>
+                <td><input type="text" className="history-edit" value={editingJob.cureTime} onChange={(e) => handleJobEdit(e, "cureTime")}></input></td>
+                <td><select id="selfPostProcess" style={{ width: "100%" }} value={editingJob.selfPostProcess} onChange={(e) => handleJobEdit(e, "selfPostProcess")}>
+                  <option value={0}>False</option>
+                  <option value={1}>True</option>
+                </select></td>
+                <td><select id="detailedPostProcess" style={{ width: "100%" }} value={editingJob.detailedPostProcess} onChange={(e) => handleJobEdit(e, "detailedPostProcess")}>
+                  <option value={0}>False</option>
+                  <option value={1}>True</option>
+                </select></td>
+              </>}
             </>
             :
             <>
@@ -1874,20 +1907,20 @@ function App() {
               <ScrollCell html={applyHighlight(job.material, queue, historySearch)} width={null} />
               {!queue && <ScrollCell html={applyHighlight(job.paid, queue, historySearch)} width={null} />}
               <ScrollCell html={applyHighlight(job.usage_g.toString(), queue, historySearch)} width={null} />
-              <td>
-                {job.files.split(/[,;]/).map((link, i) => (
-                  <button
-                    key={i}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => (window.location.href = getDirectDownloadLink(link.trim()))}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </td>
+              <td style={{ padding: '0px' }}><button style={{ cursor: 'pointer', display: 'flex', margin: 'auto', paddingRight: '0px' }} onClick={() => downloadAllFiles(job.files)}>
+                <img className='status-icon' style={{ width: '18px', height: '18px' }} src={`images/download.svg`}></img>
+              </button></td>
               <ScrollCell html={applyHighlight(job.notes, queue, historySearch)} width={400} />
-            </>
 
+              {(isSpecialty || isComprehensive) && <>
+                <ScrollCell html={applyHighlight(job.color, queue, historySearch)} width={100} />
+                <ScrollCell html={applyHighlight(job.layerHeight, queue, historySearch)} width={100} />
+                <ScrollCell html={applyHighlight(job.cureTime, queue, historySearch)} width={100} />
+                <ScrollCell html={applyHighlight((job.selfPostProcess == '1') ? 'True' : 'False', queue, historySearch)} width={75} />
+                <ScrollCell html={applyHighlight((job.detailedPostProcess == '1') ? 'True' : 'False', queue, historySearch)} width={75} />
+              </>
+              }
+            </>
         }
       </>
     )
@@ -1945,7 +1978,7 @@ function App() {
     createHistoryRow, selectedPrinter, isAdmin, formatDate, historySeason,
     setHistorySeason, historyPagesShowing, setHistoryPagesShowing, historySort,
     setHistorySort, sortAscending, setSortAscending, pageSize, decSeason, endSeason,
-    leftArrowClick, rightArrowClick
+    leftArrowClick, rightArrowClick, isSpecialty
   }
 
   const homeScreenArgs = {
@@ -2461,9 +2494,7 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
       {
         (curJob?.files?.startsWith('https://')) && (numFiles > 1) &&
         <button className='printer-btn' style={{ backgroundColor: "white" }} onClick={() => {
-          downloadAllFiles(curJob.files.split(/[,;]/).map((file) => {
-            return getDirectDownloadLink(file.trim())
-          }))
+          downloadAllFiles(curJob.files)
         }}>
           <img className='status-icon ' src={`images/download.svg`} /> Download All Files
         </button>
@@ -2483,9 +2514,11 @@ function PrintHistoryTable({ printHistoryArgs }) {
     createHistoryRow, selectedPrinter, isAdmin, formatDate, historySeason,
     setHistorySeason, historyPagesShowing, setHistoryPagesShowing, historySort,
     setHistorySort, sortAscending, setSortAscending, pageSize, decSeason, endSeason,
-    leftArrowClick, rightArrowClick
+    leftArrowClick, rightArrowClick, isSpecialty
   } = printHistoryArgs;
 
+  const [tempHistorySearch, setTempHistorySearch] = useState('');
+  const [placeholderHistorySearch, setPlaceholderHistorySearch] = useState('');
 
 
   let isComprehensive = !selectedPrinter;
@@ -2494,6 +2527,14 @@ function PrintHistoryTable({ printHistoryArgs }) {
   if (historySeason.year === -1) title = 'All Time '
   let append = selectedPrinter ? 'History' : 'Full History';
   title += append
+
+  let numCols = isAdmin ? 14 : 12;
+  if (!selectedPrinter) {
+    numCols += 6;
+  } else if (isSpecialty(selectedPrinter)) {
+    numCols += 5;
+  }
+
   return (<>
     <div className="print-history">
       <div style={{ margin: '0px', padding: '0px', justifyContent: 'center', alignItems: 'center', display: 'flex', userSelect: 'none' }}>
@@ -2514,9 +2555,13 @@ function PrintHistoryTable({ printHistoryArgs }) {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>
         <span className="search-bar">
-          <img src={searchIcon} className='generic-icon'></img> Search
-          <input type="text" value={historySearch} onChange={handleHistorySearch}></input>
-          <button style={{ cursor: 'pointer' }} onClick={() => handleHistorySearch({ target: { value: '' } })}>Clear</button>
+          <img src={searchIcon} className='generic-icon' style={{ height: '25px', width: '25px' }}></img> Search
+          <input type="text" value={tempHistorySearch} placeholder={placeholderHistorySearch} onChange={(e) => { setTempHistorySearch(e.target.value) }}></input>
+          <button style={{ cursor: 'pointer' }} onClick={() => {
+            handleHistorySearch({ target: { value: tempHistorySearch } });
+            setPlaceholderHistorySearch(tempHistorySearch);
+            setTempHistorySearch('');
+          }}>{tempHistorySearch === '' ? 'Clear' : 'Search'}</button>
         </span>
 
         <span className='search-bar'>
@@ -2553,27 +2598,36 @@ function PrintHistoryTable({ printHistoryArgs }) {
               <th>Paid</th>
               <th>Used {selectedPrinter?.material.includes('Resin') ? '(ml)' : '(g)'}</th>
               <th>Files</th>
-              <th> Notes</th>
+              <th>Notes</th>
+              {(isSpecialty(selectedPrinter) || isComprehensive) && <>
+                <th>Color</th>
+                <th>Layer Height</th>
+                <th>Cure Time</th>
+                <th>Self Post-Process</th>
+                <th>Detailed Post-Process</th>
+              </>
+              }
             </tr>
           </thead>
           <tbody>
             {filteredHistoryList.slice(0, historyPagesShowing * pageSize).map((job) => {
               return <tr className={`${job.status} history-row`} key={job.jobID}>
-                {createHistoryRow(job, isComprehensive, false)}
+                {createHistoryRow(job, isComprehensive, isSpecialty(selectedPrinter), false)}
               </tr>
             })}
             {
               (filteredHistoryList.length > (historyPagesShowing * pageSize)) &&
               <tr className="history-row completed">
-                {Array.from({ length: (selectedPrinter ? (isAdmin ? 14 : 12) : (isAdmin ? 15 : 13)) }, (_, i) => (
-                  <td key={i}><button className="history-page-btn" onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
-                ))}
+                {
+                  Array.from({ length: numCols }, (_, i) => (
+                    <td key={i}><button className="history-page-btn" onClick={() => setHistoryPagesShowing(old => old + 1)}>...</button></td>
+                  ))}
               </tr>
             }
           </tbody>
         </table>
       </div>
-    </div>
+    </div >
     <div style={{ height: '3vh' }} />
   </>)
 }

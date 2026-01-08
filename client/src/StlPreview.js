@@ -162,6 +162,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                     loadedObject = mesh;
                     scene.add(mesh);
 
+                    setError(false);
                     addDirectionalLighting(mesh)
                     fitCameraToObject(mesh);
                     setLoadProgress(100);
@@ -214,6 +215,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                     loadedObject = object;
                     scene.add(object);
 
+                    setError(false);
                     addDirectionalLighting(object)
                     fitCameraToObject(object);
                     setLoadProgress(100);
@@ -273,6 +275,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                     loadedObject = object;
                     scene.add(object);
 
+                    setError(false);
                     addDirectionalLighting(object);
                     fitCameraToObject(object);
                     setLoadProgress(100);

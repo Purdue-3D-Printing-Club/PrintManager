@@ -46,12 +46,12 @@ const PrintForm = ({ printFormArgs }) => {
 
     return (
         <>
-            
+
             <div className='printForm'>
                 <div className='panel-header'>{'Job Information Form'}</div>
                 <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>
                     {formData ? "Clear Google Form Autofill Table" : isSpecialty(selectedPrinter) ? "Retrieve Latest Specialty Form Submissions..." : "Retrieve Latest Google Form Submissions..."}
-                    </button>
+                </button>
                 {formDataLoading && <img src={loading} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }}>
                 </img>}
                 {formData && <div className="form-data-wrapper">
@@ -132,11 +132,9 @@ const PrintForm = ({ printFormArgs }) => {
                         <div> Color: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Clear" value={color} onChange={handleColor} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
                         <div> Layer Height: <input placeholder="25 μm" value={layerHeight} onChange={handleLayerHeight} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
                         <div> Cure Time: &nbsp;&nbsp;&nbsp; <input placeholder="1 minute" value={cureTime} onChange={handleCureTime} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
-                        <div style={{ height: '10px' }}></div>
                     </>
                 }
-
-
+                <div style={{ height: '5px' }}></div>
                 <div style={{ height: '30px' }}> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {materialAllowed(selectedPrinter, 'Resin') ? 'ml' : 'g'}
                     {((isSpecialty(selectedPrinter)) || (!isMember && !supervisorPrint && !personalFilament)) &&
                         (` → $${(Math.round(filamentUsage) * (materialAllowed(selectedPrinter, 'Resin') ? filamentSettings.resinCost : filamentSettings.fdmCost)).toFixed(2)}`)} </div>
