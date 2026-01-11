@@ -12,14 +12,20 @@ const LineChart = ({ argsObject }) => {
         leftArrowClick, rightArrowClick
     } = argsObject;
 
-    let { filledPersonalData, filledClubData, filledPpgData, filledDowData } = {};
+    let { filledPersonalData, filledMemberData, filledPpgData, filledDowData,
+        combPersonalData, combMemberData, combPpgData
+    } = {};
 
     if (type === 'filament') {
         filledPersonalData = data.filledPersonalData;
-        filledClubData = data.filledClubData;
+        filledMemberData = data.filledMemberData;
         filledPpgData = data.filledPpgData;
     } else if (type === 'dow') {
         filledDowData = data.filledDowData;
+    } else if (type === 'avg_filament') {
+        combPersonalData = data.combPersonalData;
+        combMemberData = data.combMemberData;
+        combPpgData = data.combPpgData;
     }
 
     const lineRef = useRef(null);
@@ -34,11 +40,16 @@ const LineChart = ({ argsObject }) => {
 
     // dow data
     const [dowSeason, setDowSeason] = useState({ seasonEnc: 2, year: 2025 });
-    let dowList = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    // let dowList = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     let dowLabels = [];
-    for (let i = 0; i < 24; i++) {
-        dowLabels.push(`${String(i).padStart(2, "0")}:00`);
-    };
+    dowLabels.push('12 AM')
+    for (let i = 1; i < 12; i++) {
+        dowLabels.push(`${i} AM`);
+    }
+    dowLabels.push('12 PM')
+    for (let i = 1; i < 12; i++) {
+        dowLabels.push(`${i}PM`);
+    }
 
     // initialize the dow season for dow charts
     useEffect(() => {
@@ -126,7 +137,7 @@ const LineChart = ({ argsObject }) => {
                     backgroundColor: 'rgba(255,100,100,0.1)', borderColor: 'rgba(255, 100, 100, 1)', tension: 0.05,
                 },
                 {
-                    label: 'Club Filament', data: [], fill: true,
+                    label: 'Member Filament', data: [], fill: true,
                     backgroundColor: 'rgba(75,192,192,0.1)', borderColor: 'rgba(75, 192, 192, 1)', tension: 0.05,
                 },
                 {
@@ -171,6 +182,13 @@ const LineChart = ({ argsObject }) => {
                 {
                     label: 'Sunday', data: [], fill: false,
                     borderColor: '#FF6B6B', tension: 0.05,
+                },
+            ]
+        } else if (type === 'avg_filament') {
+            datasets = [
+                {
+                    label: 'Average', data: [], fill: false,
+                    borderColor: 'rgba(0, 0, 0, 1)', tension: 0.05,
                 },
             ]
         }
@@ -232,33 +250,33 @@ const LineChart = ({ argsObject }) => {
 
         if (type === 'filament') {
 
-            let personalSubset, clubSubset, ppgSubset, dateSubset;
+            let personalSubset, memberSubset, ppgSubset, dateSubset;
 
             // limit to the selected day range from the sliders
             if (sliderValues[0] === 0) {
                 personalSubset = filledPersonalData.slice(-sliderValues[1]);
-                clubSubset = filledClubData.slice(-sliderValues[1]);
+                memberSubset = filledMemberData.slice(-sliderValues[1]);
                 ppgSubset = filledPpgData.slice(-sliderValues[1]);
                 dateSubset = dateWindow.slice(-sliderValues[1]);
             } else {
                 personalSubset = filledPersonalData.slice(-sliderValues[1], -sliderValues[0]);
-                clubSubset = filledClubData.slice(-sliderValues[1], -sliderValues[0]);
+                memberSubset = filledMemberData.slice(-sliderValues[1], -sliderValues[0]);
                 ppgSubset = filledPpgData.slice(-sliderValues[1], -sliderValues[0]);
                 dateSubset = dateWindow.slice(-sliderValues[1], -sliderValues[0]);
             }
 
             // aggregate over the chosen level and assign back to the subset variables
-            let aggregatedData = aggregateByLevel(dateSubset, personalSubset, clubSubset, ppgSubset, aggregationLevel);
+            let aggregatedData = aggregateByLevel(dateSubset, personalSubset, memberSubset, ppgSubset, aggregationLevel);
             //  console.log(`${aggregationLevel} aggregated data: `, aggregatedData);
             personalSubset = Object.entries(aggregatedData).map(o => o[1].personal)
             ppgSubset = Object.entries(aggregatedData).map(o => o[1].ppg)
-            clubSubset = Object.entries(aggregatedData).map(o => o[1].club)
+            memberSubset = Object.entries(aggregatedData).map(o => o[1].member)
             dateSubset = Object.entries(aggregatedData).map(o => o[0])
 
 
             const totalData = ppgSubset.map((_, i) =>
                 parseInt(personalSubset[i]) +
-                parseInt(clubSubset[i]) +
+                parseInt(memberSubset[i]) +
                 parseInt(ppgSubset[i])
             );
 
@@ -266,7 +284,7 @@ const LineChart = ({ argsObject }) => {
 
             chart.data.labels = dateSubset;
             chart.data.datasets[0].data = personalSubset;
-            chart.data.datasets[1].data = clubSubset;
+            chart.data.datasets[1].data = memberSubset;
             chart.data.datasets[2].data = ppgSubset;
             chart.data.datasets[3].data = totalData;
             chart.data.datasets[4].data = totalTrend;
@@ -299,6 +317,69 @@ const LineChart = ({ argsObject }) => {
                 let dowFiltered = dowReducedArr.sort((a, b) => (a.hour - b.hour)).map(o => o.cnt)
                 chart.data.datasets[i].data = dowFiltered;
             }
+        } else if (type === 'avg_filament') {
+             let personalSumSubset, memberSumSubset, ppgSumSubset;
+             let personalCntSubset, memberCntSubset, ppgCntSubset;
+
+             let dateSubset;
+
+
+            // limit to the selected day range from the sliders
+            if (sliderValues[0] === 0) {
+                personalSumSubset = combPersonalData[1].slice(-sliderValues[1]);
+                memberSumSubset = combMemberData[1].slice(-sliderValues[1]);
+                ppgSumSubset = combPpgData[1].slice(-sliderValues[1]);
+                personalCntSubset = combPersonalData[0].slice(-sliderValues[1]);
+                memberCntSubset = combMemberData[0].slice(-sliderValues[1]);
+                ppgCntSubset = combPpgData[0].slice(-sliderValues[1]);
+                dateSubset = dateWindow.slice(-sliderValues[1]);
+            } else {
+                personalSumSubset = combPersonalData[1].slice(-sliderValues[1], -sliderValues[0]);
+                memberSumSubset = combMemberData[1].slice(-sliderValues[1], -sliderValues[0]);
+                ppgSumSubset = combPpgData[1].slice(-sliderValues[1], -sliderValues[0]);
+                personalCntSubset = combPersonalData[0].slice(-sliderValues[1], -sliderValues[0]);
+                memberCntSubset = combMemberData[0].slice(-sliderValues[1], -sliderValues[0]);
+                ppgCntSubset = combPpgData[0].slice(-sliderValues[1], -sliderValues[0]);
+                dateSubset = dateWindow.slice(-sliderValues[1], -sliderValues[0]);
+            }
+
+            // aggregate over the chosen level and assign back to the subset variables
+            let aggregatedSumData = aggregateByLevel(dateSubset, personalSumSubset, memberSumSubset, ppgSumSubset, aggregationLevel);
+            let aggregatedCntData = aggregateByLevel(dateSubset, personalCntSubset, memberCntSubset, ppgCntSubset, aggregationLevel);
+
+            //  console.log(`${aggregationLevel} aggregated data: `, aggregatedData);
+            personalSumSubset = Object.entries(aggregatedSumData).map(o => o[1].personal)
+            ppgSumSubset = Object.entries(aggregatedSumData).map(o => o[1].ppg)
+            memberSumSubset = Object.entries(aggregatedSumData).map(o => o[1].member)
+            personalCntSubset = Object.entries(aggregatedCntData).map(o => o[1].personal)
+            ppgCntSubset = Object.entries(aggregatedCntData).map(o => o[1].ppg)
+            memberCntSubset = Object.entries(aggregatedCntData).map(o => o[1].member)
+            dateSubset = Object.entries(aggregatedSumData).map(o => o[0])
+
+
+            const sumData = ppgSumSubset.map((_, i) =>
+                parseInt(personalSumSubset[i]) +
+                parseInt(memberSumSubset[i]) +
+                parseInt(ppgSumSubset[i])
+            );
+            const cntData = ppgCntSubset.map((_, i) =>
+                parseInt(personalCntSubset[i]) +
+                parseInt(memberCntSubset[i]) +
+                parseInt(ppgCntSubset[i])
+            );
+
+
+            const avgData = cntData.map((_, i) => {
+                let avg = (sumData[i] / cntData[i]).toFixed(2);
+                // if (avg == "NaN") {
+                //     return 0;
+                // }
+                return avg;
+            })
+
+
+            chart.data.labels = dateSubset;
+            chart.data.datasets[0].data = avgData;
         }
 
 
@@ -320,7 +401,7 @@ const LineChart = ({ argsObject }) => {
 
 
     // aggregates the filament data at a given aggregation level
-    const aggregateByLevel = (dates, personal, club, ppg, period) => {
+    const aggregateByLevel = (dates, personal, member, ppg, period) => {
         const aggregatedData = {};
 
         for (let i = 0; i < dates.length; i++) {
@@ -344,11 +425,11 @@ const LineChart = ({ argsObject }) => {
             }
 
             if (!aggregatedData[key]) {
-                aggregatedData[key] = { personal: 0, club: 0, ppg: 0 };
+                aggregatedData[key] = { personal: 0, member: 0, ppg: 0 };
             }
 
             aggregatedData[key].personal += parseInt(personal[i]);
-            aggregatedData[key].club += parseInt(club[i]);
+            aggregatedData[key].member += parseInt(member[i]);
             aggregatedData[key].ppg += parseInt(ppg[i]);
         }
 
@@ -371,7 +452,7 @@ const LineChart = ({ argsObject }) => {
             <div className='line-chart'>
                 <canvas ref={lineRef}></canvas>
                 {
-                    type === 'filament' &&
+                    ((type === 'filament') || (type === 'avg_filament')) &&
 
                     <div className="line-options">
                         <div className="slider-container">

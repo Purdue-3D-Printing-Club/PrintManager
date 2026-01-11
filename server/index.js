@@ -847,8 +847,8 @@ app.get('/api/getdowprints', (req, res) => {
         SELECT 
             seasonEnc, 
             year, 
-            HOUR(timeStarted) AS hour, 
-            WEEKDAY(timeStarted) AS dow, 
+            HOUR(local) AS hour, 
+            WEEKDAY(local) AS dow, 
             COUNT(*) AS cnt
         FROM seasonEncs
         GROUP BY seasonEnc, year, hour, dow

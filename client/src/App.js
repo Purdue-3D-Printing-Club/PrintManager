@@ -386,7 +386,7 @@ function App() {
     }) && job.status !== 'queued'
     )
 
-    if (generalSettings?.debugMode) console.log('### New filtered history: ', filteredHistoryTemp);
+    if (generalSettings?.debugMode) console.log('New filtered history list: ', filteredHistoryTemp);
     setFilteredHistoryList(filteredHistoryTemp);
   }
 
@@ -469,7 +469,6 @@ function App() {
       // const newHistory = response.data.historyList.sort((a, b) => new Date(b.timeStarted) - new Date(a.timeStarted))
       const newHistory = sortHistoryList(response.data.historyList, historySort);
       setHistoryList(newHistory);
-      if (generalSettings?.debugMode) console.log('Got unfiltered history list: ', newHistory);
       filterHistory(newHistory, historySearch);
     });
   }
@@ -602,8 +601,8 @@ function App() {
 
     // save the edits
     if (editingJobFilt.jobID === job.jobID) {
-      if(generalSettings?.debugMode) console.log('editingJobFilt: ', editingJobFilt)
-      if(generalSettings?.debugMode) console.log('editingJob: ', editingJob)
+      if (generalSettings?.debugMode) console.log('editingJobFilt: ', editingJobFilt)
+      if (generalSettings?.debugMode) console.log('editingJob: ', editingJob)
 
       if (!printerList.map(printer => printer.printerName).includes(editingJob.printerName)) {
         if (generalSettings?.debugMode) console.log('Cannot set new printer name: Printer does not exist!')
@@ -1205,7 +1204,7 @@ function App() {
     };
   };
 
-  const sanitizeJob = (job, isFromForm=false) => {
+  const sanitizeJob = (job, isFromForm = false) => {
     let sanitized = {
       jobID: job.jobID,
       files: truncateString(job.files, 1024),
@@ -1227,7 +1226,7 @@ function App() {
     if (isFromForm) {
       sanitized = { ...sanitized, timeStarted: new Date().toISOString() }
     } else {
-      sanitized = { ...sanitized, jobID: job.jobID, printerName:job.printerName }
+      sanitized = { ...sanitized, jobID: job.jobID, printerName: job.printerName }
     }
     return sanitized
   }
@@ -1798,15 +1797,12 @@ function App() {
   };
 
   function formatDate(utcString, time) {
-    // console.log('utcString: ', utcString)
     let isoString = '';
     if (utcString[utcString.length - 1] == 'Z') {
       isoString = utcString;
     } else {
       isoString = utcString.replace(' ', 'T') + 'Z';
     }
-
-    // console.log('isoString: ', isoString)
 
     const date = new Date(isoString);
 

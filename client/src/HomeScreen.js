@@ -40,7 +40,7 @@ function HomeScreen({ homeScreenArgs }) {
     const hasFetchedDailyPrint = useRef(false);
 
     const [linePersonalData, setLinePersonalData] = useState([]);
-    const [lineClubData, setLineClubData] = useState([]);
+    const [lineMemberData, setLineMemberData] = useState([]);
     const [linePpgData, setLinePpgData] = useState([]);
     const [lineDateWindow, setLineDateWindow] = useState([]);
 
@@ -162,7 +162,7 @@ function HomeScreen({ homeScreenArgs }) {
                                     if (dailyResponse.data) {
                                         const dailyData = dailyResponse.data.res;
                                         const personal = dailyData.filter(item => item.paid === 'personal')
-                                        const club = dailyData.filter(item => item.paid === 'club')
+                                        const member = dailyData.filter(item => item.paid === 'member')
                                         const ppg = dailyData.filter(item => item.paid === 'per-gram')
 
                                         const startDate = dailyData.length > 0 ? formatDate(new Date(dailyData[0].date).toISOString()) : null;
@@ -180,7 +180,7 @@ function HomeScreen({ homeScreenArgs }) {
                                             const allDates = generateDateRange(startDate, endDate);
                                             // Fill the data and assign them to useState variables by paid type
                                             setLinePersonalData([fillData(personal, allDates, 'cnt', 'date'), fillData(personal, allDates, 'sum', 'date')]);
-                                            setLineClubData([fillData(club, allDates, 'cnt', 'date'), fillData(club, allDates, 'sum', 'date')]);
+                                            setLineMemberData([fillData(member, allDates, 'cnt', 'date'), fillData(member, allDates, 'sum', 'date')]);
                                             setLinePpgData([fillData(ppg, allDates, 'cnt', 'date'), fillData(ppg, allDates, 'sum', 'date')]);
                                             setLineDateWindow(allDates);
                                         }
@@ -369,7 +369,7 @@ function HomeScreen({ homeScreenArgs }) {
                             <LineChart argsObject={{
                                 data: {
                                     filledPersonalData: linePersonalData[0],
-                                    filledClubData: lineClubData[0],
+                                    filledMemberData: lineMemberData[0],
                                     filledPpgData: linePpgData[0]
                                 },
                                 type: 'filament',
@@ -383,7 +383,7 @@ function HomeScreen({ homeScreenArgs }) {
                             <LineChart argsObject={{
                                 data: {
                                     filledPersonalData: linePersonalData[1],
-                                    filledClubData: lineClubData[1],
+                                    filledMemberData: lineMemberData[1],
                                     filledPpgData: linePpgData[1]
                                 },
                                 type: 'filament',
@@ -391,7 +391,20 @@ function HomeScreen({ homeScreenArgs }) {
                             }} />
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={4} title="Prints By Hour & Day Of Week"
+                        <CollapsibleChart index={4} title="Average Filament Per Print Over Time (g)"
+                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line pad-med'}>
+                            <LineChart argsObject={{
+                                data: {
+                                    combPersonalData: linePersonalData,
+                                    combMemberData: lineMemberData,
+                                    combPpgData: linePpgData
+                                },
+                                type: 'avg_filament',
+                                ...lineArgs
+                            }} />
+                        </CollapsibleChart>
+
+                        <CollapsibleChart index={5} title="Prints By Hour & Day Of Week"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line no-pad'}>
                             <LineChart argsObject={{
                                 data: {
@@ -401,9 +414,11 @@ function HomeScreen({ homeScreenArgs }) {
                                 ...lineArgs
                             }} />
                         </CollapsibleChart>
+                        
+
 
                         <div className='group-title'> Pie Charts </div>
-                        <CollapsibleChart index={5} title="Number of Jobs Per Printer"
+                        <CollapsibleChart index={6} title="Number of Jobs Per Printer"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
                             <PieChart argsObject={{
                                 dataObj: printerObjs,
@@ -414,7 +429,7 @@ function HomeScreen({ homeScreenArgs }) {
                             }} />
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={6} title="Filament Used Per Printer (g)"
+                        <CollapsibleChart index={7} title="Filament Used Per Printer (g)"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
                             <PieChart argsObject={{
                                 dataObj: printerObjs,
@@ -426,7 +441,7 @@ function HomeScreen({ homeScreenArgs }) {
                         </CollapsibleChart>
 
 
-                        <CollapsibleChart index={7} title="Number of Prints by Supervisor"
+                        <CollapsibleChart index={8} title="Number of Prints by Supervisor"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
                             <PieChart argsObject={{
                                 dataObj: supervisorData,
@@ -437,7 +452,7 @@ function HomeScreen({ homeScreenArgs }) {
                             }} />
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={8} title="Filament Used by Supervisor (g)"
+                        <CollapsibleChart index={9} title="Filament Used by Supervisor (g)"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
                             <PieChart argsObject={{
                                 dataObj: supervisorData,
@@ -448,7 +463,7 @@ function HomeScreen({ homeScreenArgs }) {
                             }} />
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={9} title="Number of Prints by Person"
+                        <CollapsibleChart index={10} title="Number of Prints by Person"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
                             <PieChart argsObject={{
                                 dataObj: nameFilamentData,
@@ -459,7 +474,7 @@ function HomeScreen({ homeScreenArgs }) {
                             }} />
                         </CollapsibleChart>
 
-                        <CollapsibleChart index={10} title="Filament Used by Person (g)"
+                        <CollapsibleChart index={11} title="Filament Used by Person (g)"
                             chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
                             <PieChart argsObject={{
                                 dataObj: nameFilamentData,
