@@ -678,43 +678,68 @@ const buildPieChartQuery = (aggField) => {
         FROM printjob
         WHERE ${aggField} IS NOT NULL
         AND name IS NOT NULL
-    ),
-    ranked AS (
-        SELECT
-            seasonEnc,
-            year,
-            ${aggField},
-            COUNT(*) AS cnt,
-            SUM(usage_g) AS sum,
-            ROW_NUMBER() OVER (
-                PARTITION BY seasonEnc, year
-                ORDER BY COUNT(*) DESC
-            ) AS rn
-        FROM seasonEncs
-        GROUP BY seasonEnc, year, ${aggField}
     )
     SELECT
         seasonEnc,
         year,
         ${aggField},
-        cnt,
-        sum
-    FROM ranked
-    WHERE rn <= 9
-
-    UNION ALL
-
-    SELECT
-        seasonEnc,
-        year,
-        'Other' AS ${aggField},
-        SUM(cnt) AS cnt,
-        SUM(sum) AS sum
-    FROM ranked
-    WHERE rn > 9
-    GROUP BY seasonEnc, year;
+        COUNT(*) AS cnt,
+        SUM(usage_g) AS sum
+    FROM seasonEncs
+    GROUP BY seasonEnc, year, ${aggField};
     `
     );
+    // return (
+    //     `
+    //  WITH seasonEncs AS (
+    //     SELECT
+    //         *,
+    //         CASE
+    //             WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
+    //             WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
+    //             ELSE 2
+    //         END AS seasonEnc,
+    //         YEAR(timeStarted) AS year
+    //     FROM printjob
+    //     WHERE ${aggField} IS NOT NULL
+    //     AND name IS NOT NULL
+    // ),
+    // ranked AS (
+    //     SELECT
+    //         seasonEnc,
+    //         year,
+    //         ${aggField},
+    //         COUNT(*) AS cnt,
+    //         SUM(usage_g) AS sum,
+    //         ROW_NUMBER() OVER (
+    //             PARTITION BY seasonEnc, year
+    //             ORDER BY COUNT(*) DESC
+    //         ) AS rn
+    //     FROM seasonEncs
+    //     GROUP BY seasonEnc, year, ${aggField}
+    // )
+    // SELECT
+    //     seasonEnc,
+    //     year,
+    //     ${aggField},
+    //     cnt,
+    //     sum
+    // FROM ranked
+    // WHERE rn <= 9
+
+    // UNION ALL
+
+    // SELECT
+    //     seasonEnc,
+    //     year,
+    //     'Other' AS ${aggField},
+    //     SUM(cnt) AS cnt,
+    //     SUM(sum) AS sum
+    // FROM ranked
+    // WHERE rn > 9
+    // GROUP BY seasonEnc, year;
+    // `
+    // );
 }
 
 app.get('/api/getprinterdata', (req, res) => {

@@ -1169,10 +1169,10 @@ function App() {
         showMsgForDuration("No Part Names! Print not started.", 'err');
       } else if (files.length === 0) {
         showMsgForDuration("No Files! Print not started.", 'err');
-      } else if (jobMaterial.length === 0) {
+      } else if (jobMaterial.trim().length === 0) {
         showMsgForDuration("No Material! Print not started.", 'err');
       }
-      else if ((filamentUsage === 0) || (filamentUsage === "")) {
+      else if ((filamentUsage === "")) {
         showMsgForDuration("No Filament Usage! Print not started.", 'err');
       } else if (queue && historyList.filter(item => item.status === 'queued').some(job => {
         if (job.name.toLowerCase() === name.toLowerCase()) {
@@ -1958,6 +1958,7 @@ function App() {
     if ((seasonPeriod.year === endSeason.year) && (seasonPeriod.seasonEnc === endSeason.seasonEnc)) {
       setSeasonPeriod((old) => ({ ...old, year: -1 }));
     }
+
     // Ignore right arrow clicks if its already in "Total" mode
     if (seasonPeriod.year === -1) {
       return;
@@ -2110,7 +2111,7 @@ function App() {
                 }}>
                   <option value="" disabled hidden>Move Print</option>
                   {printerList.map((printer) => {
-                    if ((printer.material.includes(curJob?.material) && (curJob?.material !== ''))   // The current job's material must be allowed for the new printer
+                    if ((printer?.material?.toLowerCase().includes(curJob?.material?.toLowerCase()) && (curJob?.material !== ''))   // The current job's material must be allowed for the new printer
                       && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {     // AND the printer must be available
                       return <>
                         <option value={printer.printerName}>{printer.printerName}</option>

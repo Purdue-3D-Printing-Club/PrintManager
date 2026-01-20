@@ -48,7 +48,7 @@ const LineChart = ({ argsObject }) => {
     }
     dowLabels.push('12 PM')
     for (let i = 1; i < 12; i++) {
-        dowLabels.push(`${i}PM`);
+        dowLabels.push(`${i} PM`);
     }
 
     // initialize the dow season for dow charts
@@ -435,9 +435,6 @@ const LineChart = ({ argsObject }) => {
 
         return aggregatedData
     };
-
-
-
 
 
 

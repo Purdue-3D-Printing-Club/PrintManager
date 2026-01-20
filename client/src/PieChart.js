@@ -12,24 +12,21 @@ function PieChart({ argsObject }) {
 
 
     const [pieSeason, setPieSeason] = useState({ year: 2025, seasonEnc: 2 });
+    const [numLabels, setNumLabels] = useState(10);
     const [curPieSeasonData, setCurPieSeasonData] = useState(null);
     const [curLabels, setCurLabels] = useState(null);
 
 
-    // let defaultColors = ["rgb(54, 162, 235)", "rgb(255, 99, 132)",
-    //     "rgb(255, 159, 64)", "rgb(255, 205, 86)", "rgb(75, 192, 192)",
-    //     "rgb(153, 102, 255)", "rgb(201, 203, 207)"
-    // ];
     let defaultColors = [
-        "#F4A6B8", 
+        "#F4A6B8",
         "#F6C28B",
-        "#F2E394", 
-        "#BFE3B4", 
-        "#9ED9C8", 
-        "#9EC5E5", 
-        "#B3B7E6", 
+        "#F2E394",
+        "#BFE3B4",
+        "#9ED9C8",
+        "#9EC5E5",
+        "#B3B7E6",
         "#D2B4E8",
-        "#E8A6D3", 
+        "#E8A6D3",
         "rgb(201, 203, 207)" // gray for "Other"
     ]
 
@@ -40,24 +37,21 @@ function PieChart({ argsObject }) {
     }, [])
 
 
-    // filter the data whenever pieSeason changes
+    // filter the data whenever pieSeason or numLabels changes
     useEffect(() => {
         if (seasonSelect) {
-            let filteredData = null;
-            if (pieSeason.year === -1) {
-                // "Total" mode
-                // aggregate data field by label field, extract "Other" object if exists, sort by data field, 
-                // keep the top X labels, add others to the "Other" field, and combine the entries.
-                filteredData = topXWithOther(defaultColors.length - 1, dataObj, labelField, dataField);
-            } else {
+            let filteredData = dataObj;
+            if (pieSeason.year !== -1) {
                 filteredData = dataObj.filter(obj => {
                     return (obj.year === pieSeason.year) && (obj.seasonEnc === pieSeason.seasonEnc)
                 })
             }
+            let rankedData = topXWithOther(numLabels - 1, filteredData, labelField, dataField);
+
 
             // sort while keeping "Other" at the bottom
             let other = null;
-            let sortedData = filteredData.filter(obj => {
+            let sortedData = rankedData.filter(obj => {
                 if (obj[labelField] === 'Other') {
                     other = obj;
                     return false;
@@ -84,22 +78,22 @@ function PieChart({ argsObject }) {
             setCurPieSeasonData(newData);
             setCurLabels(newLabels);
         }
-    }, [pieSeason])
+    }, [pieSeason, numLabels])
 
 
     function topXWithOther(x, items, labelField, dataField) {
         const map = new Map();
         let otherValue = 0;
 
-        // 1. Aggregate by label, extract existing "Other"
+        // // 1. Aggregate by label, extract existing "Other"
         for (const item of items) {
             const label = item[labelField];
             const value = Number(item[dataField]) || 0;
 
-            if (label === 'Other') {
-                otherValue += value;
-                continue;
-            }
+            // if (label === 'Other') {
+            //     otherValue += value;
+            //     continue;
+            // }
 
             map.set(label, (map.get(label) || 0) + value);
         }
@@ -107,7 +101,8 @@ function PieChart({ argsObject }) {
         // 2. Convert to array and sort descending by value
         const sorted = Array.from(map.entries())
             .map(([label, value]) => ({ [labelField]: label, [dataField]: value }))
-            .sort((a, b) => b.value - a.value);
+            .sort((a, b) => b[dataField] - a[dataField]);
+
 
         // 3. Take top x and aggregate the rest
         const top = sorted.slice(0, x);
@@ -117,12 +112,16 @@ function PieChart({ argsObject }) {
             otherValue += item[dataField];
         }
 
-        // 4. Append "Other" if it has data
+        // 4. Add item prefixes to the top labels
+        top.forEach((item, index) => {
+            item[labelField] = `${index + 1}. ${item[labelField]}`;
+        });
+
+        // 5. Append "Other" if it has data
         if (otherValue > 0) {
             top.push({ [labelField]: 'Other', [dataField]: otherValue });
         }
 
-        // console.log('top: ', top)
         return top;
     }
 
@@ -149,6 +148,22 @@ function PieChart({ argsObject }) {
                             plugins: {
                                 legend: {
                                     position: 'right',
+                                    labels: {
+                                        boxWidth: 25,
+                                        generateLabels(chart) {
+                                            const dataset = chart.data.datasets[0];
+                                            const labels = chart.data.labels || [];
+
+                                            return labels.slice(0, 10).map((label, i) => ({
+                                                text: label,
+                                                fillStyle: dataset.backgroundColor[i],
+                                                strokeStyle: dataset.borderColor,
+                                                lineWidth: dataset.borderWidth,
+                                                hidden: !chart.getDataVisibility(i),
+                                                index: i,
+                                            }));
+                                        },
+                                    },
                                 },
                             },
                         }}
@@ -164,6 +179,17 @@ function PieChart({ argsObject }) {
 
         {seasonSelect && <div className="season-select-wrapper">
             <div className="season-select">
+                <div>
+                    <select value={numLabels} onChange={(e) => setNumLabels(e.target.value)}>
+                        <option value="1">1</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="50">50</option>
+                        <option value="-1">All</option>
+                    </select>
+                </div>
+
                 <div className='arrow-btn' style={((pieSeason.year === endSeason.year) && (pieSeason.seasonEnc === endSeason.seasonEnc)) ?
                     { opacity: '30%', cursor: 'default' } : {}} onClick={() => setPieSeason({ ...endSeason })}>
                     <img src={homeIcon} style={{ width: '18px', height: '18px' }}></img>
