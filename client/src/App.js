@@ -750,6 +750,7 @@ function App() {
     setNotes(job.notes);
     setSupervisorPrint(job.name === job.supervisorName);
     setPersonalFilament(job.paid === 'personal');
+    setJobMaterial(job.material);
 
     setColor(job.color);
     setLayerHeight(job.layerHeight);

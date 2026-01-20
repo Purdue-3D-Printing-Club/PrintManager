@@ -179,16 +179,6 @@ function PieChart({ argsObject }) {
 
         {seasonSelect && <div className="season-select-wrapper">
             <div className="season-select">
-                <div>
-                    <select value={numLabels} onChange={(e) => setNumLabels(e.target.value)}>
-                        <option value="1">1</option>
-                        <option value="10">10</option>
-                        <option value="20">20</option>
-                        <option value="30">30</option>
-                        <option value="50">50</option>
-                        <option value="-1">All</option>
-                    </select>
-                </div>
 
                 <div className='arrow-btn' style={((pieSeason.year === endSeason.year) && (pieSeason.seasonEnc === endSeason.seasonEnc)) ?
                     { opacity: '30%', cursor: 'default' } : {}} onClick={() => setPieSeason({ ...endSeason })}>
@@ -207,6 +197,16 @@ function PieChart({ argsObject }) {
                         onClick={() => rightArrowClick(pieSeason, setPieSeason)}>&gt;</div> :
                     <div style={{ width: '39px' }}></div>
                 }
+                <div>
+                    <select value={numLabels} onChange={(e) => setNumLabels(e.target.value)}>
+                        <option value="1">1</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="50">50</option>
+                        <option value="-1">All</option>
+                    </select>
+                </div>
             </div>
         </div>}
     </>
