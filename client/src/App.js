@@ -1184,9 +1184,11 @@ function App() {
         showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
       } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
         showMsgForDuration("Resin queue is full! Print not queued.", 'err');
-      } else if (((jobMaterial == 'TPU') || (jobMaterial == 'PETG')) && !personalFilament) {
-        showMsgForDuration(`Warning: ${jobMaterial} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
-      } else if ((jobMaterial === 'Resin')) {
+      }
+      //  else if (((jobMaterial == 'TPU') || (jobMaterial == 'PETG')) && !personalFilament) {
+        // showMsgForDuration(`Warning: ${jobMaterial} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
+      // } 
+      else if ((jobMaterial === 'Resin')) {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
