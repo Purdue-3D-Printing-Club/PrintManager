@@ -8,6 +8,10 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import './stlPreview.css';
 
 import homeIcon from '/images/home.svg'
+import clearIcon from '/images/statusIcons/clear.svg'
+import cubeIcon from '/images/cube.svg'
+
+
 
 const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL }) => {
     const containerRef = useRef(null);
@@ -16,11 +20,17 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
     const controlsRef = useRef(null);
     const resetAnimRef = useRef(null);
     const [error, setError] = useState(false);
+    const [transparent, setTransparent] = useState(false);
+    const [outline, setOutline] = useState(false);
 
     const [loadProgress, setLoadProgress] = useState(0);
 
     const homeCameraPos = useRef(new THREE.Vector3());
     const homeTarget = useRef(new THREE.Vector3());
+
+    const objRef = useRef(null);
+    const edgesRef = useRef(null);
+
 
     // resets the view to the home view with smooth interpolation
     const resetView = () => {
@@ -68,6 +78,35 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
     }
 
     useEffect(() => {
+        const object = objRef.current;
+        if (!object) return;
+
+        object.traverse((child) => {
+            if (!child.isMesh) return;      // only meshes
+            if (!child.material) return;    // skip if no material
+
+            child.material.transparent = transparent;
+            child.material.opacity = transparent ? 0.4 : 1;
+            child.material.needsUpdate = true;
+        });
+    }, [transparent]);
+
+    useEffect(() => {
+        const edges = edgesRef.current;
+        if (!edges) return;
+
+        if (Array.isArray(edges)) {
+            edges.forEach((line) => {
+                line.visible = outline;
+            });
+        } else {
+            edges.visible = outline;
+        }
+    }, [outline]);
+
+
+
+    useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
@@ -98,7 +137,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
         let loadedObject = null;
 
         const streamUrl = `${serverURL}/api/stream-stl?url=${encodeURIComponent(googleDriveLink)}`;
-        
+
 
         // Utility: fit camera to any Object3D
         const fitCameraToObject = (object) => {
@@ -124,6 +163,13 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
         };
 
         const addDirectionalLighting = (object) => {
+            const hemi = new THREE.HemisphereLight(
+                0xffffff,   // sky color
+                0x222222,   // ground color
+                0.5
+            );
+            scene.add(hemi);
+
             const box = new THREE.Box3().setFromObject(object);
             const size = box.getSize(new THREE.Vector3()).length();
             const center = box.getCenter(new THREE.Vector3());
@@ -134,13 +180,6 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
             directional1.target.position.copy(center);  // point at object center
             scene.add(directional1);
             scene.add(directional1.target);
-
-            // Second directional light on opposite side
-            const directional2 = new THREE.DirectionalLight(0xffffff, 1);
-            directional2.position.set(center.x - size, center.y - size, center.z + size);
-            directional2.target.position.copy(center);
-            scene.add(directional2);
-            scene.add(directional2.target);
         };
 
         // First attempt STL
@@ -150,22 +189,40 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
             stlLoader.load(
                 streamUrl,
                 (geometry) => {
-                    geometry.center();
+                    // geometry.center();
+                    geometry.computeVertexNormals();
 
                     const material = new THREE.MeshPhongMaterial({
                         color: 0x44cc55,
-                        specular: 0x333333,
+                        specular: 0x222,
                         shininess: 150,
+                        side: THREE.DoubleSide,
                     });
 
                     const mesh = new THREE.Mesh(geometry, material);
+
+                    // add edge lines
+                    const edges = new THREE.EdgesGeometry(geometry);
+                    const edgeLines = new THREE.LineSegments(
+                        edges,
+                        new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 })
+                    );
+                    mesh.add(edgeLines);
+                    edgeLines.visible = outline;
+                    edgesRef.current = edgeLines;
+
+                    mesh.rotation.x = -Math.PI / 2;
                     loadedObject = mesh;
                     scene.add(mesh);
+
+
 
                     setError(false);
                     addDirectionalLighting(mesh)
                     fitCameraToObject(mesh);
                     setLoadProgress(100);
+
+                    objRef.current = mesh;
                 },
                 (xhr) => trackProgress(xhr),
                 () => {
@@ -210,8 +267,22 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
 
                             });
                         }
+
+
+                        // create edge lines for each mesh
+                        const edges = new THREE.EdgesGeometry(child.geometry);
+                        const edgeLines = new THREE.LineSegments(
+                            edges,
+                            new THREE.LineBasicMaterial({ color: 0x000000 })
+                        );
+
+                        child.add(edgeLines);
+                        edgeLines.visible = outline;
+                        edgesRef.current = edgesRef.current || [];
+                        edgesRef.current.push(edgeLines);
                     });
 
+                    object.rotation.x = -Math.PI / 2;
                     loadedObject = object;
                     scene.add(object);
 
@@ -219,6 +290,8 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                     addDirectionalLighting(object)
                     fitCameraToObject(object);
                     setLoadProgress(100);
+
+                    objRef.current = object;
                 },
                 (xhr) => trackProgress(xhr),
                 () => {
@@ -245,7 +318,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                         if (!geom.attributes.normal) {
                             geom.computeVertexNormals();
                         }
-                    
+
                         // check the bounding box to see if anything was loaded
                         geom.computeBoundingBox();
                         const box = geom.boundingBox;
@@ -256,13 +329,13 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                         const size = new THREE.Vector3();
                         box.getSize(size);
                         const epsilon = 1e-6;
-                        if ((size.x < epsilon && size.y < epsilon && size.z < epsilon) || 
-                        !size.x || !size.y || !size.z) {
+                        if ((size.x < epsilon && size.y < epsilon && size.z < epsilon) ||
+                            !size.x || !size.y || !size.z) {
                             errorCallback();
                             return;
-                        }          
-                    
-                            
+                        }
+
+
 
                         // OBJ does not support vertex colors
                         child.material = new THREE.MeshPhongMaterial({
@@ -270,8 +343,22 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                             shininess: 120,
                             specular: 0x333333,
                         });
+
+                        // create edge lines for each mesh
+                        const edges = new THREE.EdgesGeometry(child.geometry);
+                        const edgeLines = new THREE.LineSegments(
+                            edges,
+                            new THREE.LineBasicMaterial({ color: 0x000000 })
+                        );
+
+                        child.add(edgeLines);
+                        edgeLines.visible = outline;
+                        edgesRef.current = edgesRef.current || [];
+                        edgesRef.current.push(edgeLines);
                     });
 
+
+                    object.rotation.x = -Math.PI / 2;
                     loadedObject = object;
                     scene.add(object);
 
@@ -279,10 +366,12 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                     addDirectionalLighting(object);
                     fitCameraToObject(object);
                     setLoadProgress(100);
+
+                    objRef.current = object;
                 },
-               (xhr) => trackProgress(xhr),
+                (xhr) => trackProgress(xhr),
                 () => {
-                  errorCallback();
+                    errorCallback();
                 }
             );
         };
@@ -348,19 +437,34 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
 
                 {(loadProgress < 100) && <div className="loading">
                     <div>{`Loading file preview...`}</div>
-                    <br/>
-                    <div className = "progressBar" style={{ color:'black', background: 
-                        `linear-gradient(to right, rgba(110, 200, 110, 1) ${loadProgress - 2}%, rgb(200,50,50) ${loadProgress}%, lightgray ${loadProgress + 1}%)`}}>
-                    {`${loadProgress?.toFixed(0)}%`}
+                    <br />
+                    <div className="progressBar" style={{
+                        color: 'black', background:
+                            `linear-gradient(to right, rgba(110, 200, 110, 1) ${loadProgress - 2}%, rgb(200,50,50) ${loadProgress}%, lightgray ${loadProgress + 1}%)`
+                    }}>
+                        {`${loadProgress?.toFixed(0)}%`}
                     </div>
                 </div>}
 
                 {error ?
                     <div className="error"> {'Unable to preview this file.\n\nSupported file types:\n .stl, .3mf, .obj'} </div>
                     :
-                    <img className='homeBtn' src={homeIcon} onClick={() => {
-                        resetView()
-                    }}></img>
+                    <>
+                        <img className='previewBtn homeBtn' src={homeIcon} onClick={() => {
+                            resetView()
+                        }}></img>
+                        <img className={`previewBtn transpBtn ${transparent ? 'on' : ''}`} src={clearIcon}
+                            style={{ top: '32px' }}
+                            onClick={() => {
+                                setTransparent(old => !old)
+                            }}></img>
+                        <img className={`previewBtn transpBtn ${outline ? 'on' : ''}`} src={cubeIcon}
+                            style={{ top: '64px' }}
+                            onClick={() => {
+                                setOutline(old => !old)
+                            }}></img>
+                    </>
+
                 }
 
             </div>

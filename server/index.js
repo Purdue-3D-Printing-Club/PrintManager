@@ -9,7 +9,7 @@ const { ClientSecretCredential } = require('@azure/identity');
 const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
 const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch').default;
 const axios = require('axios');
 
 // The upper bounds for each season
@@ -198,7 +198,7 @@ async function deleteOldFiles(drive, daysOld = 7) {
 
         for (const file of res.data.files) {
             const createdTime = new Date(file.createdTime).getTime();
-            
+
             // TODO: Don't delete files we want to keep such as the sql data backup
             if (createdTime < cutoff) {
                 try {
@@ -310,12 +310,17 @@ app.get('/api/stream-stl', async (req, res) => {
     try {
         const response = await fetch(directUrl);
 
+        let contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("text/html")) {
+            throw new Error("HTML Response");
+        }
 
         if (!response.ok) {
             return res.status(500).send('Error fetching the STL file from Google Drive');
         }
 
-        const buffer = await response.buffer();
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
         // Set the Content-Type header explicitly
         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');

@@ -1,22 +1,43 @@
 .homeBtn {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    right: 5px;
+    background-color: rgba(0,0,0,0.1);
+}
+
+.transpBtn {
+    position: absolute;
+    right: 5px;
+}
+
+.transpBtn.on {
+  background-color: rgba(0, 255, 0, 0.1);
+}
+
+.transpBtn:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.transpBtn.on:hover {
+  background-color: rgba(0, 255, 0, 0.2);
+}
+
+
+.previewBtn {
     z-index: 10;
     transition: background-color 0.2s ease;
     color: #fff;
     border: 1px solid #000000dd;
     padding: 4px 4px;
     cursor: pointer;
-    width: 20px;
-    height: 20px;
-    background-color: rgba(0,0,0,0.1);
+    width: 18px;
+    height: 18px;
     border-radius:5px;
 }
 
 .homeBtn:hover {
-    background-color: rgba(0,0,0,0.3);
+    background-color: rgba(0,0,0,0.2);
 }
+
 
 .error{
     position: absolute;
