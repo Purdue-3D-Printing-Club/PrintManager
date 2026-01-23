@@ -309,18 +309,22 @@ app.get('/api/stream-stl', async (req, res) => {
     // console.log('directUrl:', directUrl);
     try {
         const response = await fetch(directUrl);
-
         let contentType = response.headers.get("content-type") || "";
-        if (contentType.includes("text/html")) {
-            throw new Error("HTML Response");
+
+        const isBinary = contentType.includes('application/octet-stream') ||
+            contentType.includes('model/') ||
+            contentType.includes('application/stl') ||
+            contentType.includes('application/zip'); 
+
+        if (!isBinary) {
+            return res.status(500).send('Google drive response not binary.');
         }
 
         if (!response.ok) {
             return res.status(500).send('Error fetching the STL file from Google Drive');
         }
 
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const buffer = await response.buffer();
 
         // Set the Content-Type header explicitly
         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');

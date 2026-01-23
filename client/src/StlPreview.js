@@ -10,10 +10,12 @@ import './stlPreview.css';
 import homeIcon from '/images/home.svg'
 import clearIcon from '/images/statusIcons/clear.svg'
 import cubeIcon from '/images/cube.svg'
+import rotateIcon from '/images/rotate.svg'
+import gridIcon from '/images/grid.svg'
 
 
 
-const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL }) => {
+const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL, rotateInit }) => {
     const containerRef = useRef(null);
     const rendererRef = useRef(null);
     const cameraRef = useRef(null);
@@ -22,6 +24,8 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
     const [error, setError] = useState(false);
     const [transparent, setTransparent] = useState(false);
     const [outline, setOutline] = useState(false);
+    const [rotate, setRotate] = useState(rotateInit);
+    const [grid, setGrid] = useState(false);
 
     const [loadProgress, setLoadProgress] = useState(0);
 
@@ -30,6 +34,15 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
 
     const objRef = useRef(null);
     const edgesRef = useRef(null);
+    const gridRef = useRef(null);
+    const axesRef = useRef(null);
+
+
+    const rotateRef = useRef(rotate);
+
+    useEffect(() => {
+        rotateRef.current = rotate;
+    }, [rotate]);
 
 
     // resets the view to the home view with smooth interpolation
@@ -104,6 +117,12 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
         }
     }, [outline]);
 
+    useEffect(() => {
+        if (!gridRef.current || !axesRef.current) return;
+        gridRef.current.visible = grid;
+        axesRef.current.visible = grid;
+    }, [grid]);
+
 
 
     useEffect(() => {
@@ -133,6 +152,37 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
         controls.enableDamping = true;
         controls.dampingFactor = 0.15;
         controlsRef.current = controls;
+
+
+        const grid = new THREE.GridHelper(1000, 10, 0x444444, 0x888888);
+        grid.material.depthTest = false;
+        grid.material.depthWrite = false;
+        grid.renderOrder = -1;
+        grid.visible = false;
+        scene.add(grid);
+        gridRef.current = grid;
+
+        // const axes = new THREE.AxesHelper(50);
+        const axes = customAxes({
+            length: 20,
+            radius: 1,
+            arrowLength: 4,
+            arrowRadius: 2
+        });
+
+        // add axes on top of everything
+        axes.renderOrder = 999;
+        axes.traverse((child) => {
+            if (child.material) {
+                child.material.depthTest = false;
+                child.material.depthWrite = false;
+                child.material.transparent = true;
+            }
+        });
+        scene.add(axes);
+        axes.visible = false;
+        axesRef.current = axes;
+
 
         let loadedObject = null;
 
@@ -182,6 +232,9 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
             scene.add(directional1.target);
         };
 
+        let pivot = new THREE.Object3D();
+        scene.add(pivot);
+
         // First attempt STL
         const tryLoadingSTL = () => {
             const stlLoader = new STLLoader();
@@ -189,8 +242,8 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
             stlLoader.load(
                 streamUrl,
                 (geometry) => {
-                    // geometry.center();
                     geometry.computeVertexNormals();
+                    geometry.center();
 
                     const material = new THREE.MeshPhongMaterial({
                         color: 0x44cc55,
@@ -198,6 +251,8 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                         shininess: 150,
                         side: THREE.DoubleSide,
                     });
+
+                    geometry.computeBoundingBox();
 
                     const mesh = new THREE.Mesh(geometry, material);
 
@@ -213,7 +268,27 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
 
                     mesh.rotation.x = -Math.PI / 2;
                     loadedObject = mesh;
-                    scene.add(mesh);
+                    pivot.add(mesh);
+
+
+                    const box = new THREE.Box3().setFromObject(mesh);
+                    const size = new THREE.Vector3();
+                    const center = new THREE.Vector3();
+
+                    box.getSize(size);
+                    box.getCenter(center);
+
+                    const boxGeometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+                    const boxMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xff8800,
+                        wireframe: true,
+                        depthTest: false,
+                        depthWrite: false
+                    });
+                    const bboxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+                    bboxMesh.position.copy(center);
+                    // scene.add(bboxMesh);
+                    mesh.position.y = size.y / 2;
 
 
 
@@ -244,6 +319,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                         if (!child.geometry.attributes.normal) {
                             child.geometry.computeVertexNormals();
                         }
+                        // child.geometry.center();
 
                         const hasVertexColors =
                             child.geometry &&
@@ -282,9 +358,29 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                         edgesRef.current.push(edgeLines);
                     });
 
+
+
                     object.rotation.x = -Math.PI / 2;
+                    object.updateWorldMatrix(true, true);
+                    pivot.add(object);
+
+
+                    const box = new THREE.Box3().setFromObject(object);
+
+                    const size = new THREE.Vector3();
+                    const center = new THREE.Vector3();
+
+                    box.getSize(size);
+                    box.getCenter(center);
+
+                    object.position.set(0, size.y / 2, 0);
+
+
+                    // Move object so its center is at the world origin
+                    object.position.sub(center);
+
+
                     loadedObject = object;
-                    scene.add(object);
 
                     setError(false);
                     addDirectionalLighting(object)
@@ -300,7 +396,31 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
             );
         };
 
-        const tryLoadingOBJ = () => {
+        const tryLoadingOBJ = async () => {
+
+            // First check for binary data
+            const partialResponse = await fetch(streamUrl, {
+                headers: { 'Range': 'bytes=0-1023' }
+            });
+            const buffer = await partialResponse.arrayBuffer();
+            const uint8 = new Uint8Array(buffer);
+
+            let isBinary = false;
+            for (let i = 0; i < uint8.length; i++) {
+                if (uint8[i] === 0) {
+                    isBinary = true;
+                    break;
+                }
+            }
+
+            if (isBinary) {
+                console.error("Aborting: Binary data detected in OBJ header.");
+                setError(true);
+                setLoadProgress(100);
+                return;
+            }
+
+            // data looks like ASCII (needed for OBJ file)
             const objLoader = new OBJLoader();
             let errorCallback = () => {
                 setLoadProgress(100);
@@ -358,9 +478,27 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                     });
 
 
+
                     object.rotation.x = -Math.PI / 2;
+                    object.updateWorldMatrix(true, true);
+                    pivot.add(object);
+
+
+                    const box = new THREE.Box3().setFromObject(object);
+
+                    const size = new THREE.Vector3();
+                    const center = new THREE.Vector3();
+
+                    box.getSize(size);
+                    box.getCenter(center);
+
+                    object.position.set(0, size.y / 2, 0);
+
+                    // Move object so its center is at the world origin
+                    object.position.sub(center);
+
                     loadedObject = object;
-                    scene.add(object);
+
 
                     setError(false);
                     addDirectionalLighting(object);
@@ -387,6 +525,12 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
             rafId = requestAnimationFrame(animate);
             controls.update();
             renderer.render(scene, camera);
+            if (rotateRef.current && loadedObject) {
+                // loadedObject.rotation.z += 0.005;
+                const axis = new THREE.Vector3(0, 1, 0);
+                // loadedObject.rotateOnWorldAxis(axis, 0.005);
+                pivot.rotateOnWorldAxis(axis, 0.005)
+            }
         };
         animate();
 
@@ -430,6 +574,74 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
         };
     }, [googleDriveLink, serverURL]);
 
+
+
+
+    function customAxes({
+        length = 20,
+        radius = 0.25,
+        arrowLength = 3,
+        arrowRadius = 0.6
+    } = {}) {
+        const group = new THREE.Group();
+
+        const axes = [
+            { dir: new THREE.Vector3(1, 0, 0), color: 0xff0000 }, // X
+            { dir: new THREE.Vector3(0, 1, 0), color: 0x00ff00 }, // Y
+            { dir: new THREE.Vector3(0, 0, 1), color: 0x0000ff }, // Z
+        ];
+
+        for (const { dir, color } of axes) {
+            const material = new THREE.MeshBasicMaterial({
+                color,
+                depthTest: false,
+                depthWrite: false
+            });
+
+            // Shaft
+            const shaftGeom = new THREE.CylinderGeometry(
+                radius,
+                radius,
+                length,
+                16
+            );
+            const shaft = new THREE.Mesh(shaftGeom, material);
+
+            // Arrowhead
+            const arrowGeom = new THREE.ConeGeometry(
+                arrowRadius,
+                arrowLength,
+                20
+            );
+            const arrow = new THREE.Mesh(arrowGeom, material);
+
+            // Orient along axis
+            const quat = new THREE.Quaternion();
+            quat.setFromUnitVectors(
+                new THREE.Vector3(0, 1, 0),
+                dir
+            );
+
+            shaft.quaternion.copy(quat);
+            arrow.quaternion.copy(quat);
+
+            // Position shaft
+            shaft.position.copy(dir).multiplyScalar(length / 2);
+
+            // Position arrow at the end
+            arrow.position.copy(dir).multiplyScalar(length + arrowLength / 2);
+
+            shaft.renderOrder = 999;
+            arrow.renderOrder = 999;
+
+            group.add(shaft);
+            group.add(arrow);
+        }
+
+        return group;
+    }
+
+
     return (
         <div>
             <span>{name}</span>
@@ -462,6 +674,16 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL })
                             style={{ top: '64px' }}
                             onClick={() => {
                                 setOutline(old => !old)
+                            }}></img>
+                        <img className={`previewBtn transpBtn ${rotate ? 'on' : ''}`} src={rotateIcon}
+                            style={{ top: '96px' }}
+                            onClick={() => {
+                                setRotate(old => !old)
+                            }}></img>
+                        <img className={`previewBtn transpBtn ${grid ? 'on' : ''}`} src={gridIcon}
+                            style={{ top: '128px' }}
+                            onClick={() => {
+                                setGrid(old => !old)
                             }}></img>
                     </>
 

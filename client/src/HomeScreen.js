@@ -313,7 +313,8 @@ function HomeScreen({ homeScreenArgs }) {
                                     {recentFiles.map((file, index) => {
                                         if (generalSettings.showFilePreviews) {
                                             return (
-                                                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL}></StlPreview></div>
+                                                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} 
+                                                getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true}></StlPreview></div>
                                             )
                                         } else {
                                             return (
