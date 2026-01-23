@@ -682,6 +682,10 @@ function App() {
     setTempPrinterMaterial(newPrinterMaterial);
   }
   const savePrinterMaterial = (newPrinterMaterial) => {
+    if(selectedPrinter.material === newPrinterMaterial) {
+      if (generalSettings?.debugMode) console.log('Printer material not updated due to no changes');
+      return;
+    }
 
     updateTable("printer", "material", selectedPrinter.printerName, newPrinterMaterial, () => {
       selectedPrinter.material = newPrinterMaterial;
@@ -742,7 +746,7 @@ function App() {
   }
   const autofillFields = (job) => {
     setName(job.name);
-    setFilamentUsage(job.usage_g);
+    setFilamentUsage(job.usage_g || '');
     setEmail(job.email);
     setSupervisor(job.supervisorName);
     setPartNames(job.partNames);
@@ -750,7 +754,12 @@ function App() {
     setNotes(job.notes);
     setSupervisorPrint(job.name === job.supervisorName);
     setPersonalFilament(job.paid === 'personal');
-    setJobMaterial(job.material);
+
+    let material = job.material.toLowerCase();
+    if (!materialAllowed(selectedPrinter, material)) {
+      material = '';
+    }
+    setJobMaterial(material);
 
     setColor(job.color);
     setLayerHeight(job.layerHeight);
@@ -986,11 +995,30 @@ function App() {
 
     } else { //input is focused
       if (!menuOpen) {
-        // if ((e.target.id === "printerNotesInput") && (e.key === 'Enter')) {
-        //   updatePrinterNotes();
-        // } else
-        if ((editingJob.jobID !== -1) && (e.key === 'Enter')) {
+        if ((e.target.id === "historySearchEnter") && (e.key === 'Enter')) {
+          const button = document.getElementById("historySearchEnterBtn");
+          if (button) {
+            button.click();
+          }
+        } else if ((editingJob.jobID !== -1) && (e.key === 'Enter')) {
           handleEditClick(editingJob);
+        } else if ((e.target.className.includes('formInput')) && (e.key === 'Enter')) {
+          const button = document.getElementById("formSubmitBtn");
+          if (button) {
+            button.click();
+          }
+        } else if ((e.target.id == "allowedMaterials") && (e.key === 'Enter')) {
+          const button = document.getElementById("allowedMaterialsBtn");
+          if (button) {
+            button.click();
+          }
+        }
+      } else { // menu is open and input focused
+        if ((e.target.id === "memberSearchEnter") && (e.key === 'Enter')) {
+          const button = document.getElementById("memberSearchEnterBtn");
+          if (button) {
+            button.click();
+          }
         }
       }
     }
@@ -1187,7 +1215,7 @@ function App() {
         showMsgForDuration("Resin queue is full! Print not queued.", 'err');
       }
       //  else if (((jobMaterial == 'TPU') || (jobMaterial == 'PETG')) && !personalFilament) {
-        // showMsgForDuration(`Warning: ${jobMaterial} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
+      // showMsgForDuration(`Warning: ${jobMaterial} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
       // } 
       else if ((jobMaterial === 'Resin')) {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
@@ -1630,22 +1658,12 @@ function App() {
     // fill the form's fields with the data that was clicked
     let job = formData[index]
 
+    if (generalSettings?.debugMode) console.log('filling form data with job: ', job)
+
     if (!job) {
       showMsgForDuration('Error: Form data not found', 'err', popupTime);
     } else {
-      setName(job.name);
-      setEmail(job.email);
-      setSupervisor(job.supervisorName)
-      setFiles(job.files);
-      setNotes(job.notes);
-      setPartNames(job.partNames);
-      setJobMaterial(job.material);
-
-      setColor(job.color);
-      setLayerHeight(job.layerHeight);
-      setSelfPostProcess(job.selfPostProcess);
-      setDetailedPostProcess(job.detailedPostProcess);
-      setCureTime(job.cureTime);
+      autofillFields(job);
     }
 
     //clear the form data table
@@ -2050,8 +2068,8 @@ function App() {
                 {getStatMsg()}
                 <hr style={{ borderTop: '1px solid #00000005', width: '100%' }} />
                 {(isAdmin ? <div> {"Allowed materials: "}
-                  <input style={{ fontSize: 'large', width: '250px' }} type="text" value={tempPrinterMaterial} onChange={handlePrinterMaterial} placeHolder="material1, material2, ..."></input>
-                  <button className='file-upload' style={{ fontSize: 'large' }} onClick={() => { savePrinterMaterial(tempPrinterMaterial) }}>Save</button>
+                  <input style={{ fontSize: 'large', width: '250px' }} id="allowedMaterials" type="text" value={tempPrinterMaterial} onChange={handlePrinterMaterial} placeHolder="material1, material2, ..."></input>
+                  <button id="allowedMaterialsBtn" className='file-upload' style={{ fontSize: 'large' }} onClick={() => { savePrinterMaterial(tempPrinterMaterial) }}>Save</button>
                 </div>
                   :
                   "Allowed materials: " + selectedPrinter.material)
@@ -2558,12 +2576,12 @@ function PrintHistoryTable({ printHistoryArgs }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>
         <span className="search-bar">
           <img src={searchIcon} className='generic-icon' style={{ height: '25px', width: '25px' }}></img> Search
-          <input type="text" value={tempHistorySearch} placeholder={placeholderHistorySearch} onChange={(e) => { setTempHistorySearch(e.target.value) }}></input>
-          <button style={{ cursor: 'pointer' }} onClick={() => {
+          <input id="historySearchEnter" type="text" value={tempHistorySearch} placeholder={placeholderHistorySearch} onChange={(e) => { setTempHistorySearch(e.target.value) }}></input>
+          <button id="historySearchEnterBtn" style={{ cursor: 'pointer' }} onClick={() => {
             handleHistorySearch({ target: { value: tempHistorySearch } });
             setPlaceholderHistorySearch(tempHistorySearch);
             setTempHistorySearch('');
-          }}>{tempHistorySearch === '' ? 'Clear' : 'Search'}</button>
+          }}>{tempHistorySearch === '' ? 'Clear ' : 'Search'}</button>
         </span>
 
         <span className='search-bar'>

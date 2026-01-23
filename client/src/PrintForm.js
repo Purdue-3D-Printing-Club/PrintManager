@@ -99,35 +99,36 @@ const PrintForm = ({ printFormArgs }) => {
                         </tbody>
                     </table>
                 </div>}
-                <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input className='formInput' placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style={{ 'width': '300px', 'position': 'relative' }}>
-                    <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input>
+                    <input className='formInput' tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input>
                     <img src={(isMember | supervisorPrint) ? checkCircle : warningTriangle} style={{ backgroundColor: '#ffffffcc' }} className='input-icon' title={isMember ? 'Verified member' : 'Not a member'}></img>
                 </span>
                 </div>
 
-                <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name" value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                <div className={`supervisor-input ${supervisorPrint ? 'disabled' : 'enabled'}`}> Supervisor:&nbsp;&nbsp; <input className='formInput' tabIndex={supervisorPrint ? -1 : undefined} placeholder="Supervisor Name"
+                    value={supervisorPrint ? name : supervisor} onChange={handlesupervisor} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <input type="file" multiple onChange={handleUpload} style={{ display: 'none' }} id="upload" />
                 <div> Parts:&nbsp;
                     <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                    <input placeholder="part1, part2" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
+                    <input className='formInput' placeholder="part1, part2" value={partNames} onChange={handlePartNames} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
 
                 <div> Files:&nbsp;&nbsp;
                     <button tabIndex="-1" className={`file-upload`} onClick={() => document.getElementById('upload').click()} style={{ fontSize: 'small', marginRight: '2px', marginLeft: '4px' }}>browse...</button>
-                    <input placeholder={filesPlaceholder} value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
+                    <input className='formInput' placeholder={filesPlaceholder} value={files} onChange={handlefiles} style={{ width: '300px', 'fontSize': 'large' }}></input>
                 </div>
 
                 <div style={{ height: '2px' }}></div>
                 <div> Material: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <select style={{ width: '158px', height: '30px', 'fontSize': 'large' }} id="material" value={jobMaterial} onChange={handleJobMaterial}>
                     <option value="" disabled hidden>Select Material</option>
                     {selectedPrinter?.material?.split(',').map((material) => {
-                        return <option value={material}>{material}</option>
+                        return <option value={material.toLowerCase()}>{material}</option>
                     })
                     }
                 </select>
                 </div>
                 {
-                    isSpecialty(selectedPrinter) && <>
+                    (jobMaterial.toLowerCase() == 'resin') && <>
                         <div style={{ height: '1px' }}></div>
                         <div> Color: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Clear" value={color} onChange={handleColor} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
                         <div> Layer Height: <input placeholder="25 μm" value={layerHeight} onChange={handleLayerHeight} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
@@ -135,7 +136,8 @@ const PrintForm = ({ printFormArgs }) => {
                     </>
                 }
                 <div style={{ height: '5px' }}></div>
-                <div style={{ height: '30px' }}> Filament Usage: <input value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage} style={{ width: '50px', 'fontSize': 'large' }}></input> {materialAllowed(selectedPrinter, 'Resin') ? 'ml' : 'g'}
+                <div style={{ height: '30px' }}> Filament Usage: <input className="formInput" value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage}
+                    style={{ width: '50px', 'fontSize': 'large' }}></input> {materialAllowed(selectedPrinter, 'Resin') ? 'ml' : 'g'}
                     {((isSpecialty(selectedPrinter)) || (!isMember && !supervisorPrint && !personalFilament)) &&
                         (` → $${(Math.round(filamentUsage) * (materialAllowed(selectedPrinter, 'Resin') ? filamentSettings.resinCost : filamentSettings.fdmCost)).toFixed(2)}`)} </div>
 

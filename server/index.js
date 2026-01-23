@@ -314,7 +314,7 @@ app.get('/api/stream-stl', async (req, res) => {
         const isBinary = contentType.includes('application/octet-stream') ||
             contentType.includes('model/') ||
             contentType.includes('application/stl') ||
-            contentType.includes('application/zip'); 
+            contentType.includes('application/zip');
 
         if (!isBinary) {
             return res.status(500).send('Google drive response not binary.');
@@ -339,6 +339,7 @@ app.get('/api/stream-stl', async (req, res) => {
 
 async function getPrintLinks(browser) {
     const homePage = await browser.newPage();
+    await homePage.setBypassCSP(true);
 
     // console.log('\nscraper: going to printables..')
     await homePage.goto('https://www.printables.com/model', { waitUntil: 'domcontentloaded' });

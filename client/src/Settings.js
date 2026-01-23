@@ -42,6 +42,8 @@ function Settings({ settingsArgs }) {
   const [viewingMemberList, setViewingMemberList] = useState(memberList);
   const [isEndSeason, setIsEndSeason] = useState(true);
 
+  const [tempMemberSearch, setTempMemberSearch] = useState('');
+  const [placeholderMemberSearch, setPlaceholderMemberSearch] = useState('');
 
 
   let endSeasonText = decSeason(endSeason.seasonEnc)
@@ -552,8 +554,14 @@ function Settings({ settingsArgs }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-evenly', alignItems: 'center', alignItems: 'center' }}>
               <span className="search-bar">
                 <img src={searchIcon} className='generic-icon'></img> Search
-                <input type="text" value={memberSearch ?? ''} onChange={handleMemberSearch}></input>
-                <button style={{ cursor: 'pointer' }} onClick={() => setMemberSearch('')}>Clear</button>
+                {/* <input type="text" value={memberSearch ?? ''} onChange={handleMemberSearch}></input>
+                <button style={{ cursor: 'pointer' }} onClick={() => setMemberSearch('')}>Clear</button> */}
+                <input id="memberSearchEnter" type="text" value={tempMemberSearch} placeholder={placeholderMemberSearch} onChange={(e) => { setTempMemberSearch(e.target.value) }}></input>
+                <button id="memberSearchEnterBtn" style={{ cursor: 'pointer' }} onClick={() => {
+                  handleMemberSearch({ target: { value: tempMemberSearch } });
+                  setPlaceholderMemberSearch(tempMemberSearch);
+                  setTempMemberSearch('');
+                }}>{tempMemberSearch === '' ? 'Clear ' : 'Search'}</button>
               </span>
               <span className='search-bar'>
                 <img src={sortIcon} className='generic-icon'></img> Sort
