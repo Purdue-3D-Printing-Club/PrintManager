@@ -529,7 +529,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL, r
                 // loadedObject.rotation.z += 0.005;
                 const axis = new THREE.Vector3(0, 1, 0);
                 // loadedObject.rotateOnWorldAxis(axis, 0.005);
-                pivot.rotateOnWorldAxis(axis, 0.005)
+                pivot.rotateOnWorldAxis(axis, 0.004)
             }
         };
         animate();

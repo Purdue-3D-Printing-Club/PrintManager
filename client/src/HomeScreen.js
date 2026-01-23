@@ -67,7 +67,7 @@ function HomeScreen({ homeScreenArgs }) {
                     window.location.reload();
                 }
             } catch {
-                console.log(`*** SERVER HEALTH *** Server disconnected. Polling every 5 seconds...`);
+                console.log(`*** SERVER HEALTH *** Server disconnected. Polling ${serverURL} every 5 seconds...`);
             }
         };
         // poll every 5 seconds after initial attempt
@@ -207,7 +207,7 @@ function HomeScreen({ homeScreenArgs }) {
             console.error("Error fetching printer data: ", error);
             setLoading('error');
         }
-    }, [selectedPrinter, serverURL, menuOpen, printerList])
+    }, [selectedPrinter, serverURL, printerList])
 
     // do client-side aggregation on the printer list to get the printer status data
     useEffect(() => {
@@ -267,7 +267,7 @@ function HomeScreen({ homeScreenArgs }) {
 
 
     return (<>
-        {(!selectedPrinter && !menuOpen) && <div ref={wrapperRef} className={`page-wrapper ${(currentPage == 1) ? 'slide-left' : ''}`}>
+        {(!selectedPrinter) && <div ref={wrapperRef} className={`page-wrapper ${(currentPage == 1) ? 'slide-left' : ''}`}>
 
             {/* Home page 1 */}
             {pagesMounted[0] ?
@@ -293,7 +293,7 @@ function HomeScreen({ homeScreenArgs }) {
                             </div>
 
                             {/* Print of the day stl previews*/}
-                            <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
+                            <h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
                             {(potdStatus === 'done') && <TrendingPrints
                                 dailyPrint={dailyPrint} selectedPrinter={selectedPrinter} menuOpen={menuOpen} truncateString={truncateString}>
                             </TrendingPrints>
@@ -307,8 +307,8 @@ function HomeScreen({ homeScreenArgs }) {
                                 <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
                             </div>}
 
-                            <h1 className={'menu-title ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}><b>🕜 Recently Printed Files</b></h1>
-                            <div className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+                            <h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🕜 Recently Printed Files</b></h1>
+                            <div className={'stl-previews ' + ((!selectedPrinter) ? '' : 'hidden')}>
                                 <ErrorBoundary>
                                     {recentFiles.map((file, index) => {
                                         if (generalSettings.showFilePreviews) {

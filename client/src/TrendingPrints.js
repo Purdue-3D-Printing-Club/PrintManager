@@ -50,7 +50,7 @@ const TrendingPrints = ({dailyPrint, selectedPrinter, menuOpen, truncateString})
         return (
             <div>
                 {(dailyPrint.length != 0) ? <>
-                  <div ref={trendingRef} className={'stl-previews ' + ((!selectedPrinter && !menuOpen) ? '' : 'hidden')}>
+                  <div ref={trendingRef} className={'stl-previews ' + ((!selectedPrinter) ? '' : 'hidden')}>
                     {dailyPrint?.map((item) => {
                       return (
                         <a target="_blank" rel="noreferrer" className="print-card" href={item.link} key={item.link}>

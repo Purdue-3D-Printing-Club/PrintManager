@@ -324,7 +324,7 @@ app.get('/api/stream-stl', async (req, res) => {
             return res.status(500).send('Error fetching the STL file from Google Drive');
         }
 
-        const buffer = await response.buffer();
+        const buffer = Buffer.from(await response.arrayBuffer());
 
         // Set the Content-Type header explicitly
         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');

@@ -22,7 +22,10 @@ import HomeScreen from './HomeScreen';
 function App() {
   const statusIconFolder = '/images/statusIcons';
 
-  const [serverURL, setServerURL] = useState("http://localhost:3001");// tailscale remote http://100.68.78.107
+  const [serverURL, setServerURL] = useState(() =>
+    sessionStorage.getItem("serverURL") ?? "http://localhost:3001"
+  ); // tailscale remote http://100.68.78.107
+
   const [organizerLinks, setOrganizerLinks] = useState({});
   const [filamentSettings, setFilamentSettings] = useState({});
 
@@ -216,8 +219,11 @@ function App() {
 
   }, [serverURL, printerSort, selectedPrinter]);
 
-  // fill member list and update the organizer links
+  // Processes running only when serverURL changes
   useEffect(() => {
+    // save the serverURL to disk
+    sessionStorage.setItem("serverURL", serverURL);
+
     // member list
     try {
       let { year, seasonEnc } = getCurHistoryPeriod()
@@ -240,7 +246,7 @@ function App() {
     try {
       Axios.get(`${serverURL}/api/getLocalData`).then((response) => {
         let localData = response?.data;
-        if (generalSettings?.debugMode) console.log('app.js got localData: ', localData);
+        console.log('app.js got localData: ', localData);
         if (localData) {
           setOrganizerLinks(localData.organizerLinks);
           setGeneralSettings(localData.generalSettings);
@@ -682,7 +688,7 @@ function App() {
     setTempPrinterMaterial(newPrinterMaterial);
   }
   const savePrinterMaterial = (newPrinterMaterial) => {
-    if(selectedPrinter.material === newPrinterMaterial) {
+    if (selectedPrinter.material === newPrinterMaterial) {
       if (generalSettings?.debugMode) console.log('Printer material not updated due to no changes');
       return;
     }
@@ -2055,7 +2061,7 @@ function App() {
 
 
         <div className="printer-screen">
-          {selectedPrinter && !menuOpen && <div>
+          {selectedPrinter && <div>
             <div style={{ height: "35px" }}></div>
             <div className='stat-msg' style={{ backgroundColor: getStatMsgColor(), display: 'flex', flexWrap: 'nowrap', }}>
               <img src={`/images/printers/${selectedPrinter.model}.jpg`} style={{
