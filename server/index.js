@@ -1060,8 +1060,10 @@ app.post('/api/insert', (req, res) => {
         });
     });
 
+    let cleanMaterial = b.material.toLowerCase().trim();
+
     // Now save the new filament amount to the file if the material is PLA
-    if (b.material.toLowerCase().trim() === 'pla') {
+    if (cleanMaterial === 'pla') {
         let localData = loadLocalData()
         let newStock = Math.max(0, localData?.filamentStock - b.usage_g)
         saveLocalData({ ...localData, filamentStock: newStock })
@@ -1078,14 +1080,40 @@ app.post('/api/insert', (req, res) => {
             sendEmail(emailParams)
         }
     }
+
+    // If the material isn't resin, then subtract the filament allowance for the club, if it isn't null.
+    console.log('cleanMaterial: ',cleanMaterial,  ' | b.filamentAllowance: ', b.filamentAllowance, ' | b.memberID: ', b.memberID)
+    if ((cleanMaterial !== 'resin') && (b.filamentAllowance) && (b.memberID)) {
+        // update the member table
+
+        let sqlUpdate = `UPDATE member SET filamentAllowance=? WHERE memberID = ?`;
+
+        pool.getConnection((err, connection) => {
+            if (err) {
+                console.error('Error getting connection from pool:', err.message);
+                return;
+            }
+
+            connection.beginTransaction(function (err) {
+                connection.query(sqlUpdate, [(Math.max(b.filamentAllowance - b.usage_g, 0 )), b.memberID], (err, result) => {
+                    if (err) {
+                        console.log(err.message);
+                        connection.release();
+                        return;
+                    }
+                    connection.release();
+                });
+            });
+        });
+    }
 });
 
 
 app.post('/api/insertMember', (req, res) => {
     const b = req.body;
-
+    console.log(req.body)
     const dateTime = new Date(b.lastUpdated);
-    const sqlInsert = "INSERT INTO member (lastUpdated, name, email, discordUsername, season, year) VALUES (?,?,?,?,?,?)";
+    const sqlInsert = "INSERT INTO member (lastUpdated, name, email, discordUsername, season, year, filamentAllowance) VALUES (?,?,?,?,?,?,?)";
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -1094,7 +1122,7 @@ app.post('/api/insertMember', (req, res) => {
             return;
         }
         connection.beginTransaction(function (err) {
-            connection.query(sqlInsert, [dateTime, b.name, b.email, b.discordUsername, b.season, b.year], (err, result) => {
+            connection.query(sqlInsert, [dateTime, b.name, b.email, b.discordUsername, b.season, b.year, b.filamentAllowance], (err, result) => {
                 if (err) {
                     console.log(err.message);
                     res.status(500).send("Error inserting printjob");
@@ -1107,6 +1135,7 @@ app.post('/api/insertMember', (req, res) => {
         });
     });
 });
+
 
 app.delete('/api/cancelPrint/:printerName/:usage', (req, res) => {
     const printerName = req.params.printerName;
@@ -1164,6 +1193,8 @@ app.delete('/api/deleteJob/:jobID', (req, res) => {
         });
     });
 });
+
+
 app.delete('/api/deleteMember/:memberID', (req, res) => {
     const memberID = req.params.memberID;
     const sqlDelete = 'DELETE FROM member WHERE memberID=?';
@@ -1255,8 +1286,8 @@ app.put('/api/updateJob', (req, res) => {
 });
 
 app.put('/api/updateMember', (req, res) => {
-    const { name, email, lastUpdated, memberID, discordUsername } = req.body;
-    let sqlUpdate = `UPDATE member SET name=?, email=?, lastUpdated=?, discordUsername=? WHERE memberID = ?`;
+    const { name, email, lastUpdated, memberID, discordUsername, filamentAllowance } = req.body;
+    let sqlUpdate = `UPDATE member SET name=?, email=?, lastUpdated=?, discordUsername=?, filamentAllowance=? WHERE memberID = ?`;
 
     pool.getConnection((err, connection) => {
         if (err) {
@@ -1266,7 +1297,7 @@ app.put('/api/updateMember', (req, res) => {
         }
 
         connection.beginTransaction(function (err) {
-            connection.query(sqlUpdate, [name, email, new Date(lastUpdated), discordUsername, memberID], (err, result) => {
+            connection.query(sqlUpdate, [name, email, new Date(lastUpdated), discordUsername, filamentAllowance, memberID], (err, result) => {
                 if (err) {
                     console.log(err.message);
                     res.status(500).send("Error updating database");

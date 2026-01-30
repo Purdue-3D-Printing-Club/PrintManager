@@ -18,14 +18,12 @@ function HomeScreen({ homeScreenArgs }) {
     let { sidebarOpen, sidebarWidth, loading, setLoading, selectedPrinter, menuOpen,
         truncateString, generalSettings, getDirectDownloadLink, serverURL, PrintHistoryTable,
         printHistoryArgs, printerList, formatDate, getStatusColor, seasonUpperBounds,
-        decSeason, getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick
+        decSeason, getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick,
+        pagesMounted, currentPage, handlePageChange, wrapperRef
     } = homeScreenArgs;
 
 
 
-    // Page control
-    const [pagesMounted, setPagesMounted] = useState([true, false]); // controls DOM mounting
-    const [currentPage, setCurrentPage] = useState(0); // controls which page is visible
     const [chartsOpen, setChartsOpen] = useState([true, false, false, false, false, false, false])
 
     // Summary data
@@ -46,9 +44,10 @@ function HomeScreen({ homeScreenArgs }) {
 
     const [filledDowData, setFilledDowData] = useState([]);
 
-    let lineArgs = { dateWindow: lineDateWindow, seasonUpperBounds, formatDate, getCurHistoryPeriod, endSeason, decSeason, 
+    let lineArgs = {
+        dateWindow: lineDateWindow, seasonUpperBounds, formatDate, getCurHistoryPeriod, endSeason, decSeason,
         leftArrowClick, rightArrowClick
-     }
+    }
     let pieArgs = { decSeason, getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick }
 
     // useEffect hooks
@@ -236,28 +235,7 @@ function HomeScreen({ homeScreenArgs }) {
         if (generalSettings?.debugMode) console.log(`toggled chartsOpen[${chartIndex}] to ${newChartsOpen[chartIndex]}.`);
     }
 
-    const wrapperRef = useRef(null);
 
-    const handlePageChange = (nextPage) => {
-        // Mount next page so it exists during slide
-        const newPages = [...pagesMounted];
-        newPages[nextPage] = true;
-        setPagesMounted(newPages);
-
-        // Trigger slide
-        setCurrentPage(nextPage);
-
-        // Wait for CSS transition to finish and dismount old page
-        const onTransitionEnd = () => {
-            const newPagesAfter = [false, false];
-            newPagesAfter[nextPage] = true;
-            setPagesMounted(newPagesAfter);
-
-            wrapperRef.current.removeEventListener('transitionend', onTransitionEnd);
-        };
-
-        wrapperRef.current.addEventListener('transitionend', onTransitionEnd);
-    };
 
 
 
@@ -313,8 +291,8 @@ function HomeScreen({ homeScreenArgs }) {
                                     {recentFiles.map((file, index) => {
                                         if (generalSettings.showFilePreviews) {
                                             return (
-                                                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)} 
-                                                getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true}></StlPreview></div>
+                                                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)}
+                                                    getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true}></StlPreview></div>
                                             )
                                         } else {
                                             return (
@@ -415,7 +393,7 @@ function HomeScreen({ homeScreenArgs }) {
                                 ...lineArgs
                             }} />
                         </CollapsibleChart>
-                        
+
 
 
                         <div className='group-title'> Pie Charts </div>

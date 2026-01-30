@@ -17,8 +17,6 @@ import ErrorBoundary from './ErrorBoundary';
 import HomeScreen from './HomeScreen';
 
 
-
-
 function App() {
   const statusIconFolder = '/images/statusIcons';
 
@@ -134,6 +132,31 @@ function App() {
 
   const [endSeason, setEndSeason] = useState(getCurHistoryPeriod());
 
+
+  // Home page control
+  const [pagesMounted, setPagesMounted] = useState([true, false]); // controls DOM mounting
+  const [currentPage, setCurrentPage] = useState(0); // controls which page is visible
+  const wrapperRef = useRef(null);
+
+  const handlePageChange = (nextPage) => {
+    // Mount next page so it exists during slide
+    const newPages = [...pagesMounted];
+    newPages[nextPage] = true;
+    setPagesMounted(newPages);
+
+    // Trigger slide
+    setCurrentPage(nextPage);
+
+    // Wait for CSS transition to finish and dismount old page
+    const onTransitionEnd = () => {
+      const newPagesAfter = [false, false];
+      newPagesAfter[nextPage] = true;
+      setPagesMounted(newPagesAfter);
+
+      wrapperRef.current.removeEventListener('transitionend', onTransitionEnd);
+    };
+    wrapperRef.current.addEventListener('transitionend', onTransitionEnd);
+  };
 
   // downloads all files from one click
   async function downloadAllFiles(urlsString) {
@@ -292,7 +315,7 @@ function App() {
   }, [selectedPrinter, printerList]); // Run effect when selectedPrinter or printerList changes
 
   useEffect(() => {
-    if (generalSettings?.debugMode) console.log('fetching hiFstory...')
+    if (generalSettings?.debugMode) console.log('fetching history...')
     refreshHistory();
   }, [historySeason]);
 
@@ -871,9 +894,7 @@ function App() {
       return driveLink;
     }
   }
-  async function sleep(time) {
-    await new Promise(resolve => setTimeout(resolve, time))
-  }
+
 
 
   function handleCollapseSidebar() {
@@ -972,7 +993,8 @@ function App() {
       if (!menuOpen) {
         switch (e.key) {
           case 'Backspace':
-            selectPrinter(null)
+            selectPrinter(null);
+            handlePageChange(0);
             break;
           case 'ArrowUp':
             e.preventDefault();
@@ -989,7 +1011,8 @@ function App() {
         }
       } else {
         if (e.key === 'Backspace') {
-          setMenuOpen(false)
+          setMenuOpen(false);
+
         }
       }
       // runs whether menu is open or not
@@ -1184,8 +1207,9 @@ function App() {
   // }
 
   const handleStartPrintClick = (queue = false) => {
-    let matchingJob = ''
-    let isMember = memberList.map(m => m.email).includes(email)
+    // let matchingJob = ''
+    let matchingMember = memberList.find((m) => m.email === email);
+    console.log('matchingMember: ', matchingMember);
 
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
@@ -1209,25 +1233,28 @@ function App() {
       }
       else if ((filamentUsage === "")) {
         showMsgForDuration("No Filament Usage! Print not started.", 'err');
-      } else if (queue && historyList.filter(item => item.status === 'queued').some(job => {
-        if (job.name.toLowerCase() === name.toLowerCase()) {
-          matchingJob = job;
-          return true;
-        }
-        return false;
-      })) {
-        showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
-      } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
-        showMsgForDuration("Resin queue is full! Print not queued.", 'err');
       }
+      // else if (queue && historyList.filter(item => item.status === 'queued').some(job => {
+      //   if (job.name.toLowerCase() === name.toLowerCase()) {
+      //     matchingJob = job;
+      //     return true;
+      //   }
+      //   return false;
+      // })) {
+      //   showMsgForDuration(`Warning: A job with this name is already queued!\nRemove it and continue?`, 'warn', popupTime + 5000, matchingJob);
+      // } else if (queue && (historyList.filter(item => item.status === 'queued').length >= 3)) {
+      //   showMsgForDuration("Resin queue is full! Print not queued.", 'err');
+      // }
       //  else if (((jobMaterial == 'TPU') || (jobMaterial == 'PETG')) && !personalFilament) {
       // showMsgForDuration(`Warning: ${jobMaterial} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
       // } 
-      else if ((jobMaterial === 'Resin')) {
+      else if (matchingMember && matchingMember.filamentAllowance && (matchingMember.filamentAllowance < filamentUsage)) {
+        showMsgForDuration("Club filament allowance exceeded!", 'err');
+      } else if ((jobMaterial === 'Resin')) {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
-      } else if ((jobMaterial === 'PLA') && !personalFilament && !isMember && !supervisorPrint) {
+      } else if ((jobMaterial === 'PLA') && !personalFilament && !matchingMember && !supervisorPrint) {
         showMsgForDuration(`Warning: Non-members must pay per\ngram through TooCool. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
@@ -1236,7 +1263,7 @@ function App() {
 
         // insert the print to the "printJob" table
         if (generalSettings?.debugMode) console.log("startPrintClick: all fields valid, inserting to printJob");
-        startPrint(queue);
+        startPrint(queue, selectedPrinter, buildFormJob());
       };
     };
   };
@@ -1299,7 +1326,6 @@ function App() {
 
   const handleWarningClick = (notification) => {
     const { id, msg, type, replaceJob, msgPrinter, msgJob } = notification
-
     setMessageQueue(prevQueue => prevQueue.filter(message => !message.msg.startsWith("Warning:")));
     if (replaceJob) {
       // delete the old queued job with the same name
@@ -1335,9 +1361,12 @@ function App() {
   }
 
   const startPrint = (queue = false, formPrinter = selectedPrinter, formJob = buildFormJob()) => {
+    let matchingMember = memberList.find((m) => m.email === formJob.email)
     try {
       Axios.post(`${serverURL}/api/insert`, {
         printerName: formPrinter.printerName,
+        filamentAllowance: matchingMember?.filamentAllowance,
+        memberID: matchingMember?.memberID,
         ...formJob
       }).then(() => {
         if (!queue) {
@@ -1371,17 +1400,36 @@ function App() {
               console.error("Error fetching printer data: ", error);
             }
           });
-          if (!formPrinter.material.includes('Resin')) { clearFields(); }
+          console.log('#######!!!########')
+          console.log('matchingMember: ', matchingMember)
+          console.log('enter if block: ', ((matchingMember) && (matchingMember.filamentAllowance !== null)))
+
+          if (!formPrinter.material.includes('Resin')) {
+            clearFields();
+
+            if ((matchingMember) && (matchingMember.filamentAllowance !== null)) {
+              console.log('ENTERED UPDATE BLOCK')
+              // update the matching member's filamentAllowance
+              setMemberList(old => old.map((m) => {
+                if (m.email === formJob.email) {
+                  console.log(`### UPDATING MEMBERLIST: ${Math.max(m.filamentAllowance - formJob.usage_g, 0)}`)
+                  return { ...m, filamentAllowance: Math.max(m.filamentAllowance - formJob.usage_g, 0) }
+                } else {
+                  return m
+                }
+              }))
+            }
+          }
         } else {
           refreshHistory()
           clearFields();
         }
         showMsgForDuration(queue ? 'Print job queued!' : `Print job successfully started!`, 'msg');
+
       }, 500).catch((error) => {
         showMsgForDuration(queue ? 'Error queueing print.' : `Error starting print.`, 'err');
         console.error('Error starting print: ', error.message);
       })
-
     } catch (error) {
       console.error('Error submitting printJob: ', error);
       showMsgForDuration(queue ? 'Error queueing print.' : `Error starting print.`, 'err');
@@ -1647,6 +1695,7 @@ function App() {
     setMenuOpen(false);
     if (!index) {
       selectPrinter(null);
+      handlePageChange(0);
     }
     let printer = printerList[index];
     if (printer) {
@@ -2012,7 +2061,8 @@ function App() {
     selectedPrinter, menuOpen, truncateString,
     generalSettings, getDirectDownloadLink, serverURL, PrintHistoryTable, printHistoryArgs,
     printerList, formatDate, getStatusColor, seasonUpperBounds, decSeason,
-    getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick
+    getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick,
+    pagesMounted, currentPage, handlePageChange, wrapperRef
   }
 
   const printFormArgs = {
@@ -2031,14 +2081,17 @@ function App() {
     getCurHistoryPeriod, decSeason, endSeason, leftArrowClick, rightArrowClick, applyHighlight, ScrollCell
   }
 
+  const sidebarArgs = {
+    printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter,
+    printerSort, handlePrinterSort, sidebarWidth, getStatusColor, printerRefs, homeRef, organizerLinks
+  }
+
   return (
     <div className="App">
 
       {
         sidebarOpen ?
-          <Sidebar printerList={printerList} handlePrinterClick={handlePrinterClick} selectedPrinter={selectedPrinter}
-            handleOpenMenu={handleOpenMenu} menuOpen={menuOpen} selectPrinter={selectPrinter} width={sidebarWidth} getStatusColor={getStatusColor}
-            printerSort={printerSort} handlePrinterSort={handlePrinterSort} printerRefs={printerRefs} homeRef={homeRef} organizerLinks={organizerLinks} />
+          <Sidebar sidebarArgs={sidebarArgs} />
           : <></>
       }
 

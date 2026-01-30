@@ -40,7 +40,6 @@ function Settings({ settingsArgs }) {
   const [memberPagesShowing, setMemberPagesShowing] = useState(1);
   const [memberSeason, setMemberSeason] = useState({ ...endSeason });
   const [viewingMemberList, setViewingMemberList] = useState(memberList);
-  const [isEndSeason, setIsEndSeason] = useState(true);
 
   const [tempMemberSearch, setTempMemberSearch] = useState('');
   const [placeholderMemberSearch, setPlaceholderMemberSearch] = useState('');
@@ -56,6 +55,11 @@ function Settings({ settingsArgs }) {
     { key: "specialtyAppScriptURL", label: "Specialty App Script:", placeholder: " Specialty App Script URL" },
   ];
 
+  const isEndSeason = (memberSeason, endSeason) => {
+    // console.log('memberSeason: ', memberSeason, ' | endSeason: ', endSeason);
+    return (memberSeason.year === endSeason.year) && (memberSeason.seasonEnc === endSeason.seasonEnc);
+  }
+
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
 
@@ -67,7 +71,6 @@ function Settings({ settingsArgs }) {
   // update  the viewingMemberList whenever memberSeason changes
   useEffect(() => {
     refreshMembers();
-    setIsEndSeason((memberSeason.year === endSeason.year) && (memberSeason.seasonEnc === endSeason.seasonEnc));
     setMemberPagesShowing(1);
   }, [memberSeason])
 
@@ -153,6 +156,11 @@ function Settings({ settingsArgs }) {
       sortedMembers = arr.sort((a, b) => {
         return sortAscending ? a.discordUsername.localeCompare(b.discordUsername) : b.discordUsername.localeCompare(a.discordUsername);
       });
+    } else if (by === 'Filament Allowance') {
+      sortedMembers = arr.sort((a, b) => {
+        
+        return sortAscending ? a.filamentAllowance - b.filamentAllowance : b.filamentAllowance - a.filamentAllowance;
+      });
     } else { // Last Updated
       return arr.sort((a, b) => {
         const t1 = toTime(a.lastUpdated);
@@ -171,7 +179,12 @@ function Settings({ settingsArgs }) {
   }
 
   const memberCleanForInsert = (member) => {
-    if (memberList.map(mem => { if (mem.memberID === member.memberID) return null; return mem.email }).includes(member.email)) {
+    if (memberList.map(mem => {
+      if (mem.memberID == member.memberID) {
+        return null;
+      }
+      return mem.email
+    }).includes(member.email)) {
       showMsgForDuration(`Cannot insert member: Email already exists!`, 'err');
       return false;
     } else if (!member.email || (!member.email.includes('@purdue.edu'))) {
@@ -197,12 +210,13 @@ function Settings({ settingsArgs }) {
       email: truncateString(member.email, 64),
       discordUsername: truncateString(member.discordUsername, 128),
       season: endSeasonText,
-      year: endSeason.year
+      year: endSeason.year,
+      filamentAllowance: member.filamentAllowance
     }).then(() => {
       refreshMembers();
       setInsertMember({
         email: '', name: '', discordUsername: '', seasonEnc: endSeason.seasonEnc,
-        year: endSeason.year, lastUpdated: '', memberID: -1
+        year: endSeason.year, lastUpdated: '', memberID: -1, filamentAllowance: null
       });
       showMsgForDuration("New Member Inserted!", 'msg');
     });
@@ -222,8 +236,15 @@ function Settings({ settingsArgs }) {
     });
   }
 
-  const handleMemberEdit = (e, field, insert) => {
-    const newVal = e.target.value
+  const handleMemberEdit = (e, field, insert, numeric = false) => {
+    let newVal = e.target.value
+    if (numeric) {
+      let newValInt = parseInt(newVal);
+      newVal = Number.isNaN(newValInt) ? null : newValInt;
+      console.log('newValInt: ', newValInt);
+      console.log('newVal: ', newVal);
+    }
+
     if (insert) {
       setInsertMember({ ...insertMember, [field]: newVal });
     } else {
@@ -244,7 +265,9 @@ function Settings({ settingsArgs }) {
         if (generalSettings?.debugMode) console.log('viewing member list: ', members);
 
         setViewingMemberList(sortMemberList(members, memberSort));
-        if (isEndSeason) {
+
+        // also update the actual memberList if this is the current season
+        if (isEndSeason(memberSeason, endSeason)) {
           setMemberList(sortMemberList(members, memberSort));
         }
       }).catch(e => {
@@ -294,6 +317,9 @@ function Settings({ settingsArgs }) {
 
   useEffect(() => {
     try {
+      //refresh the members
+      refreshMembers();
+
       // get the most recent localData from disk to initialize the settings
       Axios.get(`${serverURL}/api/getLocalData`).then((response) => {
         let llocalData = response.data
@@ -530,7 +556,7 @@ function Settings({ settingsArgs }) {
           </span><br />
 
           <div className="input-wrapper" style={{ margin: '0px' }}>
-            <div className='arrow-btn' style={isEndSeason ?
+            <div className='arrow-btn' style={isEndSeason(memberSeason, endSeason) ?
               { opacity: '30%', cursor: 'default' } : {}} onClick={() => setMemberSeason({ ...endSeason })}>
               <img src={homeIcon} style={{ width: '18px', height: '18px' }}></img>
             </div>
@@ -570,6 +596,7 @@ function Settings({ settingsArgs }) {
                   <option value="Name">Name</option>
                   <option value="Discord Username">Discord Username</option>
                   <option value="Last Updated">Last Updated</option>
+                  <option value="Filament Allowance">Filament Allowance</option>
                 </select>
                 <button style={{ cursor: 'pointer' }} onClick={() => setSortAscending(old => !old)}>{sortAscending ? '↕ Asc.\u00A0\u00A0' : '↕ Desc.'}</button>
               </span>
@@ -582,17 +609,18 @@ function Settings({ settingsArgs }) {
                 <thead>
                   <tr>
                     <th></th>
-                    {isEndSeason && <th></th>}
-                    <th>Email</th>
-                    <th>Name</th>
+                    {isEndSeason(memberSeason, endSeason) && <th></th>}
+                    <th>Purdue Email</th>
+                    <th>Full Name</th>
                     <th>Discord Username</th>
                     <th>Season</th>
                     <th>Last Updated</th>
+                    <th>Filament Allowance (g)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {/* Row to insert new member */}
-                  {(isEndSeason) &&
+                  {(isEndSeason(memberSeason, endSeason)) &&
                     <tr style={{ backgroundColor: '#ffffffff' }}>
                       <td><img src={addUser} className='generic-icon centeredIcon'></img></td>
                       <td> <button onClick={() => { handleMemberInsertClick(insertMember) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
@@ -601,6 +629,7 @@ function Settings({ settingsArgs }) {
                       <td><input id='insert' type="text" placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }} value={insertMember.discordUsername ?? ''} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
                       <td> {`${decSeason(endSeason.seasonEnc)} ${endSeason.year}`} </td>
                       <td> N/A </td>
+                      <td><input id='insert' type="text" placeholder="For Clubs" className="history-edit" style={{ 'width': '200px' }} value={insertMember.filamentAllowance ?? ''} onChange={(e) => handleMemberEdit(e, "filamentAllowance", true, true)}></input></td>
                     </tr>
                   }
                   {viewingMemberList.slice(0, memberPagesShowing * tempLocalData?.generalSettings?.pageSize).map((member) => {
@@ -608,7 +637,10 @@ function Settings({ settingsArgs }) {
                       let value = member[key]
                       if (key === 'lastUpdated') {
                         value = formatDate(value, true)
+                      } else if (key === 'filamentAllowance') {
+                        value = String(value)
                       }
+
                       return ((typeof value === 'string') && (value.toLowerCase().includes(memberSearch.toLowerCase())))
                     }
                     );
@@ -618,7 +650,7 @@ function Settings({ settingsArgs }) {
 
                     return <tr className={`table-data-row`} key={member.memberID}>
                       <td><button style={{ 'width': '90%', 'marginLeft': '5%' }} onClick={() => { handleDeleteMember(member.memberID) }} className='history-btn'>delete</button></td>
-                      {isEndSeason && <td> <button onClick={() => { handleEditClick(member) }} className='history-btn'>{member.memberID !== editingMember.memberID ? 'edit' : 'save'}</button></td>}
+                      {isEndSeason(memberSeason, endSeason) && <td> <button onClick={() => { handleEditClick(member) }} className='history-btn'>{member.memberID !== editingMember.memberID ? 'edit' : 'save'}</button></td>}
                       {
                         ((editingMember.memberID === member.memberID)) ?
                           <>
@@ -635,6 +667,11 @@ function Settings({ settingsArgs }) {
                       }
                       <ScrollCell html={applyHighlight(`${member.season} ${member.year}`, false, memberSearch)} width={125} />
                       <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(member.lastUpdated, true), false, memberSearch) }} />
+                      {((editingMember.memberID === member.memberID)) ?
+                        <td><input id='edit' type="text" placeholder="For Clubs" className="history-edit" style={{ 'width': '200px' }} value={editingMember.filamentAllowance ?? ''} onChange={(e) => handleMemberEdit(e, "filamentAllowance", false, true)}></input></td>
+                        :
+                        <ScrollCell html={applyHighlight(((member?.filamentAllowance===null) || (Number.isNaN(member?.filamentAllowance))) ? 'Not a club account' : `${member?.filamentAllowance}g`, false, memberSearch)} width={165} />
+                      }
                     </tr>
                   })}
                   {

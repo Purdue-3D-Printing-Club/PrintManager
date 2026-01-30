@@ -7,8 +7,11 @@ import sheetsIcon from '/images/sheets_icon.png'
 import formIcon from '/images/form_icon.png'
 
 
-const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter, width,
-    getStatusColor, printerSort, handlePrinterSort, printerRefs, homeRef, organizerLinks }) => {
+const Sidebar = ({ sidebarArgs }) => {
+    let {
+        printerList, handlePrinterClick, selectedPrinter, handleOpenMenu, menuOpen, selectPrinter,
+        printerSort, handlePrinterSort, sidebarWidth, getStatusColor, printerRefs, homeRef, organizerLinks
+    } = sidebarArgs;
     const getPrinterInfo = (printer) => {
         switch (printerSort) {
             case "Printer Model": return printer.model
@@ -17,22 +20,17 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
         }
     }
     return (
-        <div className="sidebar" style={{ width: `${width}px` }}>
-            <div className="mask" style={{ width: `${width}px` }}>
+        <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
+            <div className="mask" style={{ width: `${sidebarWidth}px` }}>
 
                 <div className="icons-wrapper">
                     <div className='settings-icon-wrapper' style={menuOpen ? { outline: "4px solid black" } : {}}><img id="settingsIcon" src={settingsIcon} alt="Settings Icon" title="Open Settings" onClick={() => handleOpenMenu()}></img></div>
                     <a target="_blank" rel="noreferrer" href={organizerLinks.websiteURL}><img className='resizeIcon' src={clubIcon} alt="3DPC Icon" title="To 3DPC Website"></img></a>
                     <a target="_blank" rel="noreferrer" href={organizerLinks.formURL}><img className="resizeIcon" src={formIcon} alt="Google forms Icon" title="To Job Form"></img></a>
                     <a target="_blank" rel="noreferrer" href={organizerLinks.submissionsURL}><img className="resizeIcon" src={sheetsIcon} alt="Google sheets Icon" title="To Job Form Submissions"></img></a>
-                    {/* old form link: https://docs.google.com/spreadsheets/d/1MmkZDc7zRuepVEo2r84ithNJ6Q01GhMqSWrNzZSzRpQ/edit?gid=701945760#gid=701945760 */}
                 </div>
-
-                {/* <div className="sidebtn" style={menuOpen ? { outline: "4px solid black" } : {}} onClick={() => handleOpenMenu()}>
-                    {menuOpen ? "Close" : "Settings"}
-                </div> */}
             </div>
-            <div className="hdr" style={{ width: `${width}px` }}>
+            <div className="hdr" style={{ width: `${sidebarWidth}px` }}>
                 Printer List
                 <div style={{ fontSize: 'medium' }}>
                     Sort:&nbsp;
@@ -48,7 +46,7 @@ const Sidebar = ({ printerList, handlePrinterClick, selectedPrinter, handleOpenM
 
             <div id='lowerBar'>
                 <div className={`sidePrinter ${!selectedPrinter ? 'selected' : ''}`}
-                    onClick={() => handlePrinterClick(null)} ref={homeRef}
+                    onClick={() => {handlePrinterClick(null)}} ref={homeRef}
                     style={{ backgroundColor: 'rgba(162, 187, 247, 1)' }}> Home </div>
                 {printerList.map((printer, index) => {
                     return <div className={`sidePrinter ${(selectedPrinter && (selectedPrinter.printerName === printer.printerName)) ? 'selected' : ''}`}

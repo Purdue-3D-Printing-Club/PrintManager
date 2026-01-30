@@ -392,11 +392,11 @@ option {
   cursor: pointer;
   border-radius: 5px;
   outline: 1px solid black;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.1s ease;
 }
 
 #resizer-btn:hover {
-  background-color: lightgreen;
+  background-color: rgb(180, 243, 180);
 }
 
 .stat-msg {
@@ -581,7 +581,8 @@ td {
   text-align: left;
   white-space: nowrap;
 }
-th{
+
+th {
   box-shadow:
     inset 0 0.5px 0 black,
     inset 0 -0.5px 0 black;
