@@ -2579,7 +2579,7 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 32) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={false} />
+                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 32) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true} />
                   </div>
                 );
               } else {
