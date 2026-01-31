@@ -248,8 +248,10 @@ function HomeScreen({ homeScreenArgs }) {
         {(!selectedPrinter) && <div ref={wrapperRef} className={`page-wrapper ${(currentPage == 1) ? 'slide-left' : ''}`}>
 
             {/* Home page 1 */}
-            {pagesMounted[0] ?
-                <div className={`page`} style={{ width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
+            {/* {pagesMounted[0] ? */}
+                <div className="page" style={{ width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))`,
+                // display: pagesMounted[0] ? 'block' : 'none'
+                 }}>
                     {(loading === 'loading') && <div>
                         <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
                     </div>}
@@ -311,11 +313,14 @@ function HomeScreen({ homeScreenArgs }) {
                             <PrintHistoryTable printHistoryArgs={printHistoryArgs}></PrintHistoryTable>
 
                         </div>}
-                </div> : <div style={{ width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
-                </div>}
+                </div> 
+                {/* : 
+                <div style={{ width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
+                </div>
+                {/*}} */}
 
             {/* Home page 2 */}
-            {pagesMounted[1] &&
+            {/* {pagesMounted[1] && */}
                 <div className={`page`} style={{ marginLeft: `${sidebarOpen ? sidebarWidth : 0}px`, width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
 
 
@@ -474,7 +479,8 @@ function HomeScreen({ homeScreenArgs }) {
                         </div>
                     </div>
 
-                </div>}
+                </div>
+                {/* } */}
 
         </div>}
 

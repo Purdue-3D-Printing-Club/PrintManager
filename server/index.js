@@ -135,6 +135,57 @@ app.post('/api/setLocalData', (req, res) => {
     }
 });
 
+// transactions for modifications
+async function runTransaction(transactionCallback) {
+    return new Promise((resolve, reject) => {
+        pool.getConnection((err, connection) => {
+            if (err) return reject(err);
+
+            connection.beginTransaction(async (err) => {
+                if (err) {
+                    connection.release();
+                    return reject(err);
+                }
+
+                try {
+                    const result = await transactionCallback(connection);
+
+                    connection.commit((err) => {
+                        if (err) {
+                            connection.rollback(() => {
+                                connection.release();
+                                return reject(err);
+                            });
+                        } else {
+                            connection.release();
+                            resolve(result);
+                        }
+                    });
+                } catch (e) {
+                    connection.rollback(() => {
+                        connection.release();
+                        reject(e);
+                    });
+                }
+            });
+        });
+    });
+}
+
+// for read-only queries
+async function runQuery(pool, query, params = []) {
+    const connection = await pool.promise().getConnection();
+    try {
+        const [rows] = await connection.query(query, params);
+        return rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        connection.release();
+    }
+}
+
+
 async function sendEmail(paramsObj) {
     const { to, subject, text } = paramsObj;
 
@@ -219,7 +270,7 @@ async function uploadFile(filePath, fileName, drive) {
     // Check if we need to clean old files from gdrive storage
     try {
         let storageUsagePercent = await getStorageUsagePercent(drive);
-        console.log(`gdrive service account storage usage: ${(100 * storageUsagePercent).toFixed(4)}%`);
+        console.log(`gdrive service account storage usage: ${(100 * storageUsagePercent).toFixed(2)}%`);
         if (storageUsagePercent > 0.9) {
             deleteOldFiles(drive, daysOld = 7);
         }
@@ -380,127 +431,6 @@ async function getPrintLinks(browser) {
     return printLinks;
 }
 
-async function getDownloadLinks(browser, printLinks) {
-    let dlLinks = []
-    let pageIndex = randomInt(0, printLinks.length);
-    let cookieClicked = false;
-
-    while (dlLinks.length === 0) {
-        try {
-            const printPage = await browser.newPage();
-
-            console.log(`\ngoing to print page ${pageIndex} -- ${printLinks[pageIndex].link}...`)
-            await printPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
-
-            if (!cookieClicked) {
-                //click the accept cookies button so that it gets out of the way of the download buttons
-                console.log('\nwaiting for cookie btn...')
-                await printPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
-                await printPage.click('[id*="onetrust-accept-btn-handler"]');
-                await new Promise(resolve => setTimeout(resolve, 250));
-                console.log('clicked cookie btn...')
-                cookieClicked = true;
-            }
-
-
-            console.log('\nwaiting for download buttons...')
-            await printPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
-            let dlBtns = await printPage.$$('[class*="btn-download"]')
-
-            console.log('buttons:', dlBtns.length);
-
-            console.log('\n\n Loading new page for each download button');
-            const promises = [];
-
-            // Assuming dlBtns is an array or iterable with buttons to click
-            for (let btnNum = 0; btnNum < dlBtns.length && btnNum < 6; btnNum++) {
-                promises.push((async (btnNum) => {
-                    let browser;
-                    try {
-                        console.log('Opening page ', btnNum);
-
-                        // create a new browser for each download 
-                        // TODO: Make this more efficient!
-                        browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_PATH });
-                        const printDLPage = await browser.newPage();
-
-
-
-                        // const printDLPage = await browser.newPage();
-
-
-                        // Listen for download requests on this page
-                        await printDLPage.setRequestInterception(true);
-                        printDLPage.on('request', request => {
-                            if (request.url().includes('files.printables.com')) console.log('Intercepted download request:', request.url());
-
-                            if (request.url().includes('files.printables.com') && request.url().includes('.stl')) {
-                                console.log('Intercepted download request:', request.url());
-                                dlLinks.push(request.url());
-                                request.abort(); // Abort the download request, we just want the link.
-                            } else {
-                                request.continue();
-                            }
-                        });
-
-                        console.log('Going to print download page...');
-                        await printDLPage.goto(printLinks[pageIndex].link, { waitUntil: 'domcontentloaded' });
-
-
-                        //click the accept cookies button so that it gets out of the way of the download buttons
-                        console.log('\nwaiting for cookie btn...')
-                        await printDLPage.waitForSelector('[id*="onetrust-accept-btn-handler"]', { timeout: 15000 });
-                        await printDLPage.click('[id*="onetrust-accept-btn-handler"]');
-                        await new Promise(resolve => setTimeout(resolve, 250));
-                        console.log('clicked cookie btn...')
-                        cookieClicked = true;
-
-
-                        console.log('Waiting for download buttons...');
-                        await printDLPage.waitForSelector('[class*="btn-download"]', { timeout: 15000 });
-                        const curDLBtns = await printDLPage.$$('[class*="btn-download"]');
-
-
-                        // Click the appropriate download button
-                        await curDLBtns[btnNum].click();
-
-                    } catch (error) {
-                        if (error.name === 'TimeoutError') {
-                            console.log('ERROR: Timeout occurred while getting handling print download button.');
-                        } else {
-                            throw error;
-                        }
-                    } finally {
-                        await new Promise(resolve => setTimeout(resolve, 250));
-                        await browser.close()
-                    }
-                })(btnNum));
-            }
-
-            // Execute all promises concurrently, wait for them all to finish here
-            await Promise.all(promises);
-
-
-            console.log('waiting for timeout...')
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-
-        } catch (error) {
-            if (error.name === 'TimeoutError') {
-                console.log('ERROR: Timeout occurred while getting download links.');
-            } else {
-                throw error;
-            }
-        }
-        if (dlLinks.length === 0) {
-            console.log('incrementing page index...')
-            pageIndex++;
-        }
-    }
-    console.log('done');
-    return ({ 'partLinks': dlLinks, 'pageLink': printLinks[pageIndex].link, 'pageName': printLinks[pageIndex].name });
-}
-
 // determine if a string should be blocked or not using the whitelist and blacklist
 function isBlocked(text) {
     const lower = text.toLowerCase();
@@ -511,11 +441,11 @@ function isBlocked(text) {
     if (lower.match(whitelistRegex)) {
         return false;
     }
-
     //   console.log('blocked scraped print: ', text)
     // Block strings that have blacklisted words only
     return true;
 }
+
 
 app.get('/api/getDailyPrint', async (req, res) => {
     async function getDailyPrint() {
@@ -538,138 +468,107 @@ app.get('/api/getDailyPrint', async (req, res) => {
     res.send(retObj);
 });
 
-app.get('/api/get', (req, res) => {
-    const sqlSelectPrinters = req.query.query;//"SELECT * FROM printer";
-    if (!(sqlSelectPrinters && (typeof (sqlSelectPrinters) == 'string'))) {
+
+app.get('/api/get', async (req, res) => {
+    const sqlSelectPrinters = req.query.query;
+
+    if (!(sqlSelectPrinters && typeof sqlSelectPrinters === 'string')) {
         console.error('ERROR in /api/get: invalid query');
-        return;
+        return res.status(400).send("Invalid query");
     }
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        connection.beginTransaction((transactionErr) => {
-            if (transactionErr) {
-                console.error('Error starting transaction:', transactionErr);
-                res.status(500).send("Error starting transaction");
-                connection.release();
-                return;
+
+    try {
+        const resultPrinters = await runQuery(pool, sqlSelectPrinters);
+        res.send({ result: resultPrinters });
+    } catch (err) {
+        console.error('Error executing /api/get:', err);
+        res.status(500).send("Error accessing printer data");
+    }
+});
+
+app.get('/api/getRecentFiles', async (req, res) => {
+    const sqlSelectRecentFiles = `
+        SELECT files, partNames 
+        FROM printmanagerdb2.printjob 
+        WHERE files IS NOT NULL 
+          AND partNames IS NOT NULL 
+          AND files LIKE "%https://%" 
+        ORDER BY timeStarted DESC 
+        LIMIT 5
+    `;
+
+    try {
+        const result = await runQuery(pool, sqlSelectRecentFiles);
+
+        const retFiles = result
+            .map(row => {
+                const files = row.files.split(',').map(str => str.trim());
+                const partNames = row.partNames.split(',').map(str => str.trim());
+
+                return files.map((file, index) => ({
+                    file,
+                    partName: partNames[index] || `File ${index}`
+                }));
+            })
+            .flat()
+            .slice(0, 5)
+            .reduce((acc, obj) => {
+                acc.files.push(obj.file);
+                acc.partNames.push(obj.partName);
+                return acc;
+            }, { files: [], partNames: [] });
+
+        res.send({
+            recentFiles: {
+                files: retFiles.files.join(','),
+                partNames: retFiles.partNames.join(',')
             }
-            //transaction with no isolation level: reads only (transaction ensures consistency)
-            connection.query(sqlSelectPrinters, (errPrinters, resultPrinters) => {
-                if (errPrinters) {
-                    console.log(errPrinters);
-                    res.status(500).send("Error accessing printer data");
-                    connection.release();
-                    return;
-                }
-                res.send({ result: resultPrinters });
-                connection.release();
-            });
         });
-    });
+    } catch (err) {
+        console.error('Error accessing recent files data:', err);
+        res.status(500).send("Error accessing recent files data");
+    }
 });
 
-
-app.get('/api/getRecentFiles', (req, res) => {
-    const sqlSelectRecentFiles = `SELECT files, partNames FROM printmanagerdb2.printjob WHERE files IS NOT NULL AND TRIM(files) <> '' ORDER BY timeStarted DESC LIMIT 5`;
-
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectRecentFiles, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error accessing recent files data");
-                    connection.release();
-                    return;
-                }
-
-                retFiles = result.map(res => {
-                    // Split and trim both files and partNames
-                    const files = res.files.split(',').map(str => str.trim());
-                    const partNames = res.partNames.split(',').map(str => str.trim());
-
-                    // Pair files with their corresponding partNames
-                    return files.map((file, index) => ({
-                        file,
-                        partName: partNames[index] || ("File " + index)  // default name is "File {index}"
-                    }));
-                }).flat().slice(0, 5).reduce((acc, obj) => {
-                    acc.files.push(obj.file);
-                    acc.partNames.push(obj.partName);
-                    return acc;
-                }, { files: [], partNames: [] }); // Initialize with empty arrays
-
-                // console.log('retFiles: ', retFiles)
-                res.send({ recentFiles: { "files": retFiles.files.join(','), "partNames": retFiles.partNames.join(',') } });
-                connection.release();
-            });
-        });
-    });
-});
-
-
-app.get('/api/getCurrentJob', (req, res) => {
+app.get('/api/getCurrentJob', async (req, res) => {
     const printerName = req.query.printerName;
-    const sqlSelectCurrentJob = `SELECT jobID FROM printjob WHERE printerName = ? && (status = "active")`;
+    if (!printerName || typeof printerName !== 'string') {
+        console.error('Invalid printerName in query');
+        return res.status(400).send("Invalid printerName");
+    }
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectCurrentJob, [printerName], (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error accessing printjob current job data");
-                    connection.release();
+    const sqlSelectCurrentJob = `
+        SELECT jobID 
+        FROM printjob 
+        WHERE printerName = ? AND status = "active"
+    `;
 
-                    return;
-                }
-                res.send({ currentJob: result });
-                connection.release();
-            });
-        });
-    });
+    try {
+        const result = await runQuery(pool, sqlSelectCurrentJob, [printerName]);
+        res.send({ currentJob: result });
+    } catch (err) {
+        console.error('Error accessing printjob current job data:', err);
+        res.status(500).send("Error accessing printjob current job data");
+    }
 });
 
-app.get('/api/getjob', (req, res) => {
 
+app.get('/api/getjob', async (req, res) => {
     const jobID = req.query.jobID;
+    if (!jobID || typeof jobID !== 'string') {
+        console.error('Invalid jobID in query');
+        return res.status(400).send("Invalid jobID");
+    }
+
     const sqlSelectJob = `SELECT * FROM printjob WHERE jobID = ?`;
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectJob, [jobID], (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error accessing printjob data");
-                    connection.release();
-                    return;
-                }
-                res.send({ res: result });
-                connection.release();
-            });
-        });
-    });
+    try {
+        const result = await runQuery(pool, sqlSelectJob, [jobID]);
+        res.send({ res: result });
+    } catch (err) {
+        console.error('Error accessing printjob data:', err);
+        res.status(500).send("Error accessing printjob data");
+    }
 });
 
 
@@ -752,131 +651,81 @@ const buildPieChartQuery = (aggField) => {
     // );
 }
 
-app.get('/api/getprinterdata', (req, res) => {
+app.get('/api/getprinterdata', async (req, res) => {
     const sqlSelectFreq = buildPieChartQuery('printerName');
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectFreq, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error accessing printjob freq data");
-                    connection.release();
-                    return;
-                }
-                res.send({ res: result });
-                connection.release();
-            });
-        });
-    });
+    try {
+        const result = await runQuery(pool, sqlSelectFreq);
+        res.send({ res: result });
+    } catch (err) {
+        console.error('Error accessing printjob freq data:', err);
+        res.status(500).send("Error accessing printjob freq data");
+    }
 });
 
-app.get('/api/getsupervisordata', (req, res) => {
-    //const sqlSelectSupervisor = `SELECT supervisorName, COUNT(*) AS cnt FROM printjob GROUP BY supervisorName HAVING supervisorName IS NOT NULL`;
+
+app.get('/api/getsupervisordata', async (req, res) => {
     const sqlSelectSupervisor = buildPieChartQuery('supervisorName');
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
 
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectSupervisor, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error accessing printjob supervisor data");
-                    connection.release();
-                    return;
-                }
-                res.send({ res: result });
-                connection.release();
-            });
-        });
-    });
+    try {
+        const result = await runQuery(pool, sqlSelectSupervisor);
+        res.send({ res: result });
+    } catch (err) {
+        console.error('Error accessing printjob supervisor data:', err);
+        res.status(500).send("Error accessing printjob supervisor data");
+    }
 });
 
-app.get('/api/getnamefilamentdata', (req, res) => {
 
+app.get('/api/getnamefilamentdata', async (req, res) => {
     const sqlSelectFilamentData = buildPieChartQuery('name');
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectFilamentData, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error accessing printjob supervisor data");
-                    connection.release();
-                    return;
-                }
-                res.send({ res: result });
-                connection.release();
-            });
-        });
-    });
-});
-
-app.get('/api/getdailyprints', (req, res) => {
-    const sqlSelectDaily = `SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt, SUM(usage_g) AS sum, paid FROM printjob GROUP BY DATE(timeStarted), paid`;
-
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectDaily, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error accessing printjob freq data");
-                    connection.release();
-                    return;
-                }
-                res.send({ res: result });
-                connection.release();
-            });
-        });
-    });
+    try {
+        const result = await runQuery(pool, sqlSelectFilamentData);
+        res.send({ res: result });
+    } catch (err) {
+        console.error('Error accessing printjob filament data:', err);
+        res.status(500).send("Error accessing printjob filament data");
+    }
 });
 
 
-app.get('/api/getdowprints', (req, res) => {
+app.get('/api/getdailyprints', async (req, res) => {
+    const sqlSelectDaily = `
+        SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt, SUM(usage_g) AS sum, paid 
+        FROM printjob 
+        GROUP BY DATE(timeStarted), paid
+    `;
+
+    try {
+        const result = await runQuery(pool, sqlSelectDaily);
+        res.send({ res: result });
+    } catch (err) {
+        console.error('Error accessing daily print data:', err);
+        res.status(500).send("Error accessing daily print data");
+    }
+});
+
+
+app.get('/api/getdowprints', async (req, res) => {
     const sqlSelectDaily = `
     WITH seasonEncs AS (
-    SELECT
-        *,
-        CASE    
-            WHEN (MONTH(timeStarted) > 3 AND MONTH(timeStarted) < 11)
-                OR (MONTH(timeStarted) = 3 AND DAYOFMONTH(timeStarted) - WEEKDAY(timeStarted) >= 8)
-                OR (MONTH(timeStarted) = 11 AND DAYOFMONTH(timeStarted) - WEEKDAY(timeStarted) < 1)
-            THEN DATE_ADD(timeStarted, INTERVAL -4 HOUR) -- EDT
-            ELSE DATE_ADD(timeStarted, INTERVAL -5 HOUR) -- EST
-        END AS local,
+        SELECT
+            *,
+            CASE    
+                WHEN (MONTH(timeStarted) > 3 AND MONTH(timeStarted) < 11)
+                    OR (MONTH(timeStarted) = 3 AND DAYOFMONTH(timeStarted) - WEEKDAY(timeStarted) >= 8)
+                    OR (MONTH(timeStarted) = 11 AND DAYOFMONTH(timeStarted) - WEEKDAY(timeStarted) < 1)
+                THEN DATE_ADD(timeStarted, INTERVAL -4 HOUR) -- EDT
+                ELSE DATE_ADD(timeStarted, INTERVAL -5 HOUR) -- EST
+            END AS local,
             CASE
-            WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
-            WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
-            ELSE 2
-        END AS seasonEnc,
-        YEAR(timeStarted) AS year
-    FROM printjob
+                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
+                WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
+                ELSE 2
+            END AS seasonEnc,
+            YEAR(timeStarted) AS year
+        FROM printjob
     ),
     agg AS (
         SELECT 
@@ -924,307 +773,210 @@ app.get('/api/getdowprints', (req, res) => {
     ORDER BY g.seasonEnc, g.year, g.dow, g.hour;
     `;
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectDaily, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error accessing printjob freq data");
-                    connection.release();
-                    return;
-                }
-                res.send({ res: result });
-                connection.release();
-            });
-        });
-    });
+    try {
+        const result = await runQuery(pool, sqlSelectDaily);
+        res.send({ res: result });
+    } catch (err) {
+        console.error('Error accessing printjob frequency data:', err);
+        res.status(500).send("Error accessing printjob frequency data");
+    }
 });
 
 
-app.get('/api/getHistory', (req, res) => {
+app.get('/api/getHistory', async (req, res) => {
     const value = req.query.value;
     const field = req.query.field;
     const dateRangeObj = JSON.parse(req.query.dateRangeString);
 
     let sqlSelectHistory = `SELECT * FROM printjob`;
+    const queryParams = [];
+
     if (dateRangeObj) {
-        sqlSelectHistory += ` WHERE timeStarted >= ? AND timeStarted <= ?`
+        sqlSelectHistory += ` WHERE timeStarted >= ? AND timeStarted <= ?`;
+        queryParams.push(dateRangeObj.startDate, dateRangeObj.endDate);
     }
 
     if (value !== 'undefined') {
         if (dateRangeObj) {
-            sqlSelectHistory += ` AND ${field} = ?`
+            sqlSelectHistory += ` AND ${field} = ?`;
         } else {
-            sqlSelectHistory += ` WHERE ${field} = ?`
+            sqlSelectHistory += ` WHERE ${field} = ?`;
         }
+        queryParams.push(value);
     }
-    sqlSelectHistory += ';'
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
+    sqlSelectHistory += ';';
 
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            let queryParams = []
-            if (dateRangeObj) [
-                queryParams = [dateRangeObj.startDate, dateRangeObj.endDate]
-            ]
-
-            if (value !== 'undefined') {
-                queryParams.push(value);
-            }
-
-            connection.query(sqlSelectHistory, queryParams, (errHistory, resultHistory) => {
-                if (errHistory) {
-                    console.error(errHistory);
-                    res.status(500).send("Error accessing printjob files data");
-                } else {
-                    res.send({ historyList: resultHistory });
-                }
-                connection.release();
-            });
-        });
-
-    });
+    try {
+        const resultHistory = await runQuery(pool, sqlSelectHistory, queryParams);
+        res.send({ historyList: resultHistory });
+    } catch (err) {
+        console.error('Error accessing printjob files data:', err);
+        res.status(500).send("Error accessing printjob files data");
+    }
 });
 
 
 
-app.get('/api/getFailureCount', (req, res) => {
+app.get('/api/getFailureCount', async (req, res) => {
     const parts = req.query.parts;
     const name = req.query.name;
 
-    const sqlSelectFailureCount = `SELECT COUNT(*) AS cnt FROM printjob WHERE partNames = ? AND name = ? AND status = "failed"`
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        //transaction with no isolation level: reads only (transaction ensures consistency)
-        connection.beginTransaction(function (err) {
-            connection.query(sqlSelectFailureCount, [parts, name], (errFailure, resultFailure) => {
-                if (errFailure) {
-                    console.log(errFailure);
-                    res.status(500).send("Error accessing printjob data");
-                    connection.release();
-                    return;
-                }
-                res.send({ count: resultFailure });
-                connection.release();
-            });
-        });
-    });
+    const sqlSelectFailureCount = `
+        SELECT COUNT(*) AS cnt 
+        FROM printjob 
+        WHERE partNames = ? AND name = ? AND status = "failed"
+    `;
+
+    try {
+        const resultFailure = await runQuery(pool, sqlSelectFailureCount, [parts, name]);
+        res.send({ count: resultFailure });
+    } catch (err) {
+        console.error('Error accessing printjob data:', err);
+        res.status(500).send("Error accessing printjob data");
+    }
 });
 
 
-app.post('/api/insert', (req, res) => {
+app.post('/api/insert', async (req, res) => {
     const b = req.body;
     const dateTime = new Date(b.timeStarted);
+
     const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," +
         " status, name, supervisorName, notes, partNames, email, paid, " +
         " color, layerHeight, selfPostProcess, detailedPostProcess, cureTime, material" +
         ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-
-        connection.beginTransaction(function (err) {
-            connection.query(sqlInsert, [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
-            b.notes, b.partNames, b.email, b.paid, b.color, b.layerHeight, b.selfPostProcess,
-            b.detailedPostProcess, b.cureTime, b.material], (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error inserting printjob");
-                    connection.release();
-                    return;
-                }
-                res.send(result);
-                connection.release();
-            });
+    try {
+        const result = await runTransaction(async (conn) => {
+            const [rows] = await conn.promise().query(sqlInsert,
+                [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
+                b.notes, b.partNames, b.email, b.paid, b.color, b.layerHeight, b.selfPostProcess,
+                b.detailedPostProcess, b.cureTime, b.material]);
+            return rows;
         });
-    });
-
-    let cleanMaterial = b.material.toLowerCase().trim();
-
-    // Now save the new filament amount to the file if the material is PLA
-    if (cleanMaterial === 'pla') {
-        let localData = loadLocalData()
-        let newStock = Math.max(0, localData?.filamentStock - b.usage_g)
-        saveLocalData({ ...localData, filamentStock: newStock })
-
-        // send an email if we just crossed under the threshold
-        if ((localData?.filamentStock >= localData?.filamentThreshold) && (newStock < localData?.filamentThreshold)) {
-            let emailParams = {
-                to: 'print3d@purdue.edu',
-                subject: 'ALERT - Lab Filament Stock Low!',
-                text: `Warning: the lab organizer has detected that our filament stock has ` +
-                    `just fallen below the minimum threshold of ${parseInt(localData.filamentThreshold).toLocaleString()}g.` +
-                    `\n\nPlease consider restocking it soon!`
-            }
-            sendEmail(emailParams)
-        }
-    }
-
-    // If the material isn't resin, then subtract the filament allowance for the club, if it isn't null.
-    console.log('cleanMaterial: ',cleanMaterial,  ' | b.filamentAllowance: ', b.filamentAllowance, ' | b.memberID: ', b.memberID)
-    if ((cleanMaterial !== 'resin') && (b.filamentAllowance) && (b.memberID)) {
-        // update the member table
-
-        let sqlUpdate = `UPDATE member SET filamentAllowance=? WHERE memberID = ?`;
-
-        pool.getConnection((err, connection) => {
-            if (err) {
-                console.error('Error getting connection from pool:', err.message);
-                return;
-            }
-
-            connection.beginTransaction(function (err) {
-                connection.query(sqlUpdate, [(Math.max(b.filamentAllowance - b.usage_g, 0 )), b.memberID], (err, result) => {
-                    if (err) {
-                        console.log(err.message);
-                        connection.release();
-                        return;
-                    }
-                    connection.release();
-                });
-            });
-        });
+        res.send(result);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error inserting printjob");
     }
 });
 
 
-app.post('/api/insertMember', (req, res) => {
+app.post('/api/insertMember', async (req, res) => {
     const b = req.body;
-    console.log(req.body)
     const dateTime = new Date(b.lastUpdated);
-    const sqlInsert = "INSERT INTO member (lastUpdated, name, email, discordUsername, season, year, filamentAllowance) VALUES (?,?,?,?,?,?,?)";
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        connection.beginTransaction(function (err) {
-            connection.query(sqlInsert, [dateTime, b.name, b.email, b.discordUsername, b.season, b.year, b.filamentAllowance], (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error inserting printjob");
-                    connection.release();
-                    return;
-                }
-                res.send(result);
-                connection.release();
+    const sqlInsert = `
+        INSERT INTO member 
+        (lastUpdated, name, email, discordUsername, season, year, filamentAllowance) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    try {
+        const result = await runTransaction(async (connection) => {
+            return new Promise((resolve, reject) => {
+                connection.query(
+                    sqlInsert,
+                    [dateTime, b.name, b.email, b.discordUsername, b.season, b.year, b.filamentAllowance],
+                    (err, result) => {
+                        if (err) return reject(err);
+                        resolve(result);
+                    }
+                );
             });
         });
-    });
+
+        res.send(result);
+    } catch (err) {
+        console.error('Error inserting member:', err);
+        res.status(500).send("Error inserting member");
+    }
 });
 
 
-app.delete('/api/cancelPrint/:printerName/:usage', (req, res) => {
+app.delete('/api/cancelPrint/:printerName/:usage', async (req, res) => {
     const printerName = req.params.printerName;
     const usageRefund = req.params.usage;
 
-    const sqlDelete = 'DELETE FROM printJob WHERE printerName=? AND status = "active"';
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        connection.beginTransaction(function (err) {
-            connection.query(sqlDelete, printerName, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error deleting printJob");
-                    connection.release();
-                    return;
-                }
+    const sqlDelete = 'DELETE FROM printjob WHERE printerName=? AND status="active"';
 
-                // Refund the filament usage
-                let localData = loadLocalData();
-                let newStock = Math.max(0, parseInt(localData?.filamentStock) + parseInt(usageRefund));
-                saveLocalData({ ...localData, filamentStock: newStock });
-
-                res.send(result);
-                connection.release();
+    try {
+        const result = await runTransaction(async (connection) => {
+            return new Promise((resolve, reject) => {
+                connection.query(sqlDelete, [printerName], (err, result) => {
+                    if (err) return reject(err);
+                    resolve(result);
+                });
             });
         });
-    });
+
+        // Refund filament locally
+        const localData = loadLocalData();
+        const newStock = Math.max(0, parseInt(localData?.filamentStock) + parseInt(usageRefund));
+        saveLocalData({ ...localData, filamentStock: newStock });
+
+        res.send(result);
+    } catch (err) {
+        console.error('Error cancelling print:', err);
+        res.status(500).send("Error cancelling printJob");
+    }
 });
 
 
-app.delete('/api/deleteJob/:jobID', (req, res) => {
+app.delete('/api/deleteJob/:jobID', async (req, res) => {
     const jobID = req.params.jobID;
-    const sqlDelete = 'DELETE FROM printJob WHERE jobID=?';
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        connection.beginTransaction(function (err) {
-            connection.query(sqlDelete, jobID, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error deleting printJob");
-                    connection.release();
-                    return;
-                }
-                res.send(result);
-                connection.release();
+    const sqlDelete = 'DELETE FROM printjob WHERE jobID=?';
+
+    try {
+        const result = await runTransaction(async (connection) => {
+            return new Promise((resolve, reject) => {
+                connection.query(sqlDelete, [jobID], (err, result) => {
+                    if (err) return reject(err);
+                    resolve(result);
+                });
             });
         });
-    });
+
+        res.send(result);
+    } catch (err) {
+        console.error('Error deleting printJob:', err);
+        res.status(500).send("Error deleting printJob");
+    }
 });
 
 
-app.delete('/api/deleteMember/:memberID', (req, res) => {
+app.delete('/api/deleteMember/:memberID', async (req, res) => {
     const memberID = req.params.memberID;
     const sqlDelete = 'DELETE FROM member WHERE memberID=?';
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        connection.beginTransaction(function (err) {
-            connection.query(sqlDelete, memberID, (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error deleting printJob");
-                    connection.release();
-                    return;
-                }
-                res.send(result);
-                connection.release();
+
+    try {
+        const result = await runTransaction(async (connection) => {
+            return new Promise((resolve, reject) => {
+                connection.query(sqlDelete, [memberID], (err, result) => {
+                    if (err) return reject(err);
+                    resolve(result);
+                });
             });
         });
-    });
+
+        res.send(result);
+    } catch (err) {
+        console.error('Error deleting member:', err);
+        res.status(500).send("Error deleting member");
+    }
 });
 
-app.put('/api/update', (req, res) => {
+app.put('/api/update', async (req, res) => {
     const { table, column, val, id } = req.body;
     let sqlUpdate;
+
     switch (table) {
         case "printer":
             sqlUpdate = `UPDATE printer SET ${column} = ? WHERE printerName = ?`;
+            break;
+        case "member":
+            sqlUpdate = `UPDATE member SET ${column} = ? WHERE email = ?`;
             break;
         case "printjob":
             sqlUpdate = `UPDATE printjob SET ${column} = ? WHERE printerName = ? AND status = "active"`;
@@ -1235,81 +987,86 @@ app.put('/api/update', (req, res) => {
         default:
             return res.status(400).send("Invalid table");
     }
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        connection.beginTransaction(function (err) {
-            connection.query(sqlUpdate, [val, id], (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error updating database");
-                    connection.release();
-                    return;
-                }
 
-                res.send(result);
-                connection.release();
+    try {
+        const result = await runTransaction(async (connection) => {
+            return new Promise((resolve, reject) => {
+                connection.query(sqlUpdate, [val, id], (err, result) => {
+                    if (err) return reject(err);
+                    resolve(result);
+                });
             });
         });
-    });
+
+        res.send(result);
+    } catch (err) {
+        console.error('Error updating database:', err);
+        res.status(500).send("Error updating database");
+    }
 });
 
-app.put('/api/updateJob', (req, res) => {
+
+app.put('/api/updateJob', async (req, res) => {
     const j = req.body;
-    let sqlUpdate = `UPDATE printjob SET email = ?, files = ?, printerName = ?, name = ?, partNames = ?, paid = ?, status = ?, supervisorName = ?,
-     material=?, usage_g = ?, notes=?, color=?, layerHeight=?, cureTime=?, selfPostProcess=?, detailedPostProcess=? WHERE jobID = ?`;
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
-        connection.beginTransaction(function (err) {
-            connection.query(sqlUpdate, [j.email, j.files, j.printerName, j.name, j.partNames, j.paid, j.status, j.supervisorName,
-            j.material, j.usage_g, j.notes, j.color, j.layerHeight, j.cureTime, j.selfPostProcess, j.detailedPostProcess, j.jobID], (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error updating database");
-                    connection.release();
-                    return;
-                }
+    const sqlUpdate = `
+        UPDATE printjob SET 
+            email = ?, files = ?, printerName = ?, name = ?, partNames = ?, paid = ?, status = ?, supervisorName = ?,
+            material = ?, usage_g = ?, notes = ?, color = ?, layerHeight = ?, cureTime = ?, selfPostProcess = ?, detailedPostProcess = ?
+        WHERE jobID = ?
+    `;
 
-                res.send(result);
-                connection.release();
+    try {
+        const result = await runTransaction(async (connection) => {
+            return new Promise((resolve, reject) => {
+                connection.query(sqlUpdate, [
+                    j.email, j.files, j.printerName, j.name, j.partNames, j.paid, j.status, j.supervisorName,
+                    j.material, j.usage_g, j.notes, j.color, j.layerHeight, j.cureTime, j.selfPostProcess, j.detailedPostProcess, j.jobID
+                ], (err, result) => {
+                    if (err) return reject(err);
+                    resolve(result);
+                });
             });
         });
-    });
+
+        res.send(result);
+    } catch (err) {
+        console.error('Error updating printjob:', err);
+        res.status(500).send("Error updating database");
+    }
 });
 
-app.put('/api/updateMember', (req, res) => {
+
+app.put('/api/updateMember', async (req, res) => {
     const { name, email, lastUpdated, memberID, discordUsername, filamentAllowance } = req.body;
-    let sqlUpdate = `UPDATE member SET name=?, email=?, lastUpdated=?, discordUsername=?, filamentAllowance=? WHERE memberID = ?`;
 
-    pool.getConnection((err, connection) => {
-        if (err) {
-            console.error('Error getting connection from pool:', err.message);
-            res.status(500).send("Error accessing the database");
-            return;
-        }
+    const sqlUpdate = `
+        UPDATE member SET
+            name = ?, email = ?, lastUpdated = ?, discordUsername = ?, filamentAllowance = ?
+        WHERE memberID = ?
+    `;
 
-        connection.beginTransaction(function (err) {
-            connection.query(sqlUpdate, [name, email, new Date(lastUpdated), discordUsername, filamentAllowance, memberID], (err, result) => {
-                if (err) {
-                    console.log(err.message);
-                    res.status(500).send("Error updating database");
-                    connection.release();
-                    return;
-                }
-                res.send(result);
-                connection.release();
+    try {
+        const result = await runTransaction(async (connection) => {
+            return new Promise((resolve, reject) => {
+                connection.query(
+                    sqlUpdate,
+                    [name, email, new Date(lastUpdated), discordUsername, filamentAllowance, memberID],
+                    (err, result) => {
+                        if (err) return reject(err);
+                        resolve(result);
+                    }
+                );
             });
         });
-    });
+
+        res.send(result);
+    } catch (err) {
+        console.error('Error updating member:', err);
+        res.status(500).send("Error updating database");
+    }
 });
+
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);

@@ -15,7 +15,6 @@ import exitIcon from '/images/cancel.svg';
 import dollarIcon from '/images/dollar.svg';
 import homeIcon from '/images/home.svg'
 
-
 import discord_qr from '/images/3dpc_discord.png'
 
 function Settings({ settingsArgs }) {
@@ -96,26 +95,6 @@ function Settings({ settingsArgs }) {
       }
     }
   }
-
-
-  // // Highlight the search in the job's fields by wrapping it with <b>
-  // const applyHighlight = (text, queue, pixelWidth = 400) => {
-  //   const truncatedText = truncateStringWidth(text, pixelWidth);
-
-  //   if (!text || !memberSearch || queue) return truncatedText;
-
-  //   const escapedSearch = memberSearch.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
-  //   const regex = new RegExp(escapedSearch, 'gi');
-
-  //   // Replace the search term with a highlight html tag around the matched text
-  //   return truncatedText.replace(regex, (match) => {
-  //     return `<span style="
-  //       background-color: rgba(40,200,40,0.4);
-  //       border-radius: 2px;
-  //     ">${match}</span>`;
-  //   });
-  // };
-
 
   const saveFilamentSettings = () => {
     setFilamentSettings(tempLocalData?.filamentSettings);
@@ -218,7 +197,7 @@ function Settings({ settingsArgs }) {
         email: '', name: '', discordUsername: '', seasonEnc: endSeason.seasonEnc,
         year: endSeason.year, lastUpdated: '', memberID: -1, filamentAllowance: null
       });
-      showMsgForDuration("New Member Inserted!", 'msg');
+      showMsgForDuration("New Member Added.", 'msg');
     });
   }
 
@@ -541,9 +520,6 @@ function Settings({ settingsArgs }) {
               </button>
             </span>
           ))}
-
-
-
         </div>}
         {/* End admin settings */}
 
@@ -601,8 +577,8 @@ function Settings({ settingsArgs }) {
                 <button style={{ cursor: 'pointer' }} onClick={() => setSortAscending(old => !old)}>{sortAscending ? '↕ Asc.\u00A0\u00A0' : '↕ Desc.'}</button>
               </span>
             </div>
-
           </div>
+
           <div style={{ height: 'calc(50vh)' }}>
             <div className='wrapper-wrapper' style={{ height: 'calc(50vh)' }}>
               <table className='hotkeys-wrapper'>

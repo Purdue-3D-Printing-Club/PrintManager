@@ -139,24 +139,33 @@ function App() {
   const wrapperRef = useRef(null);
 
   const handlePageChange = (nextPage) => {
-    // Mount next page so it exists during slide
-    const newPages = [...pagesMounted];
-    newPages[nextPage] = true;
-    setPagesMounted(newPages);
-
-    // Trigger slide
+    setPagesMounted((prev) => {
+      const newPages = [...prev];
+      newPages[nextPage] = true;
+      return newPages;
+    });
     setCurrentPage(nextPage);
-
-    // Wait for CSS transition to finish and dismount old page
-    const onTransitionEnd = () => {
-      const newPagesAfter = [false, false];
-      newPagesAfter[nextPage] = true;
-      setPagesMounted(newPagesAfter);
-
-      wrapperRef.current.removeEventListener('transitionend', onTransitionEnd);
-    };
-    wrapperRef.current.addEventListener('transitionend', onTransitionEnd);
   };
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const onTransitionEnd = () => {
+      setPagesMounted((prev) => {
+        const newPages = [false, false];
+        newPages[currentPage] = true;
+        return newPages;
+      });
+    };
+
+    wrapper.addEventListener('transitionend', onTransitionEnd);
+
+    return () => {
+      wrapper.removeEventListener('transitionend', onTransitionEnd);
+    };
+  }, [currentPage]);
+
 
   // downloads all files from one click
   async function downloadAllFiles(urlsString) {
@@ -222,6 +231,31 @@ function App() {
     }
     return (warnCount);
   }
+
+  const updateMemberAllowance = (subtract, formJob, matchingMember = null) => {
+    if (!matchingMember) {
+      matchingMember = memberList.find((m) => m.email === formJob.email);
+    }
+
+    if ((matchingMember) && (matchingMember.filamentAllowance !== null)) {
+      let newAllowance = matchingMember?.filamentAllowance
+      if (subtract) newAllowance -= formJob?.usage_g;
+      else newAllowance += formJob?.usage_g;
+
+      // first, update the database
+      updateTable("member", "filamentAllowance", matchingMember?.email, newAllowance, () => {
+        // then update the matching member's filamentAllowance locally
+        setMemberList(old => old.map((m) => {
+          if (m.email === formJob.email) {
+            return { ...m, filamentAllowance: Math.max(newAllowance, 0) }
+          } else {
+            return m
+          }
+        }))
+      });
+    }
+  }
+
 
   //fill data arrays on the initial render
   useEffect(() => {
@@ -326,6 +360,12 @@ function App() {
       console.log('selectedPrinter: ', selectedPrinter)
       console.log('printerList: ', printerList)
     }
+    if (!selectedPrinter?.material?.includes(',')) {
+      setJobMaterial(selectedPrinter?.material);
+    } else {
+      setJobMaterial('');
+    }
+
     // reset the tempPrinterMaterial
     setTempPrinterMaterial(selectedPrinter?.material ?? '')
 
@@ -411,7 +451,7 @@ function App() {
       } else if (key === 'usage_g') {
         value = value.toString()
       }
-      return (typeof value === 'string' && value.toLowerCase().includes(search.toLowerCase()))
+      return (typeof value === 'string' && value?.toLowerCase().includes(search?.toLowerCase()))
     }) && job.status !== 'queued'
     )
 
@@ -784,7 +824,7 @@ function App() {
     setSupervisorPrint(job.name === job.supervisorName);
     setPersonalFilament(job.paid === 'personal');
 
-    let material = job.material.toLowerCase();
+    let material = job?.material?.toLowerCase();
     if (!materialAllowed(selectedPrinter, material)) {
       material = '';
     }
@@ -798,6 +838,8 @@ function App() {
   }
 
   const cancelPrint = () => {
+    console.log('cancelling print...')
+
     autofillFields(curJob);
     fetch(`${serverURL}/api/cancelPrint/${selectedPrinter.printerName}/${curJob.usage_g}`, { method: 'DELETE', }).then(response => {
       if (!response.ok) {
@@ -806,8 +848,11 @@ function App() {
       return response.json();
     }).then(data => {
       updateTable("printer", "currentJob", selectedPrinter.printerName, '', () => {
+        updateMemberAllowance(false, curJob);
         handlePrinterStatusChange(busyToOpen(selectedPrinter.status))
       })
+
+
     }).catch(error => {
       console.error('Error:', error);
     });
@@ -1137,7 +1182,7 @@ function App() {
         }
       });
     } catch (error) {
-      console.error("Error updating printer: ", error);
+      console.error("Error updating table: ", error);
     }
   };
 
@@ -1209,7 +1254,6 @@ function App() {
   const handleStartPrintClick = (queue = false) => {
     // let matchingJob = ''
     let matchingMember = memberList.find((m) => m.email === email);
-    console.log('matchingMember: ', matchingMember);
 
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
@@ -1275,7 +1319,7 @@ function App() {
       usage_g: Math.round(parseFloat(job.usage_g)) > 2147483647 ? 2147483647 : Math.round(parseFloat(job.usage_g)),
       status: job.status,
       name: truncateString(job.name, 64),
-      supervisor: truncateString(job.supervisorName, 64),
+      supervisor: truncateString(job.supervisor, 64),
       material: truncateString(job.material, 32),
       partNames: truncateString(job.partNames, 256),
       email: truncateString(job.email, 64),
@@ -1298,7 +1342,7 @@ function App() {
   const buildFormJob = () => {
     let isMember = memberList.map(m => m.email).includes(email)
     let paid = ''
-    if (jobMaterial.toLowerCase() != 'pla') {
+    if (jobMaterial?.toLowerCase() != 'pla') {
       paid = personalFilament ? 'personal' : 'per-gram'
     } else {
       paid = personalFilament ? 'personal' : isMember ? 'club' : 'per-gram'
@@ -1321,6 +1365,7 @@ function App() {
       selfPostProcess: selfPostProcess,
       detailedPostProcess: detailedPostProcess,
     }
+
     return sanitizeJob(formJob, true);
   }
 
@@ -1375,18 +1420,23 @@ function App() {
             try {
               Axios.get(`${serverURL}/api/getCurrentJob?printerName=${formPrinter.printerName}`).then((response) => {
                 if (generalSettings?.debugMode) console.log("CurrentJob data: ", response.data);
+
                 //update the printer status of the printer that was given the job
                 updateTable("printer", "status", formPrinter.printerName, openToBusy(formPrinter.status), () => {
+                  if (generalSettings?.debugMode) console.log("Updated printer status in startPrint!");
+
                   //update the currentJob of the printer that was used for the printJob
                   if (response.data.currentJob[0]) {
                     updateTable("printer", "currentJob", formPrinter.printerName, response.data.currentJob[0].jobID, () => {
+                      if (generalSettings?.debugMode) console.log("Updated current job of the printer in startPrint!");
+
                       const updatedPrinterList = printerList.map(printer => {
                         if (printer.printerName === formPrinter.printerName) {
                           let newPrinter = {
                             ...printer, status: openToBusy(formPrinter.status),
                             currentJob: response.data.currentJob[0].jobID
                           }
-                          selectPrinter(newPrinter)
+                          selectPrinter(newPrinter);
                           return newPrinter;
                         }
                         return printer;
@@ -1399,26 +1449,11 @@ function App() {
             } catch (error) {
               console.error("Error fetching printer data: ", error);
             }
-          });
-          console.log('#######!!!########')
-          console.log('matchingMember: ', matchingMember)
-          console.log('enter if block: ', ((matchingMember) && (matchingMember.filamentAllowance !== null)))
+          }, 20);
 
           if (!formPrinter.material.includes('Resin')) {
             clearFields();
-
-            if ((matchingMember) && (matchingMember.filamentAllowance !== null)) {
-              console.log('ENTERED UPDATE BLOCK')
-              // update the matching member's filamentAllowance
-              setMemberList(old => old.map((m) => {
-                if (m.email === formJob.email) {
-                  console.log(`### UPDATING MEMBERLIST: ${Math.max(m.filamentAllowance - formJob.usage_g, 0)}`)
-                  return { ...m, filamentAllowance: Math.max(m.filamentAllowance - formJob.usage_g, 0) }
-                } else {
-                  return m
-                }
-              }))
-            }
+            updateMemberAllowance(true, formJob, matchingMember);
           }
         } else {
           refreshHistory()
@@ -1537,8 +1572,10 @@ function App() {
                   } catch (error) {
                     console.error("Error fetching failure count: ", error);
                   }
-                }
 
+                  // refund the club filament allowance if needed
+                  updateMemberAllowance(false, curJob);
+                }
               } catch (e) {
                 showMsgForDuration('Error Sending Email', 'err');
                 if (generalSettings?.debugMode) console.log('Error sending email:', e);

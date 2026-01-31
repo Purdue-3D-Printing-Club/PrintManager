@@ -18,11 +18,12 @@ const PrintForm = ({ printFormArgs }) => {
         </td>
     );
 
-    const [isMember, setIsMember] = useState(false);
+    const [matchedMember, setMatchedMember] = useState(null);
 
     useEffect(() => {
         if (memberList && (email !== null)) {
-            setIsMember(memberList.map(m => m.email.toLowerCase()).includes(email.toLowerCase()))
+            // setIsMember(memberList.map(m => m.email?.toLowerCase()).includes(email?.toLowerCase()))
+            setMatchedMember(memberList.find((m) => m.email?.toLowerCase() === email?.toLowerCase()))
         } else {
             console.log('Warning in printForm: memberList or formData undefined')
         }
@@ -102,7 +103,7 @@ const PrintForm = ({ printFormArgs }) => {
                 <div> Name: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input className='formInput' placeholder="Purdue Pete" value={name} onChange={handlename} style={{ width: '300px', 'fontSize': 'large' }}></input></div>
                 <div className={`${supervisorPrint ? 'disabled' : 'enabled'}`}> Email: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style={{ 'width': '300px', 'position': 'relative' }}>
                     <input className='formInput' tabIndex={supervisorPrint ? -1 : undefined} placeholder="pete123@purdue.edu" value={email} onChange={handleemail} style={{ width: '300px', 'fontSize': 'large' }}></input>
-                    <img src={(isMember | supervisorPrint) ? checkCircle : warningTriangle} style={{ backgroundColor: '#ffffffcc' }} className='input-icon' title={isMember ? 'Verified member' : 'Not a member'}></img>
+                    <img src={((matchedMember) || supervisorPrint) ? checkCircle : warningTriangle} style={{ backgroundColor: '#ffffffcc' }} className='input-icon' title={matchedMember ? 'Verified member' : 'Not a member'}></img>
                 </span>
                 </div>
 
@@ -122,13 +123,13 @@ const PrintForm = ({ printFormArgs }) => {
                 <div> Material: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <select style={{ width: '158px', height: '30px', 'fontSize': 'large' }} id="material" value={jobMaterial} onChange={handleJobMaterial}>
                     <option value="" disabled hidden>Select Material</option>
                     {selectedPrinter?.material?.split(',').map((material) => {
-                        return <option value={material.toLowerCase()}>{material}</option>
+                        return <option value={material?.toLowerCase()}>{material}</option>
                     })
                     }
                 </select>
                 </div>
                 {
-                    (jobMaterial.toLowerCase() == 'resin') && <>
+                    (jobMaterial?.toLowerCase() == 'resin') && <>
                         <div style={{ height: '1px' }}></div>
                         <div> Color: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Clear" value={color} onChange={handleColor} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
                         <div> Layer Height: <input placeholder="25 μm" value={layerHeight} onChange={handleLayerHeight} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
@@ -138,8 +139,13 @@ const PrintForm = ({ printFormArgs }) => {
                 <div style={{ height: '5px' }}></div>
                 <div style={{ height: '30px' }}> Filament Usage: <input className="formInput" value={filamentUsage} placeholder="12.34" type="text" onChange={handleFilamentUsage}
                     style={{ width: '50px', 'fontSize': 'large' }}></input> {materialAllowed(selectedPrinter, 'Resin') ? 'ml' : 'g'}
-                    {((isSpecialty(selectedPrinter)) || (!isMember && !supervisorPrint && !personalFilament)) &&
+                    {((isSpecialty(selectedPrinter)) || (!matchedMember && !supervisorPrint && !personalFilament)) &&
                         (` → $${(Math.round(filamentUsage) * (materialAllowed(selectedPrinter, 'Resin') ? filamentSettings.resinCost : filamentSettings.fdmCost)).toFixed(2)}`)} </div>
+                {
+                    ((matchedMember) && (matchedMember?.filamentAllowance!==null)) && <div className="subText">
+                        Remaining club allowance: {matchedMember?.filamentAllowance}g
+                    </div>
+                }
 
                 <div style={{ marginTop: '15px' }}> -- Notes (Optional) --
                     <br />

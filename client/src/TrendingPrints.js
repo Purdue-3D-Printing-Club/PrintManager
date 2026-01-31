@@ -40,7 +40,6 @@ const TrendingPrints = ({dailyPrint, selectedPrinter, menuOpen, truncateString})
           };
     
           el.addEventListener("scroll", handleScroll, { passive: true });
-          console.log('trending scroll listener attached: ', el)
     
           return () => {el.removeEventListener("scroll", handleScroll)}
         }, [trendingRef.current, dailyPrint]);

@@ -171,6 +171,11 @@ html::-webkit-scrollbar {
   justify-content: center;
 }
 
+.subText {
+  color:gray;
+  font-size: 18px;
+}
+
 .panel-header {
   position: absolute;
   top: -30px;
@@ -453,6 +458,7 @@ option {
   background-color: silver;
   transition: opacity 0.15s ease;
   opacity: 80%;
+  white-space:nowrap !important;
 }
 
 .printer-btn.select {
