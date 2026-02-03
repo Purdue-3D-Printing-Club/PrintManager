@@ -7,6 +7,7 @@
   position: relative;
   min-width: 450px;
   max-width: min(1100px, 95%);
+  z-index:1000
 }
 
 .table-data-row:not(:hover) {

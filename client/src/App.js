@@ -1345,7 +1345,7 @@ function App() {
     if (jobMaterial?.toLowerCase() != 'pla') {
       paid = personalFilament ? 'personal' : 'per-gram'
     } else {
-      paid = personalFilament ? 'personal' : isMember ? 'club' : 'per-gram'
+      paid = personalFilament ? 'personal' : (isMember || supervisorPrint) ? 'club' : 'per-gram'
     }
 
     let formJob = {
@@ -1909,7 +1909,7 @@ function App() {
     if (generalSettings?.debugMode) console.log("Set menuOpen to: " + menuOpen);
   };
 
-  function formatDate(utcString, time) {
+  function formatDate(utcString, time, alreadyUTC=false) {
     let isoString = '';
     if (utcString[utcString.length - 1] == 'Z') {
       isoString = utcString;
@@ -1920,7 +1920,7 @@ function App() {
     const date = new Date(isoString);
 
     const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
+      timeZone: alreadyUTC ? 'UTC' : 'America/New_York',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

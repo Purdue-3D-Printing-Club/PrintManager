@@ -52,6 +52,10 @@ function HomeScreen({ homeScreenArgs }) {
 
     // useEffect hooks
 
+    useEffect(() => {
+        console.log('linePpgData: ', linePpgData);
+    }, [linePpgData])
+
     // server health check and loading state control, cancel once it works
     useEffect(() => {
         if (loading !== 'error') return;
@@ -166,10 +170,12 @@ function HomeScreen({ homeScreenArgs }) {
 
                                         const startDate = dailyData.length > 0 ? formatDate(new Date(dailyData[0].date).toISOString()) : null;
                                         const endDate = formatDate(new Date().toISOString());
-
                                         const fillData = (rawData, fullSet, valueField, type = 'date') => {
                                             if (type === 'date') {
-                                                const map = new Map(rawData.map(row => [formatDate(row[type], false), row[valueField]]));
+                                                const map = new Map(rawData.map(row => {
+                                                    return [formatDate(row['date'], false, true), row[valueField]]
+                                            }));
+                                                console.log('map: ', map)
                                                 const filled = fullSet.map(date => map.get(date) || 0);
                                                 return filled
                                             }
@@ -177,10 +183,13 @@ function HomeScreen({ homeScreenArgs }) {
 
                                         if (startDate && endDate) {
                                             const allDates = generateDateRange(startDate, endDate);
-                                            // Fill the data and assign them to useState variables by paid type
-                                            setLinePersonalData([fillData(personal, allDates, 'cnt', 'date'), fillData(personal, allDates, 'sum', 'date')]);
-                                            setLineMemberData([fillData(member, allDates, 'cnt', 'date'), fillData(member, allDates, 'sum', 'date')]);
-                                            setLinePpgData([fillData(ppg, allDates, 'cnt', 'date'), fillData(ppg, allDates, 'sum', 'date')]);
+
+                                            // Fill the data and assign them to useState variables by paid type'
+                                            setLinePersonalData([fillData(personal, allDates, 'cnt'), fillData(personal, allDates, 'sum')]);
+                                            setLineMemberData([fillData(member, allDates, 'cnt'), fillData(member, allDates, 'sum')]);
+                                            console.log('ppg: ')
+                                            
+                                            setLinePpgData([fillData(ppg, allDates, 'cnt'), fillData(ppg, allDates, 'sum')]);
                                             setLineDateWindow(allDates);
                                         }
                                     }
@@ -249,238 +258,239 @@ function HomeScreen({ homeScreenArgs }) {
 
             {/* Home page 1 */}
             {/* {pagesMounted[0] ? */}
-                <div className="page" style={{ width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))`,
+            <div className="page" style={{
+                width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))`,
                 // display: pagesMounted[0] ? 'block' : 'none'
-                 }}>
-                    {(loading === 'loading') && <div>
-                        <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
-                    </div>}
-                    {(loading === 'error') && <div>
-                        <h1><b>Server Connection Failed</b></h1>
-                        <h3 style={{ 'fontSize': '22px' }}>Please try restarting the PC if the issue persists.</h3><br />
-                        <img src={noSignalIcon} alt="error" style={{
-                            width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px"
-                        }} />
-                    </div>}
-                    {loading === 'done' &&
-                        <div >
-                            <div className="title-box" onClick={() => { handlePageChange(1) }}>
-                                <div className="title-container">
-                                    <h2 className="title-text">Lab Summary Visualizations</h2>
-                                    <div className="slide-arrow right"></div>
+            }}>
+                {(loading === 'loading') && <div>
+                    <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
+                </div>}
+                {(loading === 'error') && <div>
+                    <h1><b>Server Connection Failed</b></h1>
+                    <h3 style={{ 'fontSize': '22px' }}>Please try restarting the PC if the issue persists.</h3><br />
+                    <img src={noSignalIcon} alt="error" style={{
+                        width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px"
+                    }} />
+                </div>}
+                {loading === 'done' &&
+                    <div >
+                        <div className="title-box" onClick={() => { handlePageChange(1) }}>
+                            <div className="title-container">
+                                <h2 className="title-text">Lab Summary Visualizations</h2>
+                                <div className="slide-arrow right"></div>
 
-                                </div>
                             </div>
+                        </div>
 
-                            {/* Print of the day stl previews*/}
-                            <h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
-                            {(potdStatus === 'done') && <TrendingPrints
-                                dailyPrint={dailyPrint} selectedPrinter={selectedPrinter} menuOpen={menuOpen} truncateString={truncateString}>
-                            </TrendingPrints>
-                            }
+                        {/* Print of the day stl previews*/}
+                        <h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
+                        {(potdStatus === 'done') && <TrendingPrints
+                            dailyPrint={dailyPrint} selectedPrinter={selectedPrinter} menuOpen={menuOpen} truncateString={truncateString}>
+                        </TrendingPrints>
+                        }
 
 
-                            {(potdStatus === 'loading') && <div>
-                                <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
-                            </div>}
-                            {(potdStatus === 'error') && <div>
-                                <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
-                            </div>}
-
-                            <h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🕜 Recently Printed Files</b></h1>
-                            <div className={'stl-previews ' + ((!selectedPrinter) ? '' : 'hidden')}>
-                                <ErrorBoundary>
-                                    {recentFiles.map((file, index) => {
-                                        if (generalSettings.showFilePreviews) {
-                                            return (
-                                                <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)}
-                                                    getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true}></StlPreview></div>
-                                            )
-                                        } else {
-                                            return (
-                                                <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(file.file.trim())}>
-                                                    <img className='status-icon ' src={`images/download.svg`}></img> {file.name ? truncateString(file.name.trim(), 24) : 'File ' + index}
-                                                </button>
-                                            )
-                                        }
-                                    })
-                                    }
-                                </ErrorBoundary>
-                            </div>
-
-                            <div style={{ height: '20px' }}></div>
-                            {/* Comprehensive print history */}
-                            <PrintHistoryTable printHistoryArgs={printHistoryArgs}></PrintHistoryTable>
-
+                        {(potdStatus === 'loading') && <div>
+                            <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
                         </div>}
-                </div> 
-                {/* : 
+                        {(potdStatus === 'error') && <div>
+                            <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
+                        </div>}
+
+                        <h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🕜 Recently Printed Files</b></h1>
+                        <div className={'stl-previews ' + ((!selectedPrinter) ? '' : 'hidden')}>
+                            <ErrorBoundary>
+                                {recentFiles.map((file, index) => {
+                                    if (generalSettings.showFilePreviews) {
+                                        return (
+                                            <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)}
+                                                getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true}></StlPreview></div>
+                                        )
+                                    } else {
+                                        return (
+                                            <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(file.file.trim())}>
+                                                <img className='status-icon ' src={`images/download.svg`}></img> {file.name ? truncateString(file.name.trim(), 24) : 'File ' + index}
+                                            </button>
+                                        )
+                                    }
+                                })
+                                }
+                            </ErrorBoundary>
+                        </div>
+
+                        <div style={{ height: '20px' }}></div>
+                        {/* Comprehensive print history */}
+                        <PrintHistoryTable printHistoryArgs={printHistoryArgs}></PrintHistoryTable>
+
+                    </div>}
+            </div>
+            {/* : 
                 <div style={{ width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
                 </div>
                 {/*}} */}
 
             {/* Home page 2 */}
             {/* {pagesMounted[1] && */}
-                <div className={`page`} style={{ marginLeft: `${sidebarOpen ? sidebarWidth : 0}px`, width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
+            <div className={`page`} style={{ marginLeft: `${sidebarOpen ? sidebarWidth : 0}px`, width: `calc((100vw - ${sidebarOpen ? sidebarWidth : 0}px))` }}>
 
 
-                    <div className="title-box" onClick={() => { handlePageChange(0) }}>
-                        <div className="title-container">
-                            <div className="slide-arrow left"></div>
-                            <h2 className="title-text">Landing Page</h2>
-                        </div>
+                <div className="title-box" onClick={() => { handlePageChange(0) }}>
+                    <div className="title-container">
+                        <div className="slide-arrow left"></div>
+                        <h2 className="title-text">Landing Page</h2>
                     </div>
+                </div>
 
 
 
-                    {/* Charts below */}
-                    {loading === 'done' && <div>
-                        <div className='group-title'> General </div>
-                        <CollapsibleChart index={0} title="Lab Printer Status Composition"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-med'}>
-                            <PieChart argsObject={{
-                                dataObj: printerStatuses,
-                                dataField: 'count',
-                                labelField: 'status',
-                                pieArgs: pieArgs,
-                                backgroundColor: printerStatuses.map(p => getStatusColor(p.status)),
-                            }} />
-                        </CollapsibleChart>
+                {/* Charts below */}
+                {loading === 'done' && <div>
+                    <div className='group-title'> General </div>
+                    <CollapsibleChart index={0} title="Lab Printer Status Composition"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-med'}>
+                        <PieChart argsObject={{
+                            dataObj: printerStatuses,
+                            dataField: 'count',
+                            labelField: 'status',
+                            pieArgs: pieArgs,
+                            backgroundColor: printerStatuses.map(p => getStatusColor(p.status)),
+                        }} />
+                    </CollapsibleChart>
 
-                        <div className='group-title'> Line Charts </div>
-                        <CollapsibleChart index={1} title="Number of Prints Over Time"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line pad-med'}>
-                            <LineChart argsObject={{
-                                data: {
-                                    filledPersonalData: linePersonalData[0],
-                                    filledMemberData: lineMemberData[0],
-                                    filledPpgData: linePpgData[0]
-                                },
-                                type: 'filament',
-                                ...lineArgs
-                            }} />
+                    <div className='group-title'> Line Charts </div>
+                    <CollapsibleChart index={1} title="Number of Prints Over Time"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line pad-med'}>
+                        <LineChart argsObject={{
+                            data: {
+                                filledPersonalData: linePersonalData[0],
+                                filledMemberData: lineMemberData[0],
+                                filledPpgData: linePpgData[0]
+                            },
+                            type: 'filament',
+                            ...lineArgs
+                        }} />
 
-                        </CollapsibleChart>
+                    </CollapsibleChart>
 
-                        <CollapsibleChart index={3} title="Filament Used Over Time (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line pad-med'}>
-                            <LineChart argsObject={{
-                                data: {
-                                    filledPersonalData: linePersonalData[1],
-                                    filledMemberData: lineMemberData[1],
-                                    filledPpgData: linePpgData[1]
-                                },
-                                type: 'filament',
-                                ...lineArgs
-                            }} />
-                        </CollapsibleChart>
+                    <CollapsibleChart index={3} title="Filament Used Over Time (g)"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line pad-med'}>
+                        <LineChart argsObject={{
+                            data: {
+                                filledPersonalData: linePersonalData[1],
+                                filledMemberData: lineMemberData[1],
+                                filledPpgData: linePpgData[1]
+                            },
+                            type: 'filament',
+                            ...lineArgs
+                        }} />
+                    </CollapsibleChart>
 
-                        <CollapsibleChart index={4} title="Average Filament Per Print Over Time (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line pad-med'}>
-                            <LineChart argsObject={{
-                                data: {
-                                    combPersonalData: linePersonalData,
-                                    combMemberData: lineMemberData,
-                                    combPpgData: linePpgData
-                                },
-                                type: 'avg_filament',
-                                ...lineArgs
-                            }} />
-                        </CollapsibleChart>
+                    <CollapsibleChart index={4} title="Average Filament Per Print Over Time (g)"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line pad-med'}>
+                        <LineChart argsObject={{
+                            data: {
+                                combPersonalData: linePersonalData,
+                                combMemberData: lineMemberData,
+                                combPpgData: linePpgData
+                            },
+                            type: 'avg_filament',
+                            ...lineArgs
+                        }} />
+                    </CollapsibleChart>
 
-                        <CollapsibleChart index={5} title="Prints By Hour & Day Of Week"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line no-pad'}>
-                            <LineChart argsObject={{
-                                data: {
-                                    filledDowData: filledDowData
-                                },
-                                type: 'dow',
-                                ...lineArgs
-                            }} />
-                        </CollapsibleChart>
-
-
-
-                        <div className='group-title'> Pie Charts </div>
-                        <CollapsibleChart index={6} title="Number of Jobs Per Printer"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
-                            <PieChart argsObject={{
-                                dataObj: printerObjs,
-                                dataField: 'cnt',
-                                labelField: 'printerName',
-                                pieArgs: pieArgs,
-                                seasonSelect: true,
-                            }} />
-                        </CollapsibleChart>
-
-                        <CollapsibleChart index={7} title="Filament Used Per Printer (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
-                            <PieChart argsObject={{
-                                dataObj: printerObjs,
-                                dataField: 'sum',
-                                labelField: 'printerName',
-                                pieArgs: pieArgs,
-                                seasonSelect: true,
-                            }} />
-                        </CollapsibleChart>
+                    <CollapsibleChart index={5} title="Prints By Hour & Day Of Week"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line no-pad'}>
+                        <LineChart argsObject={{
+                            data: {
+                                filledDowData: filledDowData
+                            },
+                            type: 'dow',
+                            ...lineArgs
+                        }} />
+                    </CollapsibleChart>
 
 
-                        <CollapsibleChart index={8} title="Number of Prints by Supervisor"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
-                            <PieChart argsObject={{
-                                dataObj: supervisorData,
-                                dataField: 'cnt',
-                                labelField: 'supervisorName',
-                                pieArgs: pieArgs,
-                                seasonSelect: true,
-                            }} />
-                        </CollapsibleChart>
 
-                        <CollapsibleChart index={9} title="Filament Used by Supervisor (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
-                            <PieChart argsObject={{
-                                dataObj: supervisorData,
-                                dataField: 'sum',
-                                labelField: 'supervisorName',
-                                pieArgs: pieArgs,
-                                seasonSelect: true,
-                            }} />
-                        </CollapsibleChart>
+                    <div className='group-title'> Pie Charts </div>
+                    <CollapsibleChart index={6} title="Number of Jobs Per Printer"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
+                        <PieChart argsObject={{
+                            dataObj: printerObjs,
+                            dataField: 'cnt',
+                            labelField: 'printerName',
+                            pieArgs: pieArgs,
+                            seasonSelect: true,
+                        }} />
+                    </CollapsibleChart>
 
-                        <CollapsibleChart index={10} title="Number of Prints by Person"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
-                            <PieChart argsObject={{
-                                dataObj: nameFilamentData,
-                                dataField: 'cnt',
-                                labelField: 'name',
-                                pieArgs: pieArgs,
-                                seasonSelect: true,
-                            }} />
-                        </CollapsibleChart>
+                    <CollapsibleChart index={7} title="Filament Used Per Printer (g)"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
+                        <PieChart argsObject={{
+                            dataObj: printerObjs,
+                            dataField: 'sum',
+                            labelField: 'printerName',
+                            pieArgs: pieArgs,
+                            seasonSelect: true,
+                        }} />
+                    </CollapsibleChart>
 
-                        <CollapsibleChart index={11} title="Filament Used by Person (g)"
-                            chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
-                            <PieChart argsObject={{
-                                dataObj: nameFilamentData,
-                                dataField: 'sum',
-                                labelField: 'name',
-                                pieArgs: pieArgs,
-                                seasonSelect: true,
-                            }} />
-                        </CollapsibleChart>
 
-                    </div>
-                    }
+                    <CollapsibleChart index={8} title="Number of Prints by Supervisor"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
+                        <PieChart argsObject={{
+                            dataObj: supervisorData,
+                            dataField: 'cnt',
+                            labelField: 'supervisorName',
+                            pieArgs: pieArgs,
+                            seasonSelect: true,
+                        }} />
+                    </CollapsibleChart>
 
-                    <div className="title-box" style={{ marginTop: '30px', marginBottom: '120px' }} onClick={() => { handlePageChange(0) }}>
-                        <div className="title-container">
-                            <div className="slide-arrow left"></div>
-                            <h2 className="title-text">Landing Page</h2>
-                        </div>
-                    </div>
+                    <CollapsibleChart index={9} title="Filament Used by Supervisor (g)"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
+                        <PieChart argsObject={{
+                            dataObj: supervisorData,
+                            dataField: 'sum',
+                            labelField: 'supervisorName',
+                            pieArgs: pieArgs,
+                            seasonSelect: true,
+                        }} />
+                    </CollapsibleChart>
+
+                    <CollapsibleChart index={10} title="Number of Prints by Person"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
+                        <PieChart argsObject={{
+                            dataObj: nameFilamentData,
+                            dataField: 'cnt',
+                            labelField: 'name',
+                            pieArgs: pieArgs,
+                            seasonSelect: true,
+                        }} />
+                    </CollapsibleChart>
+
+                    <CollapsibleChart index={11} title="Filament Used by Person (g)"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
+                        <PieChart argsObject={{
+                            dataObj: nameFilamentData,
+                            dataField: 'sum',
+                            labelField: 'name',
+                            pieArgs: pieArgs,
+                            seasonSelect: true,
+                        }} />
+                    </CollapsibleChart>
 
                 </div>
-                {/* } */}
+                }
+
+                <div className="title-box" style={{ marginTop: '30px', marginBottom: '120px' }} onClick={() => { handlePageChange(0) }}>
+                    <div className="title-container">
+                        <div className="slide-arrow left"></div>
+                        <h2 className="title-text">Landing Page</h2>
+                    </div>
+                </div>
+
+            </div>
+            {/* } */}
 
         </div>}
 
