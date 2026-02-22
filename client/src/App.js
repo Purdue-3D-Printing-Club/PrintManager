@@ -1093,6 +1093,11 @@ function App() {
           if (button) {
             button.click();
           }
+        } else if ((e.target.id === "clubSearchEnter") && (e.key === 'Enter')) {
+          const button = document.getElementById("clubSearchEnterBtn");
+          if (button) {
+            button.click();
+          }
         }
       }
     }
@@ -1154,20 +1159,20 @@ function App() {
     return str;
   }
 
-  function truncateStringWidth(str, maxWidth) {
-    if (!str) return "";
+  // function truncateStringWidth(str, maxWidth) {
+  //   if (!str) return "";
 
-    let truncated = "";
-    for (let i = 0; i < str.length; i++) {
-      const testStr = truncated + str[i];
-      const metrics = context.measureText(testStr + "...");
-      if (metrics.width > maxWidth) {
-        return truncated + "...";
-      }
-      truncated = testStr;
-    }
-    return truncated;
-  }
+  //   let truncated = "";
+  //   for (let i = 0; i < str.length; i++) {
+  //     const testStr = truncated + str[i];
+  //     const metrics = context.measureText(testStr + "...");
+  //     if (metrics.width > maxWidth) {
+  //       return truncated + "...";
+  //     }
+  //     truncated = testStr;
+  //   }
+  //   return truncated;
+  // }
 
   const updateTable = (table, column1, id, val, callback) => {
     try {
@@ -2113,9 +2118,9 @@ function App() {
   const settingsArgs = {
     adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackSubject, feedbackText, handleFeedbackSubjectChange,
     handleFeedbackTextChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
-    handleOpenMenu, truncateStringWidth, memberList, setMemberList, formatDate, truncateString, showMsgForDuration,
+    handleOpenMenu, memberList, setMemberList, formatDate, truncateString, showMsgForDuration,
     setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings,
-    getCurHistoryPeriod, decSeason, endSeason, leftArrowClick, rightArrowClick, applyHighlight, ScrollCell
+    decSeason, endSeason, leftArrowClick, rightArrowClick, applyHighlight, ScrollCell
   }
 
   const sidebarArgs = {

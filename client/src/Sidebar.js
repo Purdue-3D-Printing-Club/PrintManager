@@ -25,9 +25,9 @@ const Sidebar = ({ sidebarArgs }) => {
 
                 <div className="icons-wrapper">
                     <div className='settings-icon-wrapper' style={menuOpen ? { outline: "4px solid black" } : {}}><img id="settingsIcon" src={settingsIcon} alt="Settings Icon" title="Open Settings" onClick={() => handleOpenMenu()}></img></div>
-                    <a target="_blank" rel="noreferrer" href={organizerLinks.websiteURL}><img className='resizeIcon' src={clubIcon} alt="3DPC Icon" title="To 3DPC Website"></img></a>
-                    <a target="_blank" rel="noreferrer" href={organizerLinks.formURL}><img className="resizeIcon" src={formIcon} alt="Google forms Icon" title="To Job Form"></img></a>
-                    <a target="_blank" rel="noreferrer" href={organizerLinks.submissionsURL}><img className="resizeIcon" src={sheetsIcon} alt="Google sheets Icon" title="To Job Form Submissions"></img></a>
+                    <a target="_blank" rel="noreferrer" href={organizerLinks?.websiteURL}><img className='resizeIcon' src={clubIcon} alt="3DPC Icon" title="To 3DPC Website"></img></a>
+                    <a target="_blank" rel="noreferrer" href={organizerLinks?.formURL}><img className="resizeIcon" src={formIcon} alt="Google forms Icon" title="To Job Form"></img></a>
+                    <a target="_blank" rel="noreferrer" href={organizerLinks?.submissionsURL}><img className="resizeIcon" src={sheetsIcon} alt="Google sheets Icon" title="To Job Form Submissions"></img></a>
                 </div>
             </div>
             <div className="hdr" style={{ width: `${sidebarWidth}px` }}>

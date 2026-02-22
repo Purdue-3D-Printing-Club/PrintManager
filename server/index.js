@@ -16,7 +16,6 @@ const axios = require('axios');
 const seasonUpperBoundsStr = ['05-20', '08-20']
 
 
-
 const pool = mysql.createPool({
     host: "localhost",
     user: "root",
@@ -69,18 +68,78 @@ const { randomInt } = require('crypto');
 puppeteer.use(StealthPlugin());
 
 
-// json file management
+// local data json file management
 const path = require('path');
 const { type } = require('os');
 const localDataPath = path.join(__dirname, 'localData.json')
 
-function loadLocalData() {
-    try {
-        return (JSON.parse(fs.readFileSync(localDataPath, 'utf-8')));
-    } catch (e) {
-        return {}
+const DEFAULT_LOCAL_DATA = {
+    filamentSettings: {
+        filamentStock: "0",
+        filamentThreshold: "25000",
+        resinCost: "0.12",
+        fdmCost: "0.1"
+    },
+    organizerLinks: {
+        websiteURL: "https://www.purdue3dpc.org",
+        formURL: "",
+        submissionsURL: "",
+        specialtyAppScriptURL: "",
+        mainAppScriptURL: ""
+    },
+    generalSettings: {
+        showFilePreviews: false,
+        debugMode: false,
+        pageSize: "50"
     }
+};
+
+function mergeDefaults(target, defaults) {
+    let changed = false;
+
+    for (const key of Object.keys(defaults)) {
+        if (!(key in target)) {
+            target[key] = defaults[key];
+            changed = true;
+        } else if (
+            typeof defaults[key] === 'object' &&
+            defaults[key] !== null &&
+            !Array.isArray(defaults[key])
+        ) {
+            const nestedChanged = mergeDefaults(target[key], defaults[key]);
+            if (nestedChanged) changed = true;
+        }
+    }
+
+    return changed;
 }
+
+
+function loadLocalData() {
+    let data = {};
+    let shouldWrite = false;
+
+    try {
+        data = JSON.parse(fs.readFileSync(localDataPath, 'utf-8'));
+    } catch (e) {
+        // File doesn't exist or is invalid — start fresh
+        data = {};
+        shouldWrite = true;
+    }
+
+    // Ensure structure is complete
+    const mergedChanged = mergeDefaults(data, DEFAULT_LOCAL_DATA);
+    if (mergedChanged) {
+        shouldWrite = true;
+    }
+
+    if (shouldWrite) {
+        fs.writeFileSync(localDataPath, JSON.stringify(data, null, 2));
+    }
+
+    return data;
+}
+
 
 function saveLocalData(localData) {
     fs.writeFileSync(localDataPath, JSON.stringify(localData, null, 2), 'utf-8');

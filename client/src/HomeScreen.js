@@ -274,7 +274,7 @@ function HomeScreen({ homeScreenArgs }) {
                 </div>}
                 {loading === 'done' &&
                     <div >
-                        <div className="title-box" onClick={() => { handlePageChange(1) }}>
+                        <div className="title-box" onClick={() => handlePageChange(1)}>
                             <div className="title-container">
                                 <h2 className="title-text">Lab Summary Visualizations</h2>
                                 <div className="slide-arrow right"></div>
