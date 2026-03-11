@@ -128,7 +128,8 @@ function Settings({ settingsArgs }) {
     toTime, isEndSeason, endSeasonText, memberList, setMemberList,
     leftArrowClick, rightArrowClick, ScrollCell, formatDate,
     applyHighlight, truncateString, menuOpen, endSeason, decSeason,
-    tempLocalData, setTempLocalData, serverURL, generalSettings
+    tempLocalData, setTempLocalData, serverURL, generalSettings,
+    showMsgForDuration
   }
 
   return (

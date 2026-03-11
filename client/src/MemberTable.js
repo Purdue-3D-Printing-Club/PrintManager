@@ -13,6 +13,7 @@ function MemberTable({ isClubTable, memberTableArgs }) {
         leftArrowClick, rightArrowClick, ScrollCell, formatDate,
         applyHighlight, truncateString, menuOpen, endSeason, decSeason,
         tempLocalData, setTempLocalData, serverURL, generalSettings,
+        showMsgForDuration
     } = memberTableArgs;
 
 
@@ -36,13 +37,13 @@ function MemberTable({ isClubTable, memberTableArgs }) {
     }, [memberSeason])
 
     // keydown listeners to trigger enter press submission
-    useEffect(() => {
-        window.addEventListener('keydown', handleKeyPress);
+    // useEffect(() => {
+    //     window.addEventListener('keydown', handleKeyPress);
 
-        return () => {
-            window.removeEventListener('keydown', handleKeyPress);
-        };
-    })
+    //     return () => {
+    //         window.removeEventListener('keydown', handleKeyPress);
+    //     };
+    // }, [isClubTable])
 
     const handleKeyPress = (e) => {
         const isInputFocused =
@@ -53,7 +54,7 @@ function MemberTable({ isClubTable, memberTableArgs }) {
             if (e.target.id === 'edit') {
                 handleEditClick(editingMember);
             } else if (e.target.id === 'insert') {
-                handleMemberInsertClick(insertMember);
+                handleMemberInsertClick(insertMember, isClubTable);
             }
         }
     }
@@ -96,29 +97,52 @@ function MemberTable({ isClubTable, memberTableArgs }) {
     }
 
 
-    const handleMemberInsertClick = (member) => {
-        if (memberCleanForInsert(member)) {
-            memberInsert(member);
+    const handleMemberInsertClick = (member, isClubTable) => {
+        if (memberCleanForInsert(member, isClubTable)) {
+            memberInsert(member, isClubTable);
         }
     }
 
-    const memberCleanForInsert = (member) => {
-        if (memberList.map(mem => {
-            if (mem.memberID == member.memberID) {
-                return null;
+    function isValidPurdueEmail(email) {
+        if (typeof email !== 'string') return false;
+        const trimmed = email.trim().toLowerCase();
+        const purdueRegex = /^[a-z0-9._%+-]+@purdue\.edu$/i;
+        return purdueRegex.test(trimmed);
+    }
+
+    function isValidPurdueEmailList(emailList) {
+        if (!emailList) return true; // allow empty CC
+        const emails = emailList.split(',').map(e => e.trim());
+        return emails.length > 0 && emails.every(e => isValidPurdueEmail(e));
+    }
+
+    const memberCleanForInsert = (member, isClubTable) => {
+        let subjectText = isClubTable ? 'club' : 'member';
+        try {
+            if (memberList.map(mem => {
+                if (mem.memberID == member.memberID) {
+                    return null;
+                }
+                return mem.email
+            }).includes(member.email)) {
+                showMsgForDuration(`Cannot insert ${subjectText}: Email already exists!`, 'err');
+                return false;
+            } else if (!isValidPurdueEmail(member.email)) {
+                showMsgForDuration(`Cannot insert ${subjectText}: Email absent / malformed!`, 'err');
+                return false;
+            } else if (isClubTable && !isValidPurdueEmailList(member.ccEmails)) {
+                showMsgForDuration(`Cannot insert ${subjectText}: CC emails are absent / malformed!`, 'err');
+                return false;
+            } else if (!member.name) {
+                showMsgForDuration(`Cannot insert ${subjectText}: Name absent!`, 'err');
+                return false;
             }
-            return mem.email
-        }).includes(member.email)) {
-            showMsgForDuration(`Cannot insert member: Email already exists!`, 'err');
-            return false;
-        } else if (!member.email || (!member.email.includes('@purdue.edu'))) {
-            showMsgForDuration(`Cannot insert member: Email absent / malformed!`, 'err');
-            return false;
-        } else if (!member.name) {
-            showMsgForDuration(`Cannot insert member: Name absent!`, 'err');
+            return true;
+        } catch (e) {
+            showMsgForDuration(`Error inserting ${subjectText}.`, 'err');
+            console.error('Error inserting club: ', e);
             return false;
         }
-        return true;
     }
 
     const handleMemberSearch = (e) => {
@@ -127,22 +151,23 @@ function MemberTable({ isClubTable, memberTableArgs }) {
         if (generalSettings?.debugMode) console.log("Set memberSearch to " + newSearch);
     }
 
-    const memberInsert = (member) => {
+    const memberInsert = (member, isClubTable) => {
         Axios.post(`${serverURL}/api/insertMember`, {
             lastUpdated: new Date().toISOString(),
             name: truncateString(member.name, 128),
             email: truncateString(member.email, 64),
+            ccEmails: isClubTable ? member.ccEmails : '',
             discordUsername: truncateString(member.discordUsername, 128),
             season: endSeasonText,
             year: endSeason.year,
-            filamentAllowance: member.filamentAllowance
+            filamentAllowance: isClubTable ? (member.filamentAllowance ?? 0) : null
         }).then(() => {
             refreshMembers();
             setInsertMember({
                 email: '', name: '', discordUsername: '', seasonEnc: endSeason.seasonEnc,
-                year: endSeason.year, lastUpdated: '', memberID: -1, filamentAllowance: null
+                ccEmails: '', year: endSeason.year, lastUpdated: '', memberID: -1, filamentAllowance: null
             });
-            showMsgForDuration("New Member Added.", 'msg');
+            showMsgForDuration(`New ${isClubTable ? 'club' : 'member'} added.`, 'msg');
         });
     }
 
@@ -165,8 +190,6 @@ function MemberTable({ isClubTable, memberTableArgs }) {
         if (numeric) {
             let newValInt = parseInt(newVal);
             newVal = Number.isNaN(newValInt) ? null : newValInt;
-            console.log('newValInt: ', newValInt);
-            console.log('newVal: ', newVal);
         }
 
         if (insert) {
@@ -183,12 +206,15 @@ function MemberTable({ isClubTable, memberTableArgs }) {
             if (memberSeason.year === -1) {
                 query = `SELECT * FROM member`
             }
+            const isEmpty = (value) => {
+                return (value === null || value === undefined || Number.isNaN(value));
+            }
 
             Axios.get(`${serverURL}/api/get?query=${query}`).then((response) => {
                 let members = response?.data?.result
                 if (generalSettings?.debugMode) console.log('viewing member list: ', members);
-                let filteredMembers = isClubTable ? members.filter(m => m.filamentAllowance) :
-                    members.filter(m => !m.filamentAllowance);
+                let filteredMembers = isClubTable ? members.filter(m => !isEmpty(m.filamentAllowance)) :
+                    members.filter(m => isEmpty(m.filamentAllowance));
                 setViewingMemberList(sortMemberList(filteredMembers, memberSort));
 
                 // also update the actual memberList if this is the current season
@@ -263,7 +289,6 @@ function MemberTable({ isClubTable, memberTableArgs }) {
 
 
 
-
     return (
         <div className='settings-wrapper'>
             <span className="input-wrapper" >
@@ -320,15 +345,15 @@ function MemberTable({ isClubTable, memberTableArgs }) {
             </div>
 
             <div style={{ height: 'calc(50vh)' }}>
-                <div className='wrapper-wrapper' style={{ height: 'calc(50vh)' }}>
+                <div className='wrapper-wrapper' tabIndex={0} onKeyDown={handleKeyPress} style={{ height: 'calc(50vh)' }}>
                     <table className='hotkeys-wrapper'>
                         <thead>
                             <tr>
                                 <th></th>
                                 {isEndSeason(memberSeason, endSeason) && <th></th>}
                                 {isClubTable ? <>
-                                    <th>Club Email</th>
-                                    <th>CC Emails</th>
+                                    <th>Purdue Club Email</th>
+                                    <th>CC Purdue Emails</th>
                                     <th>Club Name</th>
                                 </> :
                                     <>
@@ -338,7 +363,7 @@ function MemberTable({ isClubTable, memberTableArgs }) {
                                 {!isClubTable && <th>Discord Username</th>}
                                 <th>Season</th>
                                 <th>Last Updated</th>
-                                {isClubTable && <th>Filament Allowance (g)</th>}
+                                {isClubTable && <th>Filament Allowance</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -348,27 +373,27 @@ function MemberTable({ isClubTable, memberTableArgs }) {
                                 {isClubTable ? <tr style={{ backgroundColor: '#ffffffff' }}>
                                     {/* INSERT CLUB ACCOUNT */}
                                     <td><img src={addUser} className='generic-icon centeredIcon'></img></td>
-                                    <td><button onClick={() => { handleMemberInsertClick(insertMember) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
-                                    <td><input id='insert' type="text" placeholder="newclub@purdue.edu" className="history-edit" style={{ 'width': '250px' }}
+                                    <td><button onClick={() => { handleMemberInsertClick(insertMember, true) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
+                                    <td><input id='insert' type="text" autoComplete='off' placeholder="newclub@purdue.edu" className="history-edit" style={{ 'width': '250px' }}
                                         value={insertMember.email ?? ''} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
-                                    <td><input id='insert' type="text" placeholder="m1@purdue.edu, m2@purdue.edu" className="history-edit" style={{ 'width': '250px' }}
-                                        value={insertMember.ccemails ?? ''} onChange={(e) => handleMemberEdit(e, "ccemails", true)}></input></td>
-                                    <td><input id='insert' type="text" placeholder="New Club" className="history-edit" style={{ 'width': '250px' }}
+                                    <td><input id='insert' type="text" autoComplete='off' placeholder="m1@purdue.edu, m2@purdue.edu" className="history-edit" style={{ 'width': '250px' }}
+                                        value={insertMember.ccEmails ?? ''} onChange={(e) => handleMemberEdit(e, "ccEmails", true)}></input></td>
+                                    <td><input id='insert' type="text" autoComplete='off' placeholder="New Club" className="history-edit" style={{ 'width': '250px' }}
                                         value={insertMember.name ?? ''} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
                                     <td> {`${decSeason(endSeason.seasonEnc)} ${endSeason.year}`}</td>
                                     <td> N/A </td>
-                                    <td><input id='insert' type="text" placeholder="For Clubs" className="history-edit" style={{ 'width': '200px' }}
+                                    <td><input id='insert' type="text" autoComplete='off' placeholder="5000" className="history-edit" style={{ 'width': '200px' }}
                                         value={insertMember.filamentAllowance ?? ''} onChange={(e) => handleMemberEdit(e, "filamentAllowance", true, true)}></input></td>
                                 </tr> :
                                     <tr style={{ backgroundColor: '#ffffffff' }}>
                                         {/* INSERT MEMBER */}
                                         <td><img src={addUser} className='generic-icon centeredIcon'></img></td>
-                                        <td><button onClick={() => { handleMemberInsertClick(insertMember) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
-                                        <td><input id='insert' type="text" placeholder="newmember@purdue.edu" className="history-edit" style={{ 'width': '250px' }}
+                                        <td><button onClick={() => { handleMemberInsertClick(insertMember, false) }} className='history-btn' style={{ 'width': '90%', 'marginLeft': '5%' }}>{'insert'}</button></td>
+                                        <td><input id='insert' type="text" autoComplete='off' placeholder="newmember@purdue.edu" className="history-edit" style={{ 'width': '250px' }}
                                             value={insertMember.email ?? ''} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
-                                        <td><input id='insert' type="text" placeholder="New Member" className="history-edit" style={{ 'width': '250px' }}
+                                        <td><input id='insert' type="text" autoComplete='off' placeholder="New Member" className="history-edit" style={{ 'width': '250px' }}
                                             value={insertMember.name ?? ''} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
-                                        <td><input id='insert' type="text" placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }}
+                                        <td><input id='insert' type="text" autoComplete='off' placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }}
                                             value={insertMember.discordUsername ?? ''} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
                                         <td> {`${decSeason(endSeason.seasonEnc)} ${endSeason.year}`} </td>
                                         <td> N/A </td>
@@ -400,27 +425,35 @@ function MemberTable({ isClubTable, memberTableArgs }) {
                                     {
                                         ((editingMember.memberID === member.memberID)) ?
                                             <>
-                                                <td><input id='edit' type="text" className="history-edit" style={{ 'width': '250px' }}
+                                                <td><input id='edit' autoComplete='off' type="text" className="history-edit" style={{ 'width': '250px' }}
                                                     value={editingMember.email} onChange={(e) => handleMemberEdit(e, "email")}></input></td>
-                                                <td><input id='edit' type="text" className="history-edit" style={{ 'width': '250px' }}
+                                                {isClubTable && <td><input id='edit' autoComplete='off' type="text" className="history-edit" style={{ 'width': '250px' }}
+                                                    value={editingMember.ccEmails} onChange={(e) => handleMemberEdit(e, "ccEmails")}></input></td>}
+                                                <td><input id='edit' autoComplete='off' type="text" className="history-edit" style={{ 'width': '250px' }}
                                                     value={editingMember.name} onChange={(e) => handleMemberEdit(e, "name")}></input></td>
-                                                <td><input id='edit' type="text" className="history-edit" style={{ 'width': '150px' }}
-                                                    value={editingMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername")}></input></td>
+                                                {!isClubTable && <td><input id='edit' autoComplete='off' type="text" className="history-edit" style={{ 'width': '150px' }}
+                                                    value={editingMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername")}></input></td>}
                                             </>
                                             :
                                             <>
                                                 <ScrollCell html={applyHighlight(member.email, false, memberSearch)} width={270} />
+                                                {isClubTable &&
+                                                    <ScrollCell html={applyHighlight(member.ccEmails, false, memberSearch)} width={270} />
+                                                }
                                                 <ScrollCell html={applyHighlight(member.name, false, memberSearch)} width={270} />
-                                                <ScrollCell html={applyHighlight(member.discordUsername, false, memberSearch)} width={165} />
+                                                {!isClubTable &&
+                                                    <ScrollCell html={applyHighlight(member.discordUsername, false, memberSearch)} width={165} />
+                                                }
                                             </>
                                     }
                                     <ScrollCell html={applyHighlight(`${member.season} ${member.year}`, false, memberSearch)} width={125} />
                                     <td dangerouslySetInnerHTML={{ __html: applyHighlight(formatDate(member.lastUpdated, true), false, memberSearch) }} />
-                                    {((editingMember.memberID === member.memberID)) ?
-                                        <td><input id='edit' type="text" placeholder="For Clubs" className="history-edit" style={{ 'width': '200px' }} value={editingMember.filamentAllowance ?? ''} onChange={(e) => handleMemberEdit(e, "filamentAllowance", false, true)}></input></td>
+                                    {isClubTable && (((editingMember.memberID === member.memberID)) ?
+                                        <td><input id='edit' autoComplete='off' type="text" placeholder="5000" className="history-edit" style={{ 'width': '200px' }} value={editingMember.filamentAllowance ?? ''} onChange={(e) => handleMemberEdit(e, "filamentAllowance", false, true)}></input></td>
                                         :
-                                        <ScrollCell html={applyHighlight(((member?.filamentAllowance === null) || (Number.isNaN(member?.filamentAllowance))) ? 'Not a club account' : `${member?.filamentAllowance}g`, false, memberSearch)} width={165} />
-                                    }
+                                        <ScrollCell html={applyHighlight(((member?.filamentAllowance === null) ||
+                                            (Number.isNaN(member?.filamentAllowance))) ? 'Not a club account' : `${member?.filamentAllowance}g`, false, memberSearch)} width={165} />
+                                    )}
                                 </tr>
                             })}
                             {

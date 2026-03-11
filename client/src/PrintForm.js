@@ -123,7 +123,7 @@ const PrintForm = ({ printFormArgs }) => {
                 <div> Material: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <select style={{ width: '158px', height: '30px', 'fontSize': 'large' }} id="material" value={jobMaterial} onChange={handleJobMaterial}>
                     <option value="" disabled hidden>Select Material</option>
                     {selectedPrinter?.material?.split(',').map((material) => {
-                        return <option value={material?.toLowerCase()}>{material}</option>
+                        return <option key={material} value={material?.toLowerCase()}>{material}</option>
                     })
                     }
                 </select>

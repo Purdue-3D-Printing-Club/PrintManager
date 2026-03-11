@@ -276,9 +276,9 @@ html::-webkit-scrollbar {
 }
 
 .job-notes {
-  min-width: 300px;
+  min-width: 400px;
   max-width: 600px;
-  width: 75%;
+  width: 90%;
   height: 60px;
   max-height: 200px;
   font-size: large;

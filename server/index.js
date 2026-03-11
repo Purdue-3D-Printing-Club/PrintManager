@@ -246,9 +246,17 @@ async function runQuery(pool, query, params = []) {
 
 
 async function sendEmail(paramsObj) {
-    const { to, subject, text } = paramsObj;
+    const { to, ccEmails, subject, text } = paramsObj;
 
     const client = await getGraphClient();
+
+    const ccRecipients = (ccEmails || '')
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e.length > 0)
+        .map(e => ({
+            emailAddress: { address: e }
+        }));
 
     try {
         await client.api(`/users/${process.env.PURDUE_EMAIL}/sendMail`).post({
@@ -259,6 +267,7 @@ async function sendEmail(paramsObj) {
                     content: text + '\n\nThis email was automatically sent by the lab organizer.'
                 },
                 toRecipients: [{ emailAddress: { address: to } }],
+                ccRecipients: ccRecipients
             },
             saveToSentItems: false
         });
@@ -928,8 +937,8 @@ app.post('/api/insertMember', async (req, res) => {
 
     const sqlInsert = `
         INSERT INTO member 
-        (lastUpdated, name, email, discordUsername, season, year, filamentAllowance) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (lastUpdated, name, email, ccEmails, discordUsername, season, year, filamentAllowance) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     try {
@@ -937,7 +946,7 @@ app.post('/api/insertMember', async (req, res) => {
             return new Promise((resolve, reject) => {
                 connection.query(
                     sqlInsert,
-                    [dateTime, b.name, b.email, b.discordUsername, b.season, b.year, b.filamentAllowance],
+                    [dateTime, b.name, b.email, b.ccEmails, b.discordUsername, b.season, b.year, b.filamentAllowance],
                     (err, result) => {
                         if (err) return reject(err);
                         resolve(result);
@@ -1097,11 +1106,11 @@ app.put('/api/updateJob', async (req, res) => {
 
 
 app.put('/api/updateMember', async (req, res) => {
-    const { name, email, lastUpdated, memberID, discordUsername, filamentAllowance } = req.body;
+    const { name, email, ccEmails, lastUpdated, memberID, discordUsername, filamentAllowance } = req.body;
 
     const sqlUpdate = `
         UPDATE member SET
-            name = ?, email = ?, lastUpdated = ?, discordUsername = ?, filamentAllowance = ?
+            name = ?, email = ?, ccEmails = ?, lastUpdated = ?, discordUsername = ?, filamentAllowance = ?
         WHERE memberID = ?
     `;
 
@@ -1110,7 +1119,7 @@ app.put('/api/updateMember', async (req, res) => {
             return new Promise((resolve, reject) => {
                 connection.query(
                     sqlUpdate,
-                    [name, email, new Date(lastUpdated), discordUsername, filamentAllowance, memberID],
+                    [name, email, ccEmails, new Date(lastUpdated), discordUsername, filamentAllowance, memberID],
                     (err, result) => {
                         if (err) return reject(err);
                         resolve(result);

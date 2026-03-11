@@ -52,9 +52,9 @@ function HomeScreen({ homeScreenArgs }) {
 
     // useEffect hooks
 
-    useEffect(() => {
-        console.log('linePpgData: ', linePpgData);
-    }, [linePpgData])
+    // useEffect(() => {
+    //     console.log('linePpgData: ', linePpgData);
+    // }, [linePpgData])
 
     // server health check and loading state control, cancel once it works
     useEffect(() => {
@@ -175,7 +175,6 @@ function HomeScreen({ homeScreenArgs }) {
                                                 const map = new Map(rawData.map(row => {
                                                     return [formatDate(row['date'], false, true), row[valueField]]
                                             }));
-                                                console.log('map: ', map)
                                                 const filled = fullSet.map(date => map.get(date) || 0);
                                                 return filled
                                             }
@@ -187,7 +186,6 @@ function HomeScreen({ homeScreenArgs }) {
                                             // Fill the data and assign them to useState variables by paid type'
                                             setLinePersonalData([fillData(personal, allDates, 'cnt'), fillData(personal, allDates, 'sum')]);
                                             setLineMemberData([fillData(member, allDates, 'cnt'), fillData(member, allDates, 'sum')]);
-                                            console.log('ppg: ')
                                             
                                             setLinePpgData([fillData(ppg, allDates, 'cnt'), fillData(ppg, allDates, 'sum')]);
                                             setLineDateWindow(allDates);

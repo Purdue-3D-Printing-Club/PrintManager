@@ -241,13 +241,14 @@ function App() {
       let newAllowance = matchingMember?.filamentAllowance
       if (subtract) newAllowance -= formJob?.usage_g;
       else newAllowance += formJob?.usage_g;
+      newAllowance = Math.max(newAllowance, 0);
 
       // first, update the database
       updateTable("member", "filamentAllowance", matchingMember?.email, newAllowance, () => {
         // then update the matching member's filamentAllowance locally
         setMemberList(old => old.map((m) => {
           if (m.email === formJob.email) {
-            return { ...m, filamentAllowance: Math.max(newAllowance, 0) }
+            return { ...m, filamentAllowance: newAllowance}
           } else {
             return m
           }
@@ -1259,7 +1260,10 @@ function App() {
   const handleStartPrintClick = (queue = false) => {
     // let matchingJob = ''
     let matchingMember = memberList.find((m) => m.email === email);
+    console.log('matchingMember: ', matchingMember);
+    console.log('matchingMember?.filamentAllowance: ', matchingMember?.filamentAllowance);
 
+    console.log("filamentUsage: ", filamentUsage);
     if (selectedPrinter !== null) {
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' &&
@@ -1297,7 +1301,7 @@ function App() {
       //  else if (((jobMaterial == 'TPU') || (jobMaterial == 'PETG')) && !personalFilament) {
       // showMsgForDuration(`Warning: ${jobMaterial} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
       // } 
-      else if (matchingMember && matchingMember.filamentAllowance && (matchingMember.filamentAllowance < filamentUsage)) {
+      else if ((matchingMember?.filamentAllowance !== null) && (matchingMember.filamentAllowance < filamentUsage)) {
         showMsgForDuration("Club filament allowance exceeded!", 'err');
       } else if ((jobMaterial === 'Resin')) {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
@@ -1477,13 +1481,17 @@ function App() {
   };
 
 
-  const sendMail = (subject, text, target = curJob.email,) => {
+  const sendMail = (subject, text, target = curJob.email) => {
     if (target.length === 0) {
       showMsgForDuration('Email not sent: No target', 'err');
     } else {
+      let ccEmails = memberList.find(m => m.email === target)?.ccEmails ?? '';
+      console.log('send email with CC emails: ', ccEmails);
+
       Axios.post(`${serverURL}/api/send-email`, {
         to: target,
         subject: subject,
+        ccEmails: ccEmails,
         text: text
       }).then(() => {
         showMsgForDuration('Email Sent Successfully', 'msg');
@@ -1598,7 +1606,6 @@ function App() {
             }
 
             if (generalSettings?.debugMode) console.log("Print finished, done updating the database.");
-
           });
         });
       });
@@ -1914,7 +1921,7 @@ function App() {
     if (generalSettings?.debugMode) console.log("Set menuOpen to: " + menuOpen);
   };
 
-  function formatDate(utcString, time, alreadyUTC=false) {
+  function formatDate(utcString, time, alreadyUTC = false) {
     let isoString = '';
     if (utcString[utcString.length - 1] == 'Z') {
       isoString = utcString;
@@ -2051,7 +2058,7 @@ function App() {
     const escapedSearch = search.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&');
     const regex = new RegExp(escapedSearch, 'gi');
 
-    return truncatedText.replace(regex, (match) => {
+    return text.replace(regex, (match) => {
       return `<span style="
       background-color: rgba(40,200,40,0.4);
       border-radius: 2px;
