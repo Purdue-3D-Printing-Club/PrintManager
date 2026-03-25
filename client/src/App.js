@@ -1301,7 +1301,7 @@ function App() {
       //  else if (((jobMaterial == 'TPU') || (jobMaterial == 'PETG')) && !personalFilament) {
       // showMsgForDuration(`Warning: ${jobMaterial} costs $${filamentSettings.fdmCost} / g, even for members.`, 'warn', popupTime + 5000);
       // } 
-      else if ((matchingMember?.filamentAllowance !== null) && (matchingMember.filamentAllowance < filamentUsage)) {
+      else if ((matchingMember?.filamentAllowance !== null) && (matchingMember?.filamentAllowance < filamentUsage)) {
         showMsgForDuration("Club filament allowance exceeded!", 'err');
       } else if ((jobMaterial === 'Resin')) {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
@@ -1354,7 +1354,7 @@ function App() {
     if (jobMaterial?.toLowerCase() != 'pla') {
       paid = personalFilament ? 'personal' : 'per-gram'
     } else {
-      paid = personalFilament ? 'personal' : (isMember || supervisorPrint) ? 'club' : 'per-gram'
+      paid = personalFilament ? 'personal' : (isMember || supervisorPrint) ? 'member' : 'per-gram'
     }
 
     let formJob = {
