@@ -16,6 +16,8 @@ import PrintForm from './PrintForm';
 import ErrorBoundary from './ErrorBoundary';
 import HomeScreen from './HomeScreen';
 
+const INACTIVITY_MS = 10 * 60 * 1000; // 10 minutes in milliseconds
+const MOUSEMOVE_THROTTLE_MS = 1000; // update timeout every full second for performance
 
 function App() {
   const statusIconFolder = '/images/statusIcons';
@@ -132,11 +134,78 @@ function App() {
 
   const [endSeason, setEndSeason] = useState(getCurHistoryPeriod());
 
+  // Timeout control
+  const timeoutRef = useRef(null);
+  const lastMouseMoveRef = useRef(0);
+  const [timeLeft, setTimeLeft] = useState(10 * 60); // in seconds
 
   // Home page control
   const [pagesMounted, setPagesMounted] = useState([true, false]); // controls DOM mounting
   const [currentPage, setCurrentPage] = useState(0); // controls which page is visible
   const wrapperRef = useRef(null);
+
+  const formatTimeMinutes = (ms) => {
+    let seconds = Math.floor(ms / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // keep timer alive when mouse moves
+  useEffect(() => {
+    const resetTimer = () => {
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+      setTimeLeft(INACTIVITY_MS);
+    };
+
+    const onActivity = () => {
+      resetTimer();
+    };
+
+    const handleMouseMove = () => {
+      const now = Date.now();
+      if (now - lastMouseMoveRef.current < MOUSEMOVE_THROTTLE_MS) {
+        return;
+      }
+      lastMouseMoveRef.current = now;
+      resetTimer();
+    };
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("scroll", onActivity, { passive: true });
+
+    resetTimer();
+
+    return () => {
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("scroll", onActivity);
+    };
+  }, []);
+
+  useEffect(() => {
+    let interval;
+    if (isAdmin) {
+      interval = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            // timer expired
+            clearInterval(interval);
+            setIsAdmin(false);
+            return 0;
+          }
+          return prev - 1000;
+        });
+      }, 1000);
+    }
+    return () => { if (interval) { clearInterval(interval) } }
+  }, [isAdmin]);
+
+
 
   const handlePageChange = (nextPage) => {
     setPagesMounted((prev) => {
@@ -248,7 +317,7 @@ function App() {
         // then update the matching member's filamentAllowance locally
         setMemberList(old => old.map((m) => {
           if (m.email === formJob.email) {
-            return { ...m, filamentAllowance: newAllowance}
+            return { ...m, filamentAllowance: newAllowance }
           } else {
             return m
           }
@@ -2551,7 +2620,7 @@ function App() {
           )}
 
         <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, backgroundColor: `${isAdmin ? 'rgba(2550, 2550, 255, 0.6)' : 'rgba(180, 180, 180, 0.6)'}` }}>
-          <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? '3DPC - Print Manager - Admin' : '3DPC - Print Manager'}</h1>
+          <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? `3DPC - Print Manager - ${formatTimeMinutes(timeLeft)}` : '3DPC - Print Manager'}</h1>
         </div>
         {
           messageQueue.map((notification, index) => {
