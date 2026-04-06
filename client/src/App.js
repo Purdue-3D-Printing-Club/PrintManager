@@ -2620,7 +2620,7 @@ function App() {
           )}
 
         <div className="header" style={{ left: `${sidebarOpen ? sidebarWidth + 3 : 0}px`, width: `calc(100vw - ${sidebarOpen ? sidebarWidth : 0}px)`, backgroundColor: `${isAdmin ? 'rgba(2550, 2550, 255, 0.6)' : 'rgba(180, 180, 180, 0.6)'}` }}>
-          <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? `3DPC - Print Manager - ${formatTimeMinutes(timeLeft)}` : '3DPC - Print Manager'}</h1>
+          <h1 style={{ color: 'rgb(0,0,0)' }}>{isAdmin ? timeLeft < 60000 ? `3DPC - Print Manager - ${formatTimeMinutes(timeLeft)}` : `3DPC - Print Manager - Admin` : '3DPC - Print Manager'}</h1>
         </div>
         {
           messageQueue.map((notification, index) => {
