@@ -301,13 +301,13 @@ function HomeScreen({ homeScreenArgs }) {
                                 {recentFiles.map((file, index) => {
                                     if (generalSettings.showFilePreviews) {
                                         return (
-                                            <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("File " + index)}
+                                            <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("Unnamed File " + index)}
                                                 getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true}></StlPreview></div>
                                         )
                                     } else {
                                         return (
                                             <button className="printer-btn" key={index} onClick={() => window.location.href = getDirectDownloadLink(file.file.trim())}>
-                                                <img className='status-icon ' src={`images/download.svg`}></img> {file.name ? truncateString(file.name.trim(), 24) : 'File ' + index}
+                                                <img className='status-icon ' src={`images/download.svg`}></img> {file.name ? truncateString(file.name.trim(), 24) : 'Unnamed File ' + index}
                                             </button>
                                         )
                                     }

@@ -19,6 +19,8 @@ import HomeScreen from './HomeScreen';
 const INACTIVITY_MS = 10 * 60 * 1000; // 10 minutes in milliseconds
 const MOUSEMOVE_THROTTLE_MS = 1000; // update timeout every full second for performance
 
+const MEMBERSHIP_FILAMENTS = ['PLA', 'PETG', 'TPU']
+
 function App() {
   const statusIconFolder = '/images/statusIcons';
 
@@ -28,6 +30,7 @@ function App() {
 
   const [organizerLinks, setOrganizerLinks] = useState({});
   const [filamentSettings, setFilamentSettings] = useState({});
+
 
 
   const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width set to 250
@@ -431,7 +434,7 @@ function App() {
       console.log('printerList: ', printerList)
     }
     if (!selectedPrinter?.material?.includes(',')) {
-      setJobMaterial(selectedPrinter?.material);
+      setJobMaterial(selectedPrinter?.material?.trim()?.toUpperCase());
     } else {
       setJobMaterial('');
     }
@@ -499,7 +502,7 @@ function App() {
   })
 
   const materialAllowed = (printer, material) => {
-    return printer?.material?.trim()?.toLowerCase()?.includes(material?.trim()?.toLowerCase());
+    return printer?.material?.trim()?.toUpperCase()?.includes(material?.trim()?.toUpperCase());
   }
 
   const toggleSelfPostProcess = () => {
@@ -813,7 +816,7 @@ function App() {
 
   const handleJobMaterial = (e) => {
     const newJobMaterial = e.target.value;
-    setJobMaterial(newJobMaterial);
+    setJobMaterial(newJobMaterial?.trim()?.toUpperCase());
     if (generalSettings?.debugMode) console.log('updated job material to ' + newJobMaterial);
   }
   const handlePrinterMaterial = (e) => {
@@ -894,7 +897,7 @@ function App() {
     setSupervisorPrint(job.name === job.supervisorName);
     setPersonalFilament(job.paid === 'personal');
 
-    let material = job?.material?.toLowerCase();
+    let material = job?.material?.trim()?.toUpperCase();
     if (!materialAllowed(selectedPrinter, material)) {
       material = '';
     }
@@ -1334,6 +1337,8 @@ function App() {
 
     console.log("filamentUsage: ", filamentUsage);
     if (selectedPrinter !== null) {
+      let fullNameRegex = /^[a-zA-Z0-9]+(?:\s+[a-zA-Z0-9]+)+$/;
+
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' &&
         selectedPrinter.status !== 'testing' && !materialAllowed(selectedPrinter, 'Resin')) {
@@ -1341,7 +1346,11 @@ function App() {
       } else if (selectedPrinter.status === 'admin' && !isAdmin) {
         showMsgForDuration("This printer is not available!", 'err');
       } else if (name.length === 0) {
-        showMsgForDuration("No Name! Print not started.", 'err');
+        showMsgForDuration("No Name -- print not started.", 'err');
+      } else if (!fullNameRegex.test(name)) {
+        showMsgForDuration("Enter your full name -- print not started.", 'err');
+      } else if (!supervisorPrint && !fullNameRegex.test(supervisor)){
+        showMsgForDuration("Supervisor: enter your full name! Print not started.", 'err');
       } else if ((email.length === 0) && !supervisorPrint) {
         showMsgForDuration("No Email! Print not started.", 'err');
       } else if ((supervisor.length === 0) && !supervisorPrint) {
@@ -1376,8 +1385,10 @@ function App() {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
-      } else if ((jobMaterial === 'PLA') && !personalFilament && !matchingMember && !supervisorPrint) {
+      } else if ((MEMBERSHIP_FILAMENTS.includes(jobMaterial)) && !personalFilament && !matchingMember && !supervisorPrint) {
         showMsgForDuration(`Warning: Non-members must pay per\ngram through TooCool. Continue?`, 'warn', popupTime + 5000);
+      } else if (!MEMBERSHIP_FILAMENTS.includes(jobMaterial)) {
+        showMsgForDuration(`Warning: User must pay per\ngram through TooCool. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
         //clear all warning popups 
@@ -1420,7 +1431,7 @@ function App() {
   const buildFormJob = () => {
     let isMember = memberList.map(m => m.email).includes(email)
     let paid = ''
-    if (jobMaterial?.toLowerCase() != 'pla') {
+    if (MEMBERSHIP_FILAMENTS.includes(jobMaterial)) {
       paid = personalFilament ? 'personal' : 'per-gram'
     } else {
       paid = personalFilament ? 'personal' : (isMember || supervisorPrint) ? 'member' : 'per-gram'
@@ -1432,7 +1443,7 @@ function App() {
       status: "active",
       name: name,
       supervisor: supervisorPrint ? name : supervisor,
-      material: jobMaterial,
+      material: jobMaterial?.trim()?.toUpperCase(),
       partNames: partNames,
       email: email,
       paid: paid,
@@ -2243,9 +2254,9 @@ function App() {
               }}></img>
               <div style={{ flex: '1 1 auto', minWidth: 0, paddingLeft: '10px' }}>
                 {getStatMsg()}
-                <hr style={{ borderTop: '1px solid #00000005', width: '100%' }} />
+                <hr style={{ borderTop: '1px solid #00000072', width: '100%' }} />
                 {(isAdmin ? <div> {"Allowed materials: "}
-                  <input style={{ fontSize: 'large', width: '250px' }} id="allowedMaterials" type="text" value={tempPrinterMaterial} onChange={handlePrinterMaterial} placeHolder="material1, material2, ..."></input>
+                  <input style={{ fontSize: 'large', width: '250px' }} id="allowedMaterials" type="text" value={tempPrinterMaterial} onChange={handlePrinterMaterial} placeholder="material1, material2, ..."></input>
                   <button id="allowedMaterialsBtn" className='file-upload' style={{ fontSize: 'large' }} onClick={() => { savePrinterMaterial(tempPrinterMaterial) }}>Save</button>
                 </div>
                   :
@@ -2309,7 +2320,7 @@ function App() {
                 }}>
                   <option value="" disabled hidden>Move Print</option>
                   {printerList.map((printer) => {
-                    if ((printer?.material?.toLowerCase().includes(curJob?.material?.toLowerCase()) && (curJob?.material !== ''))   // The current job's material must be allowed for the new printer
+                    if ((printer?.material?.toUpperCase().includes(curJob?.material?.toUpperCase()) && (curJob?.material !== ''))   // The current job's material must be allowed for the new printer
                       && ((printer.status == 'available') || (isAdmin && printer.status == 'admin'))) {     // AND the printer must be available
                       return <>
                         <option value={printer.printerName}>{printer.printerName}</option>
@@ -2653,14 +2664,14 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
         <ErrorBoundary>
           <div className="stl-previews">
             {curJob && curJob.files.split(/[,;]/).map((link, index) => {
-              let trimmedLink = link.trim();
+              let trimmedLink = link.trim(); 
 
               if (trimmedLink.startsWith('https://')) {
                 let partname = String(curJob.partNames)?.split(/[;,]/)[index]
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 32) : 'File ' + index} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true} />
+                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 32) : 'Unnamed File ' + index} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true} />
                   </div>
                 );
               } else {
@@ -2678,7 +2689,7 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
               return (
                 <div key={index}>
                   <button className="printer-btn" onClick={() => window.location.href = getDirectDownloadLink(link.trim())}>
-                    <img className='status-icon ' src={`images/download.svg`}></img> {partname ? truncateString(partname.trim(), 24) : 'File ' + index}
+                    <img className='status-icon ' src={`images/download.svg`}></img> {partname ? truncateString(partname.trim(), 24) : 'Unnamed File ' + index}
                   </button>
                 </div>
               );

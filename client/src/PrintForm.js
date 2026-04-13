@@ -47,7 +47,6 @@ const PrintForm = ({ printFormArgs }) => {
 
     return (
         <>
-
             <div className='printForm'>
                 <div className='panel-header'>{'Job Information Form'}</div>
                 <button onClick={(e) => formData ? setFormData(null) : pullFormData(e)} style={{ fontSize: 'small', marginBottom: '5px', cursor: 'pointer', }}>
@@ -123,13 +122,13 @@ const PrintForm = ({ printFormArgs }) => {
                 <div> Material: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <select style={{ width: '158px', height: '30px', 'fontSize': 'large' }} id="material" value={jobMaterial} onChange={handleJobMaterial}>
                     <option value="" disabled hidden>Select Material</option>
                     {selectedPrinter?.material?.split(',').map((material) => {
-                        return <option key={material} value={material?.toLowerCase()}>{material}</option>
+                        return <option key={material} value={material?.trim()?.toUpperCase()}>{material}</option>
                     })
                     }
                 </select>
                 </div>
                 {
-                    (jobMaterial?.toLowerCase() == 'resin') && <>
+                    (jobMaterial?.toUpperCase() === 'RESIN') && <>
                         <div style={{ height: '1px' }}></div>
                         <div> Color: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input placeholder="Clear" value={color} onChange={handleColor} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
                         <div> Layer Height: <input placeholder="25 μm" value={layerHeight} onChange={handleLayerHeight} style={{ width: '150px', 'fontSize': 'large' }}></input></div>
@@ -142,7 +141,7 @@ const PrintForm = ({ printFormArgs }) => {
                     {((isSpecialty(selectedPrinter)) || (!matchedMember && !supervisorPrint && !personalFilament)) &&
                         (` → $${(Math.round(filamentUsage) * (materialAllowed(selectedPrinter, 'Resin') ? filamentSettings.resinCost : filamentSettings.fdmCost)).toFixed(2)}`)} </div>
                 {
-                    ((matchedMember) && (matchedMember?.filamentAllowance!==null)) && <div className="subText">
+                    ((matchedMember) && (matchedMember?.filamentAllowance !== null)) && <div className="subText">
                         Remaining club allowance: {matchedMember?.filamentAllowance}g
                     </div>
                 }

@@ -160,31 +160,12 @@ function Settings({ settingsArgs }) {
             </div>}
         </div>
 
-        {/* General Settings */}
-        <div className='settings-wrapper'>
-          <div>
-            <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>General Settings</b></div>
-            <span className='input-wrapper' style={{ height: '25px' }}>
-              <b className='input-label'>History Page Size:</b>&nbsp;&nbsp;
-              <input type="text" autoComplete='off' placeholder="# of jobs/page" value={tempLocalData?.generalSettings?.pageSize ?? ' '}
-                onChange={(e) => handleGeneralNumericInput(e.target.value, 'pageSize', 'generalSettings')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;
-              &nbsp; <button onClick={(e) => { updateGeneralSettings('pageSize', tempLocalData?.generalSettings?.pageSize) }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
-            </span><br />
-
-            <FormCheckbox activeCheckVal={generalSettings?.showFilePreviews} handleChangeFunc={toggleFilePreviews} text={"File Previews"}></FormCheckbox>
-            <FormCheckbox activeCheckVal={generalSettings?.debugMode} handleChangeFunc={toggleDebugMode} text={"Debug Mode"}></FormCheckbox>
-            <br />
-
-
-          </div>
-        </div>
-
         {/* Admin-only settings */}
         {isAdmin && <div className='settings-wrapper'>
           <div style={{ fontSize: 'x-large' }}><b>Admin-Only Settings</b></div>
           <div style={{ fontSize: 'large', color: 'gray', marginBottom: '15px' }}><b>Proceed With Caution</b></div>
 
-          {/* Server URL Settings */}
+          {/* Server Settings */}
           <hr style={{ borderTop: '1px solid grey', width: '100%' }} />
           <span className="input-wrapper">
             <img src={serverIcon} alt="server" className='generic-icon'></img>
@@ -282,6 +263,25 @@ function Settings({ settingsArgs }) {
         </div>}
         {/* End admin settings */}
 
+          
+        {/* General Settings */}
+        <div className='settings-wrapper'>
+          <div>
+            <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>General Settings</b></div>
+            <span className='input-wrapper' style={{ height: '25px' }}>
+              <b className='input-label'>History Page Size:</b>&nbsp;&nbsp;
+              <input type="text" autoComplete='off' placeholder="# of jobs/page" value={tempLocalData?.generalSettings?.pageSize ?? ' '}
+                onChange={(e) => handleGeneralNumericInput(e.target.value, 'pageSize', 'generalSettings')} style={{ width: '80px', fontSize: 'large' }}></input>&nbsp;
+              &nbsp; <button onClick={(e) => { updateGeneralSettings('pageSize', tempLocalData?.generalSettings?.pageSize) }} style={{ fontSize: 'large', cursor: 'pointer' }}>{'Update'}</button>
+            </span><br />
+
+            <FormCheckbox activeCheckVal={generalSettings?.showFilePreviews} handleChangeFunc={toggleFilePreviews} text={"File Previews"}></FormCheckbox>
+            <FormCheckbox activeCheckVal={generalSettings?.debugMode} handleChangeFunc={toggleDebugMode} text={"Debug Mode"}></FormCheckbox>
+            <br />
+
+
+          </div>
+        </div>
 
         {/* Member List Table */}
         <MemberTable isClubTable={false} memberTableArgs={memberTableArgs} />

@@ -312,7 +312,7 @@ async function deleteOldFiles(drive, daysOld = 7) {
             pageSize: 1000,
             fields: 'nextPageToken, files(id, name, createdTime)',
             pageToken,
-            q: `'me' in owners`, // only files owned by the service account
+            q: `'me' in owners`, // only files owned by the account
         });
 
         for (const file of res.data.files) {
@@ -575,7 +575,7 @@ app.get('/api/getRecentFiles', async (req, res) => {
 
                 return files.map((file, index) => ({
                     file,
-                    partName: partNames[index] || `File ${index}`
+                    partName: partNames[index] || `Unnamed File ${index}`
                 }));
             })
             .flat()
