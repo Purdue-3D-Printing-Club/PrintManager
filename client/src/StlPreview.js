@@ -28,7 +28,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL, r
         canvas.style.display = 'block';
         containerRef.current.appendChild(canvas);
 
-        // Initialization
+        // Initializationf
         const worker = new Worker(new URL('./three.worker.js', import.meta.url), { type: 'module' });
         workerRef.current = worker;
 
@@ -121,7 +121,7 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL, r
 
     return (
         <div>
-            <span>{name}</span>
+            <span className='preview-header-wrapper'>{name}</span>
             <div ref={containerRef} style={{ width: '300px', height: '300px', position: 'relative', cursor: 'move', touchAction: 'none' }}>
 
                 {/* The <canvas> will be automatically injected here by the useEffect */}

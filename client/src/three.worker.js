@@ -386,6 +386,8 @@ async function loadModels(streamUrl) {
         return;
     } catch (e) {
         self.postMessage({ type: 'ERROR' }); // Everything failed
+        self.postMessage({ type: 'LOADED' }); // Everything failed
+
     }
 }
 

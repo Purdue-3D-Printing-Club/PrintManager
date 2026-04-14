@@ -136,6 +136,9 @@ function MemberTable({ isClubTable, memberTableArgs }) {
             } else if (!member.name) {
                 showMsgForDuration(`Cannot insert ${subjectText}: Name absent!`, 'err');
                 return false;
+            } else if (!member.major) {
+                showMsgForDuration(`Cannot insert ${subjectText}: Major absent!`, 'err');
+                return false;
             }
             return true;
         } catch (e) {
@@ -156,6 +159,7 @@ function MemberTable({ isClubTable, memberTableArgs }) {
             lastUpdated: new Date().toISOString(),
             name: truncateString(member.name, 128),
             email: truncateString(member.email, 64),
+            major: truncateString(member.major, 64),
             ccEmails: isClubTable ? member.ccEmails : '',
             discordUsername: truncateString(member.discordUsername, 128),
             season: endSeasonText,
@@ -164,7 +168,7 @@ function MemberTable({ isClubTable, memberTableArgs }) {
         }).then(() => {
             refreshMembers();
             setInsertMember({
-                email: '', name: '', discordUsername: '', seasonEnc: endSeason.seasonEnc,
+                email: '', name: '', major: '', discordUsername: '', seasonEnc: endSeason.seasonEnc,
                 ccEmails: '', year: endSeason.year, lastUpdated: '', memberID: -1, filamentAllowance: null
             });
             showMsgForDuration(`New ${isClubTable ? 'club' : 'member'} added.`, 'msg');
@@ -324,7 +328,10 @@ function MemberTable({ isClubTable, memberTableArgs }) {
                 <button style={{ cursor: 'pointer' }} onClick={() => setMemberSearch('')}>Clear</button> */}
                         <input id={isClubTable ? "clubSearchEnter" : "memberSearchEnter"} type="text" value={tempMemberSearch}
                             placeholder={placeholderMemberSearch} onChange={(e) => { setTempMemberSearch(e.target.value) }}></input>
-                        <button id="memberSearchEnterBtn" style={{ cursor: 'pointer' }} onClick={() => {
+                        <button id="memberSearchEnterBtn" style={{
+                            cursor: 'pointer',
+                            ...(placeholderMemberSearch && { backgroundColor: '#b1e0a6' }),
+                        }} onClick={() => {
                             handleMemberSearch({ target: { value: tempMemberSearch } });
                             setPlaceholderMemberSearch(tempMemberSearch);
                             setTempMemberSearch('');
@@ -359,8 +366,9 @@ function MemberTable({ isClubTable, memberTableArgs }) {
                                     <>
                                         <th>Purdue Email</th>
                                         <th>Full Name</th>
+                                        <th>Major</th>
+                                        <th>Discord Username</th>
                                     </>}
-                                {!isClubTable && <th>Discord Username</th>}
                                 <th>Season</th>
                                 <th>Last Updated</th>
                                 {isClubTable && <th>Filament Allowance</th>}
@@ -393,6 +401,8 @@ function MemberTable({ isClubTable, memberTableArgs }) {
                                             value={insertMember.email ?? ''} onChange={(e) => handleMemberEdit(e, "email", true)}></input></td>
                                         <td><input id='insert' type="text" autoComplete='off' placeholder="New Member" className="history-edit" style={{ 'width': '250px' }}
                                             value={insertMember.name ?? ''} onChange={(e) => handleMemberEdit(e, "name", true)}></input></td>
+                                        <td><input id='insert' type="text" autoComplete='off' placeholder="Boilermaker Studies" className="history-edit" style={{ 'width': '200px' }}
+                                            value={insertMember.major ?? ''} onChange={(e) => handleMemberEdit(e, "major", true)}></input></td>
                                         <td><input id='insert' type="text" autoComplete='off' placeholder="newmember123" className="history-edit" style={{ 'width': '150px' }}
                                             value={insertMember.discordUsername ?? ''} onChange={(e) => handleMemberEdit(e, "discordUsername", true)}></input></td>
                                         <td> {`${decSeason(endSeason.seasonEnc)} ${endSeason.year}`} </td>
@@ -431,8 +441,12 @@ function MemberTable({ isClubTable, memberTableArgs }) {
                                                     value={editingMember.ccEmails} onChange={(e) => handleMemberEdit(e, "ccEmails")}></input></td>}
                                                 <td><input id='edit' autoComplete='off' type="text" className="history-edit" style={{ 'width': '250px' }}
                                                     value={editingMember.name} onChange={(e) => handleMemberEdit(e, "name")}></input></td>
-                                                {!isClubTable && <td><input id='edit' autoComplete='off' type="text" className="history-edit" style={{ 'width': '150px' }}
-                                                    value={editingMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername")}></input></td>}
+                                                {!isClubTable && <>
+                                                    <td><input id='edit' autoComplete='off' type="text" className="history-edit" style={{ 'width': '200px' }}
+                                                        value={editingMember.major} onChange={(e) => handleMemberEdit(e, "major")}></input></td>
+                                                    <td><input id='edit' autoComplete='off' type="text" className="history-edit" style={{ 'width': '150px' }}
+                                                        value={editingMember.discordUsername} onChange={(e) => handleMemberEdit(e, "discordUsername")}></input></td>
+                                                </>}
                                             </>
                                             :
                                             <>
@@ -441,9 +455,10 @@ function MemberTable({ isClubTable, memberTableArgs }) {
                                                     <ScrollCell html={applyHighlight(member.ccEmails, false, memberSearch)} width={270} />
                                                 }
                                                 <ScrollCell html={applyHighlight(member.name, false, memberSearch)} width={270} />
-                                                {!isClubTable &&
+                                                {!isClubTable && <>
+                                                    <ScrollCell html={applyHighlight(member.major, false, memberSearch)} width={220} />
                                                     <ScrollCell html={applyHighlight(member.discordUsername, false, memberSearch)} width={165} />
-                                                }
+                                                </>}
                                             </>
                                     }
                                     <ScrollCell html={applyHighlight(`${member.season} ${member.year}`, false, memberSearch)} width={125} />

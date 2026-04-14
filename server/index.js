@@ -911,15 +911,15 @@ app.post('/api/insert', async (req, res) => {
     const dateTime = new Date(b.timeStarted);
 
     const sqlInsert = "INSERT INTO printjob (printerName, files, usage_g, timeStarted," +
-        " status, name, supervisorName, notes, partNames, email, paid, " +
+        " status, name, supervisorName, notes, partNames, email, major, paid, " +
         " color, layerHeight, selfPostProcess, detailedPostProcess, cureTime, material" +
-        ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     try {
         const result = await runTransaction(async (conn) => {
             const [rows] = await conn.promise().query(sqlInsert,
                 [b.printerName, b.files, b.usage_g, dateTime, b.status, b.name, b.supervisor,
-                b.notes, b.partNames, b.email, b.paid, b.color, b.layerHeight, b.selfPostProcess,
+                b.notes, b.partNames, b.email, b.major, b.paid, b.color, b.layerHeight, b.selfPostProcess,
                 b.detailedPostProcess, b.cureTime, b.material]);
             return rows;
         });
@@ -937,8 +937,8 @@ app.post('/api/insertMember', async (req, res) => {
 
     const sqlInsert = `
         INSERT INTO member 
-        (lastUpdated, name, email, ccEmails, discordUsername, season, year, filamentAllowance) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (lastUpdated, name, email, major, ccEmails, discordUsername, season, year, filamentAllowance) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     try {
@@ -946,7 +946,7 @@ app.post('/api/insertMember', async (req, res) => {
             return new Promise((resolve, reject) => {
                 connection.query(
                     sqlInsert,
-                    [dateTime, b.name, b.email, b.ccEmails, b.discordUsername, b.season, b.year, b.filamentAllowance],
+                    [dateTime, b.name, b.email, b.major, b.ccEmails, b.discordUsername, b.season, b.year, b.filamentAllowance],
                     (err, result) => {
                         if (err) return reject(err);
                         resolve(result);

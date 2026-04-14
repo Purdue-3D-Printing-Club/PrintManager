@@ -42,6 +42,7 @@ function App() {
   const [filamentUsage, setFilamentUsage] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [major, setMajor] = useState('');
   const [supervisor, setSupervisor] = useState('');
   const [jobMaterial, setJobMaterial] = useState('');
 
@@ -891,6 +892,7 @@ function App() {
     setName('');
     setFilamentUsage('');
     setEmail('');
+    setMajor('');
     setSupervisor('');
     setFiles('');
     setNotes('');
@@ -902,10 +904,12 @@ function App() {
     setSelfPostProcess(false);
     setCureTime('');
   }
+
   const autofillFields = (job) => {
     setName(job.name);
     setFilamentUsage(job.usage_g || '');
     setEmail(job.email);
+    setMajor(job.major);
     setSupervisor(job.supervisorName);
     setPartNames(job.partNames);
     setFiles(job.files);
@@ -1348,10 +1352,7 @@ function App() {
   const handleStartPrintClick = (queue = false) => {
     // let matchingJob = ''
     let matchingMember = memberList.find((m) => m.email === email);
-    console.log('matchingMember: ', matchingMember);
-    console.log('matchingMember?.filamentAllowance: ', matchingMember?.filamentAllowance);
 
-    console.log("filamentUsage: ", filamentUsage);
     if (selectedPrinter !== null) {
       let fullNameRegex = /^[a-zA-Z0-9]+(?:\s+[a-zA-Z0-9]+)+$/;
 
@@ -1428,6 +1429,7 @@ function App() {
       material: truncateString(job.material, 32),
       partNames: truncateString(job.partNames, 256),
       email: truncateString(job.email, 64),
+      major: truncateString(job.major, 64),
       paid: job.paid,
       notes: truncateString(job.notes, 1024),
       color: truncateString(job.color, 64),
@@ -1462,6 +1464,7 @@ function App() {
       material: jobMaterial?.trim()?.toUpperCase(),
       partNames: partNames,
       email: email,
+      major: major,
       paid: paid,
       notes: notes,
       color: color,
@@ -1512,13 +1515,20 @@ function App() {
 
   const startPrint = (queue = false, formPrinter = selectedPrinter, formJob = buildFormJob()) => {
     let matchingMember = memberList.find((m) => m.email === formJob.email)
+    console.log('MatchingMember: ', matchingMember)
+    console.log('formJob: ', formJob)
+
     try {
-      Axios.post(`${serverURL}/api/insert`, {
+      let formJob_built = {
+        ...formJob,
         printerName: formPrinter.printerName,
         filamentAllowance: matchingMember?.filamentAllowance,
         memberID: matchingMember?.memberID,
-        ...formJob
-      }).then(() => {
+        major: formJob.major?.trim() ? formJob.major : matchingMember?.major,
+      }
+
+      console.log('###### FORMJOB BUILT: ', formJob_built)
+      Axios.post(`${serverURL}/api/insert`, formJob_built).then(() => {
         if (!queue) {
           setTimeout(() => {
             //update the current job of the printer that was selected for the print
@@ -1748,10 +1758,11 @@ function App() {
             timestamp: ["Timestamp"],
             name: ["Name (First & Last)"],
             email: ["Purdue Email"],
+            major: ["Major"],
             supervisorName: ["Officer/Lab Assistant Name", "Supervisor Name"],
             material: ["What type of material are you printing with?"],
             files: ["Upload your .stl file here", "Upload your .stl file(s) here"],
-            partNames: ["What are the EXACT names of the file(s)?"],
+            partNames: ["File Names"],
             notes: ["Please provide any details or requests about how you want your part to be printed."],
             color: ["What color do you want?"],
             layerHeight: ["What layer height? "],
@@ -1773,6 +1784,7 @@ function App() {
 
 
           let formattedData = Object.values(data).map((job) => {
+            console.log('JOB: ', job)
             // clean the job's material value
             let material = job[headerIndexMap['material']] ?? 'PLA'
             if (material.includes('Resin')) material = 'Resin'
@@ -1782,6 +1794,7 @@ function App() {
               timestamp: job[headerIndexMap['timestamp']],
               name: job[headerIndexMap['name']],
               email: job[headerIndexMap['email']],
+              major: job[headerIndexMap['major']],
               supervisorName: job[headerIndexMap['supervisorName']],
               material: material,
               files: job[headerIndexMap['files']],
@@ -1802,10 +1815,15 @@ function App() {
           if (generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
           showMsgForDuration('Error Filling Form...', 'err');
         }
+      }).catch((e) => {
+        if (generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
+        showMsgForDuration('Error Filling Form...', 'err');
+        setFormDataLoading(false);
       });
     } catch (e) {
       if (generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
       showMsgForDuration('Error Filling Form...', 'err');
+      setFormDataLoading(false);
     }
   };
 
@@ -2690,7 +2708,7 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 32) : 'Unnamed File ' + index}
+                    <StlPreview googleDriveLink={link} name={partname ? partname.trim() : 'Unnamed File ' + index}
                       getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true} removeCallback={removeFile} fileIndex={removeFile ? index : null} />
                   </div>
                 );

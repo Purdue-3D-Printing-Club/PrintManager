@@ -79,6 +79,18 @@ html::-webkit-scrollbar {
   scroll-behavior: smooth;
 }
 
+.preview-header-wrapper {
+  padding-left: 10px;
+  padding-right: 10px;
+  overflow-X: auto;
+  overflow-Y: hidden;
+  white-space: nowrap;
+  display: block;
+  height: 22px;
+  scrollbar-width: none;
+  width: 280px;
+}
+
 .arrow-btn {
   margin-left: 10px;
   margin-right: 10px;
