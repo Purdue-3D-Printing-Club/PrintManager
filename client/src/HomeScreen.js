@@ -14,7 +14,7 @@ import StlPreview from './StlPreview';
 
 import './HomeScreen.css';
 
-const NUM_CHARTS = 7
+const NUM_CHARTS = 12
 
 function HomeScreen({ homeScreenArgs }) {
     let { sidebarOpen, sidebarWidth, loading, setLoading, selectedPrinter, menuOpen,
@@ -25,15 +25,17 @@ function HomeScreen({ homeScreenArgs }) {
     } = homeScreenArgs;
 
 
-    // initialize both to boolean arrays of length NUM_CHARTS where only the first index is true
+    // initialize both to boolean arrays of length NUM_CHARTS where only the first chart is open by default
     const [chartsOpen, setChartsOpen] = useState(() => Array.from({ length: NUM_CHARTS }, (_, i) => i === 0));
-    const [tempChartsOpen, setTempChartsOpen] = useState(() => Array.from({ length: NUM_CHARTS }, (_, i) => i === 0));
+    const [tempChartsOpen, setTempChartsOpen] = useState(Array(NUM_CHARTS).fill(false));
 
 
     // Summary data
     const [supervisorData, setSupervisorData] = useState([]);
     const [nameFilamentData, setNameFilamentData] = useState([]);
     const [printerStatuses, setPrinterStatuses] = useState({});
+    const [majorPrints, setMajorPrints] = useState({});
+
     const [printerObjs, setPrinterObjs] = useState([]);
 
     const [recentFiles, setRecentFiles] = useState([]);
@@ -152,76 +154,54 @@ function HomeScreen({ homeScreenArgs }) {
             return dateArray;
         };
 
+
         try {
-            Axios.get(`${serverURL}/api/getprinterdata`).then((response) => {
-                if (generalSettings?.debugMode) console.log("printer name data: ", response.data.res);
-                const printerData = response.data.res;
+            Axios.get(`${serverURL}/api/getsummarydata`).then((response) => {
+                let summaryData = response.data
+                if (generalSettings?.debugMode) console.log('summary response data: ', summaryData)
 
-                setPrinterObjs(printerData);
+                setPrinterObjs(summaryData.frequencyData);
+                setMajorPrints(summaryData.majorData);
+                setSupervisorData(summaryData.supervisorData);
+                setNameFilamentData(summaryData.nameFilamentData);
+                setFilledDowData(summaryData.dowPrints);
 
-                try {
-                    Axios.get(`${serverURL}/api/getsupervisordata`).then((response) => {
-                        if (generalSettings?.debugMode) console.log('supervisor data: ', response.data.res)
-                        setSupervisorData(response.data.res);
-                        Axios.get(`${serverURL}/api/getnamefilamentdata`).then((response) => {
-                            if (generalSettings?.debugMode) console.log('filament name data: ', response.data.res)
-                            setNameFilamentData(response.data.res);
-                            if (generalSettings?.debugMode) console.log()
+                // Fill daily data
+                if (summaryData.dailyPrints) {
+                    const dailyData = summaryData.dailyPrints;
+                    const personal = dailyData.filter(item => item.paid === 'personal')
+                    const member = dailyData.filter(item => item.paid === 'member')
+                    const ppg = dailyData.filter(item => item.paid === 'per-gram')
 
-                            Axios.get(`${serverURL}/api/getdailyprints`).then((dailyResponse) => {
-                                if (generalSettings?.debugMode) console.log("daily data: ", dailyResponse.data);
-                                Axios.get(`${serverURL}/api/getdowprints`).then((dowResponse) => {
-                                    if (generalSettings?.debugMode) console.log("dow data: ", dowResponse.data);
-                                    // daily data processing for daily line charts
-                                    if (dailyResponse.data) {
-                                        const dailyData = dailyResponse.data.res;
-                                        const personal = dailyData.filter(item => item.paid === 'personal')
-                                        const member = dailyData.filter(item => item.paid === 'member')
-                                        const ppg = dailyData.filter(item => item.paid === 'per-gram')
+                    const startDate = dailyData.length > 0 ? formatDate(new Date(dailyData[0].date).toISOString()) : null;
+                    const endDate = formatDate(new Date().toISOString());
+                    const fillData = (rawData, fullSet, valueField, type = 'date') => {
+                        if (type === 'date') {
+                            const map = new Map(rawData.map(row => {
+                                return [formatDate(row['date'], false, true), row[valueField]]
+                            }));
+                            const filled = fullSet.map(date => map.get(date) || 0);
+                            return filled
+                        }
+                    }
 
-                                        const startDate = dailyData.length > 0 ? formatDate(new Date(dailyData[0].date).toISOString()) : null;
-                                        const endDate = formatDate(new Date().toISOString());
-                                        const fillData = (rawData, fullSet, valueField, type = 'date') => {
-                                            if (type === 'date') {
-                                                const map = new Map(rawData.map(row => {
-                                                    return [formatDate(row['date'], false, true), row[valueField]]
-                                                }));
-                                                const filled = fullSet.map(date => map.get(date) || 0);
-                                                return filled
-                                            }
-                                        }
+                    if (startDate && endDate) {
+                        const allDates = generateDateRange(startDate, endDate);
 
-                                        if (startDate && endDate) {
-                                            const allDates = generateDateRange(startDate, endDate);
+                        // Fill the data and assign them to useState variables by paid type'
+                        setLinePersonalData([fillData(personal, allDates, 'cnt'), fillData(personal, allDates, 'sum')]);
+                        setLineMemberData([fillData(member, allDates, 'cnt'), fillData(member, allDates, 'sum')]);
 
-                                            // Fill the data and assign them to useState variables by paid type'
-                                            setLinePersonalData([fillData(personal, allDates, 'cnt'), fillData(personal, allDates, 'sum')]);
-                                            setLineMemberData([fillData(member, allDates, 'cnt'), fillData(member, allDates, 'sum')]);
-
-                                            setLinePpgData([fillData(ppg, allDates, 'cnt'), fillData(ppg, allDates, 'sum')]);
-                                            setLineDateWindow(allDates);
-                                        }
-                                    }
-
-                                    // day of weelk (dow) data processing for dow line chart
-                                    if (dowResponse.data) {
-                                        setFilledDowData(dowResponse.data.res);
-                                    }
-
-                                    setLoading('done');
-                                });
-
-                            });
-                        });
-                    });
-                } catch (error) {
-                    console.error("Error getting daily stats: ", error);
-                    setLoading('error');
+                        setLinePpgData([fillData(ppg, allDates, 'cnt'), fillData(ppg, allDates, 'sum')]);
+                        setLineDateWindow(allDates);
+                    }
                 }
-            });
 
+
+                setLoading('done');
+            });
         } catch (error) {
-            console.error("Error fetching printer data: ", error);
+            console.error("Error getting summary stats: ", error);
             setLoading('error');
         }
     }, [selectedPrinter, serverURL, printerList])
@@ -369,8 +349,20 @@ function HomeScreen({ homeScreenArgs }) {
                         }} />
                     </CollapsibleChart>
 
+                    <CollapsibleChart index={1} title="Number of Prints by Major"
+                        chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'pie pad-large'}>
+                        <PieChart argsObject={{
+                            dataObj: majorPrints,
+                            dataField: 'cnt',
+                            labelField: 'major',
+                            pieArgs: pieArgs,
+                            seasonSelect: true,
+                        }} />
+                    </CollapsibleChart>
+
+
                     <div className='group-title'> Line Charts </div>
-                    <CollapsibleChart index={1} title="Number of Prints Over Time"
+                    <CollapsibleChart index={2} title="Number of Prints Over Time"
                         chartsOpen={chartsOpen} toggleChart={toggleChart} bodyClass={'line pad-med'}>
                         <LineChart argsObject={{
                             data: {

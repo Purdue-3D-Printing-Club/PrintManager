@@ -666,117 +666,14 @@ const buildPieChartQuery = (aggField) => {
     GROUP BY seasonEnc, year, ${aggField};
     `
     );
-    // return (
-    //     `
-    //  WITH seasonEncs AS (
-    //     SELECT
-    //         *,
-    //         CASE
-    //             WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[0]}' THEN 0
-    //             WHEN DATE_FORMAT(timeStarted, '%m-%d') <= '${seasonUpperBoundsStr[1]}' THEN 1
-    //             ELSE 2
-    //         END AS seasonEnc,
-    //         YEAR(timeStarted) AS year
-    //     FROM printjob
-    //     WHERE ${aggField} IS NOT NULL
-    //     AND name IS NOT NULL
-    // ),
-    // ranked AS (
-    //     SELECT
-    //         seasonEnc,
-    //         year,
-    //         ${aggField},
-    //         COUNT(*) AS cnt,
-    //         SUM(usage_g) AS sum,
-    //         ROW_NUMBER() OVER (
-    //             PARTITION BY seasonEnc, year
-    //             ORDER BY COUNT(*) DESC
-    //         ) AS rn
-    //     FROM seasonEncs
-    //     GROUP BY seasonEnc, year, ${aggField}
-    // )
-    // SELECT
-    //     seasonEnc,
-    //     year,
-    //     ${aggField},
-    //     cnt,
-    //     sum
-    // FROM ranked
-    // WHERE rn <= 9
-
-    // UNION ALL
-
-    // SELECT
-    //     seasonEnc,
-    //     year,
-    //     'Other' AS ${aggField},
-    //     SUM(cnt) AS cnt,
-    //     SUM(sum) AS sum
-    // FROM ranked
-    // WHERE rn > 9
-    // GROUP BY seasonEnc, year;
-    // `
-    // );
 }
 
-app.get('/api/getprinterdata', async (req, res) => {
-    const sqlSelectFreq = buildPieChartQuery('printerName');
-
-    try {
-        const result = await runQuery(pool, sqlSelectFreq);
-        res.send({ res: result });
-    } catch (err) {
-        console.error('Error accessing printjob freq data:', err);
-        res.status(500).send("Error accessing printjob freq data");
-    }
-});
-
-
-app.get('/api/getsupervisordata', async (req, res) => {
-    const sqlSelectSupervisor = buildPieChartQuery('supervisorName');
-
-    try {
-        const result = await runQuery(pool, sqlSelectSupervisor);
-        res.send({ res: result });
-    } catch (err) {
-        console.error('Error accessing printjob supervisor data:', err);
-        res.status(500).send("Error accessing printjob supervisor data");
-    }
-});
-
-
-app.get('/api/getnamefilamentdata', async (req, res) => {
-    const sqlSelectFilamentData = buildPieChartQuery('name');
-
-    try {
-        const result = await runQuery(pool, sqlSelectFilamentData);
-        res.send({ res: result });
-    } catch (err) {
-        console.error('Error accessing printjob filament data:', err);
-        res.status(500).send("Error accessing printjob filament data");
-    }
-});
-
-
-app.get('/api/getdailyprints', async (req, res) => {
-    const sqlSelectDaily = `
+const sqlSelectDailyPrints = `
         SELECT DATE(timeStarted) AS date, COUNT(*) AS cnt, SUM(usage_g) AS sum, paid 
         FROM printjob 
         GROUP BY DATE(timeStarted), paid
     `;
-
-    try {
-        const result = await runQuery(pool, sqlSelectDaily);
-        res.send({ res: result });
-    } catch (err) {
-        console.error('Error accessing daily print data:', err);
-        res.status(500).send("Error accessing daily print data");
-    }
-});
-
-
-app.get('/api/getdowprints', async (req, res) => {
-    const sqlSelectDaily = `
+const sqlSelectDowPrints = `
     WITH seasonEncs AS (
         SELECT
             *,
@@ -840,15 +737,41 @@ app.get('/api/getdowprints', async (req, res) => {
         AND a.dow = g.dow
     ORDER BY g.seasonEnc, g.year, g.dow, g.hour;
     `;
+const sqlSelectFilamentData = buildPieChartQuery('name');
+const sqlSelectSupervisor = buildPieChartQuery('supervisorName');
+const sqlSelectFreq = buildPieChartQuery('printerName');
+const sqlSelectMajor = buildPieChartQuery('major');
 
+
+
+app.get('/api/getsummarydata', async (req, res) => {
     try {
-        const result = await runQuery(pool, sqlSelectDaily);
-        res.send({ res: result });
+        const dowResult = await runQuery(pool, sqlSelectDowPrints);
+        const dailyResult = await runQuery(pool, sqlSelectDailyPrints);
+
+        const nameFilamentResult = await runQuery(pool, sqlSelectFilamentData);
+        const supervisorData = await runQuery(pool, sqlSelectSupervisor);
+        const frequencyResult = await runQuery(pool, sqlSelectFreq);
+        const majorResult = await runQuery(pool, sqlSelectMajor);
+
+
+        res.send({
+            dowPrints: dowResult,
+            dailyPrints: dailyResult,
+            nameFilamentData: nameFilamentResult,
+            supervisorData: supervisorData,
+            frequencyData: frequencyResult,
+            majorData: majorResult,
+        });
     } catch (err) {
-        console.error('Error accessing printjob frequency data:', err);
-        res.status(500).send("Error accessing printjob frequency data");
+        console.error('Error accessing summary data:', err);
+        res.status(500).send("Error accessing printjob summary data");
     }
 });
+
+
+
+
 
 
 app.get('/api/getHistory', async (req, res) => {

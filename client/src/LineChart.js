@@ -254,15 +254,15 @@ const LineChart = ({ argsObject }) => {
 
             // limit to the selected day range from the sliders
             if (sliderValues[0] === 0) {
-                personalSubset = filledPersonalData.slice(-sliderValues[1]);
-                memberSubset = filledMemberData.slice(-sliderValues[1]);
-                ppgSubset = filledPpgData.slice(-sliderValues[1]);
-                dateSubset = dateWindow.slice(-sliderValues[1]);
+                personalSubset = filledPersonalData?.slice(-sliderValues[1]);
+                memberSubset = filledMemberData?.slice(-sliderValues[1]);
+                ppgSubset = filledPpgData?.slice(-sliderValues[1]);
+                dateSubset = dateWindow?.slice(-sliderValues[1]);
             } else {
-                personalSubset = filledPersonalData.slice(-sliderValues[1], -sliderValues[0]);
-                memberSubset = filledMemberData.slice(-sliderValues[1], -sliderValues[0]);
-                ppgSubset = filledPpgData.slice(-sliderValues[1], -sliderValues[0]);
-                dateSubset = dateWindow.slice(-sliderValues[1], -sliderValues[0]);
+                personalSubset = filledPersonalData?.slice(-sliderValues[1], -sliderValues[0]);
+                memberSubset = filledMemberData?.slice(-sliderValues[1], -sliderValues[0]);
+                ppgSubset = filledPpgData?.slice(-sliderValues[1], -sliderValues[0]);
+                dateSubset = dateWindow?.slice(-sliderValues[1], -sliderValues[0]);
             }
 
             // aggregate over the chosen level and assign back to the subset variables
@@ -326,21 +326,21 @@ const LineChart = ({ argsObject }) => {
 
             // limit to the selected day range from the sliders
             if (sliderValues[0] === 0) {
-                personalSumSubset = combPersonalData[1].slice(-sliderValues[1]);
-                memberSumSubset = combMemberData[1].slice(-sliderValues[1]);
-                ppgSumSubset = combPpgData[1].slice(-sliderValues[1]);
-                personalCntSubset = combPersonalData[0].slice(-sliderValues[1]);
-                memberCntSubset = combMemberData[0].slice(-sliderValues[1]);
-                ppgCntSubset = combPpgData[0].slice(-sliderValues[1]);
-                dateSubset = dateWindow.slice(-sliderValues[1]);
+                personalSumSubset = combPersonalData[1]?.slice(-sliderValues[1]);
+                memberSumSubset = combMemberData[1]?.slice(-sliderValues[1]);
+                ppgSumSubset = combPpgData[1]?.slice(-sliderValues[1]);
+                personalCntSubset = combPersonalData[0]?.slice(-sliderValues[1]);
+                memberCntSubset = combMemberData[0]?.slice(-sliderValues[1]);
+                ppgCntSubset = combPpgData[0]?.slice(-sliderValues[1]);
+                dateSubset = dateWindow?.slice(-sliderValues[1]);
             } else {
-                personalSumSubset = combPersonalData[1].slice(-sliderValues[1], -sliderValues[0]);
-                memberSumSubset = combMemberData[1].slice(-sliderValues[1], -sliderValues[0]);
-                ppgSumSubset = combPpgData[1].slice(-sliderValues[1], -sliderValues[0]);
-                personalCntSubset = combPersonalData[0].slice(-sliderValues[1], -sliderValues[0]);
-                memberCntSubset = combMemberData[0].slice(-sliderValues[1], -sliderValues[0]);
-                ppgCntSubset = combPpgData[0].slice(-sliderValues[1], -sliderValues[0]);
-                dateSubset = dateWindow.slice(-sliderValues[1], -sliderValues[0]);
+                personalSumSubset = combPersonalData[1]?.slice(-sliderValues[1], -sliderValues[0]);
+                memberSumSubset = combMemberData[1]?.slice(-sliderValues[1], -sliderValues[0]);
+                ppgSumSubset = combPpgData[1]?.slice(-sliderValues[1], -sliderValues[0]);
+                personalCntSubset = combPersonalData[0]?.slice(-sliderValues[1], -sliderValues[0]);
+                memberCntSubset = combMemberData[0]?.slice(-sliderValues[1], -sliderValues[0]);
+                ppgCntSubset = combPpgData[0]?.slice(-sliderValues[1], -sliderValues[0]);
+                dateSubset = dateWindow?.slice(-sliderValues[1], -sliderValues[0]);
             }
 
             // aggregate over the chosen level and assign back to the subset variables

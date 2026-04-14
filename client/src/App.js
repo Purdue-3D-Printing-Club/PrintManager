@@ -31,8 +31,7 @@ function App() {
   const [organizerLinks, setOrganizerLinks] = useState({});
   const [filamentSettings, setFilamentSettings] = useState({});
 
-
-
+  
   const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width set to 250
   const minSidebarWidth = 180;
   const [isResizing, setIsResizing] = useState(false);
@@ -1073,7 +1072,7 @@ function App() {
 
   function getStatusColor(printerStatus) {
     switch (printerStatus) {
-      case "available": return "rgb(104, 216, 121)";
+      case "available": return "rgb(100, 210, 115)";
       case "busy": return "rgb(237, 237, 80)";
       case "broken": return "rgb(255, 138, 138)";
       case "testing": return "rgb(255,255,255)";
