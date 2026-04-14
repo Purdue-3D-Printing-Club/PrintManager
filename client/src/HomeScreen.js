@@ -14,17 +14,21 @@ import StlPreview from './StlPreview';
 
 import './HomeScreen.css';
 
+const NUM_CHARTS = 7
+
 function HomeScreen({ homeScreenArgs }) {
     let { sidebarOpen, sidebarWidth, loading, setLoading, selectedPrinter, menuOpen,
         truncateString, generalSettings, getDirectDownloadLink, serverURL, PrintHistoryTable,
         printHistoryArgs, printerList, formatDate, getStatusColor, seasonUpperBounds,
         decSeason, getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick,
-        pagesMounted, currentPage, handlePageChange, wrapperRef
+        currentPage, handlePageChange, wrapperRef
     } = homeScreenArgs;
 
 
+    // initialize both to boolean arrays of length NUM_CHARTS where only the first index is true
+    const [chartsOpen, setChartsOpen] = useState(() => Array.from({ length: NUM_CHARTS }, (_, i) => i === 0));
+    const [tempChartsOpen, setTempChartsOpen] = useState(() => Array.from({ length: NUM_CHARTS }, (_, i) => i === 0));
 
-    const [chartsOpen, setChartsOpen] = useState([true, false, false, false, false, false, false])
 
     // Summary data
     const [supervisorData, setSupervisorData] = useState([]);
@@ -51,10 +55,17 @@ function HomeScreen({ homeScreenArgs }) {
     let pieArgs = { decSeason, getCurHistoryPeriod, endSeason, leftArrowClick, rightArrowClick }
 
     // useEffect hooks
-
-    // useEffect(() => {
-    //     console.log('linePpgData: ', linePpgData);
-    // }, [linePpgData])
+    // Close charts when 
+    useEffect(() => {
+        if (currentPage === 0) {
+            setTimeout(() => {
+                setTempChartsOpen(chartsOpen)
+                setChartsOpen(Array(NUM_CHARTS).fill(false))
+            }, 400)
+        } else if (currentPage === 1) {
+            setChartsOpen(tempChartsOpen)
+        }
+    }, [currentPage])
 
     // server health check and loading state control, cancel once it works
     useEffect(() => {
@@ -174,7 +185,7 @@ function HomeScreen({ homeScreenArgs }) {
                                             if (type === 'date') {
                                                 const map = new Map(rawData.map(row => {
                                                     return [formatDate(row['date'], false, true), row[valueField]]
-                                            }));
+                                                }));
                                                 const filled = fullSet.map(date => map.get(date) || 0);
                                                 return filled
                                             }
@@ -186,7 +197,7 @@ function HomeScreen({ homeScreenArgs }) {
                                             // Fill the data and assign them to useState variables by paid type'
                                             setLinePersonalData([fillData(personal, allDates, 'cnt'), fillData(personal, allDates, 'sum')]);
                                             setLineMemberData([fillData(member, allDates, 'cnt'), fillData(member, allDates, 'sum')]);
-                                            
+
                                             setLinePpgData([fillData(ppg, allDates, 'cnt'), fillData(ppg, allDates, 'sum')]);
                                             setLineDateWindow(allDates);
                                         }
@@ -301,8 +312,11 @@ function HomeScreen({ homeScreenArgs }) {
                                 {recentFiles.map((file, index) => {
                                     if (generalSettings.showFilePreviews) {
                                         return (
-                                            <div className={'stl-preview '} key={index}><StlPreview googleDriveLink={file.file} name={file.name || ("Unnamed File " + index)}
-                                                getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true}></StlPreview></div>
+                                            <div className={'stl-preview '} key={index}>
+                                                <StlPreview googleDriveLink={file.file} name={file.name || ("Unnamed File " + index)}
+                                                    getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true}
+                                                    removeCallback={null} fileIndex={null}></StlPreview>
+                                            </div>
                                         )
                                     } else {
                                         return (

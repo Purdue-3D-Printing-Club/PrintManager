@@ -209,34 +209,50 @@ function App() {
   }, [isAdmin]);
 
 
+  const removeFile = (fileIndex) => {
+    // remove from the files
+    const filesSplit = files.split(',');
+    if (fileIndex < filesSplit.length) {
+      filesSplit.splice(fileIndex, 1);
+      setFiles(filesSplit.join(','));
+    }
+
+    // remove from the part names if it exists
+    const partNamesSplit = partNames.split(',');
+    if (fileIndex < partNamesSplit.length) {
+      partNamesSplit.splice(fileIndex, 1);
+      setPartNames(partNamesSplit.join(','));
+    }
+  }
+
 
   const handlePageChange = (nextPage) => {
-    setPagesMounted((prev) => {
-      const newPages = [...prev];
-      newPages[nextPage] = true;
-      return newPages;
-    });
+    // setPagesMounted((prev) => {
+    //   const newPages = [...prev];
+    //   newPages[nextPage] = true;
+    //   return newPages;
+    // });
     setCurrentPage(nextPage);
   };
 
-  useEffect(() => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return;
+  // useEffect(() => {
+  //   const wrapper = wrapperRef.current;
+  //   if (!wrapper) return;
 
-    const onTransitionEnd = () => {
-      setPagesMounted((prev) => {
-        const newPages = [false, false];
-        newPages[currentPage] = true;
-        return newPages;
-      });
-    };
+  //   const onTransitionEnd = () => {
+  //     setPagesMounted((prev) => {
+  //       const newPages = [false, false];
+  //       newPages[currentPage] = true;
+  //       return newPages;
+  //     });
+  //   };
 
-    wrapper.addEventListener('transitionend', onTransitionEnd);
+  //   wrapper.addEventListener('transitionend', onTransitionEnd);
 
-    return () => {
-      wrapper.removeEventListener('transitionend', onTransitionEnd);
-    };
-  }, [currentPage]);
+  //   return () => {
+  //     wrapper.removeEventListener('transitionend', onTransitionEnd);
+  //   };
+  // }, [currentPage]);
 
 
   // downloads all files from one click
@@ -1349,7 +1365,7 @@ function App() {
         showMsgForDuration("No Name -- print not started.", 'err');
       } else if (!fullNameRegex.test(name)) {
         showMsgForDuration("Enter your full name -- print not started.", 'err');
-      } else if (!supervisorPrint && !fullNameRegex.test(supervisor)){
+      } else if (!supervisorPrint && !fullNameRegex.test(supervisor)) {
         showMsgForDuration("Supervisor: enter your full name! Print not started.", 'err');
       } else if ((email.length === 0) && !supervisorPrint) {
         showMsgForDuration("No Email! Print not started.", 'err');
@@ -2391,6 +2407,7 @@ function App() {
                 truncateString={truncateString}
                 serverURL={serverURL}
                 downloadAllFiles={downloadAllFiles}
+                removeFile={null}
               />
             </>}
 
@@ -2440,6 +2457,7 @@ function App() {
                   truncateString={truncateString}
                   serverURL={serverURL}
                   downloadAllFiles={downloadAllFiles}
+                  removeFile={removeFile}
                 />
               </div>
             </div>}
@@ -2498,6 +2516,7 @@ function App() {
                 truncateString={truncateString}
                 serverURL={serverURL}
                 downloadAllFiles={downloadAllFiles = {}}
+                removeFile={removeFile}
               />
             </div>}
 
@@ -2656,7 +2675,7 @@ function App() {
 }
 
 
-function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, truncateString, serverURL, downloadAllFiles }) {
+function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, truncateString, serverURL, downloadAllFiles, removeFile }) {
   let numFiles = curJob?.files?.split(',')?.length;
   return (
     <>
@@ -2664,14 +2683,15 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
         <ErrorBoundary>
           <div className="stl-previews">
             {curJob && curJob.files.split(/[,;]/).map((link, index) => {
-              let trimmedLink = link.trim(); 
+              let trimmedLink = link.trim();
 
               if (trimmedLink.startsWith('https://')) {
                 let partname = String(curJob.partNames)?.split(/[;,]/)[index]
 
                 return (
                   <div className="stl-preview" key={index}>
-                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 32) : 'Unnamed File ' + index} getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true} />
+                    <StlPreview googleDriveLink={link} name={partname ? truncateString(partname.trim(), 32) : 'Unnamed File ' + index}
+                      getDirectDownloadLink={getDirectDownloadLink} serverURL={serverURL} rotateInit={true} removeCallback={removeFile} fileIndex={removeFile ? index : null} />
                   </div>
                 );
               } else {
@@ -2765,7 +2785,10 @@ function PrintHistoryTable({ printHistoryArgs }) {
         <span className="search-bar">
           <img src={searchIcon} className='generic-icon' style={{ height: '25px', width: '25px' }}></img> Search
           <input id="historySearchEnter" type="text" value={tempHistorySearch} placeholder={placeholderHistorySearch} onChange={(e) => { setTempHistorySearch(e.target.value) }}></input>
-          <button id="historySearchEnterBtn" style={{ cursor: 'pointer' }} onClick={() => {
+          <button id="historySearchEnterBtn" style={{
+            cursor: 'pointer',
+            ...(placeholderHistorySearch && { backgroundColor: '#b1e0a6' }),
+          }} onClick={() => {
             handleHistorySearch({ target: { value: tempHistorySearch } });
             setPlaceholderHistorySearch(tempHistorySearch);
             setTempHistorySearch('');

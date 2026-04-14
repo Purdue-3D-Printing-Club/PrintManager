@@ -641,7 +641,7 @@ table {
 .page-wrapper {
   display: flex;
   width: 200vw;
-  transition: transform 0.6s ease;
+  transition: transform 0.4s ease;
   transform: translateX(0);
 }
 

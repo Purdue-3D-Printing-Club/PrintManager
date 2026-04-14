@@ -7,7 +7,7 @@ import cubeIcon from '/images/cube.svg'
 import rotateIcon from '/images/rotate.svg'
 import gridIcon from '/images/grid.svg'
 
-const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL, rotateInit }) => {
+const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL, rotateInit, removeCallback, fileIndex }) => {
     const containerRef = useRef(null);
     const workerRef = useRef(null); // canvasRef is removed
 
@@ -162,11 +162,11 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL, r
                 {/* Toolbar Buttons */}
                 {!error && (
                     <>
-                        <img draggable={false} className='previewBtn homeBtn'  src={homeIcon} onClick={resetView} alt="Reset View"  />
+                        <img draggable={false} className='previewBtn homeBtn' src={homeIcon} onClick={resetView} alt="Reset View" />
                         <img draggable={false} className={`previewBtn transpBtn ${transparent ? 'on' : ''}`} src={clearIcon} style={{ top: '32px' }} onClick={() => setTransparent(old => !old)} alt="Toggle Transparency" />
                         <img draggable={false} className={`previewBtn transpBtn ${outline ? 'on' : ''}`} src={cubeIcon} style={{ top: '64px' }} onClick={() => setOutline(old => !old)} alt="Toggle Outline" />
-                        <img draggable={false} className={`previewBtn transpBtn ${rotate ? 'on' : ''}`} src={rotateIcon} style={{ top: '96px'}} onClick={() => setRotate(old => !old)} alt="Toggle Rotation" />
-                        <img draggable={false} className={`previewBtn transpBtn ${grid ? 'on' : ''}`} src={gridIcon} style={{ top: '128px'}} onClick={() => setGrid(old => !old)} alt="Toggle Grid" />
+                        <img draggable={false} className={`previewBtn transpBtn ${rotate ? 'on' : ''}`} src={rotateIcon} style={{ top: '96px' }} onClick={() => setRotate(old => !old)} alt="Toggle Rotation" />
+                        <img draggable={false} className={`previewBtn transpBtn ${grid ? 'on' : ''}`} src={gridIcon} style={{ top: '128px' }} onClick={() => setGrid(old => !old)} alt="Toggle Grid" />
                     </>
                 )}
             </div>
@@ -174,6 +174,13 @@ const StlPreview = ({ googleDriveLink, name, getDirectDownloadLink, serverURL, r
             <button onClick={() => { window.location.href = getDirectDownloadLink(googleDriveLink); }} style={{ marginTop: '4px', marginBottom: '2px', cursor: 'pointer' }}>
                 Download
             </button>
+            {
+                (fileIndex !== null) && (
+                    <button onClick={() => { removeCallback(fileIndex) }} style={{ marginTop: '4px', marginLeft: '4px', marginBottom: '2px', cursor: 'pointer' }}>
+                        Remove
+                    </button>
+                )
+            }
         </div>
     );
 };
