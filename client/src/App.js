@@ -8,6 +8,8 @@ import exitIcon from '/images/cancel.svg';
 import searchIcon from '/images/search.svg';
 import sortIcon from '/images/sort.svg';
 import homeIcon from '/images/home.svg'
+import eye from '/images/eye.svg';
+import eyeSlash from '/images/eye_slash.svg'
 
 import StlPreview from './StlPreview';
 import Settings from './Settings';
@@ -31,7 +33,7 @@ function App() {
   const [organizerLinks, setOrganizerLinks] = useState({});
   const [filamentSettings, setFilamentSettings] = useState({});
 
-  
+
   const [sidebarWidth, setSidebarWidth] = useState(250); // Initial sidebar width set to 250
   const minSidebarWidth = 180;
   const [isResizing, setIsResizing] = useState(false);
@@ -68,6 +70,8 @@ function App() {
 
   const [adminPswd, setAdminPswd] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loginTextVisible, setLoginTextVisible] = useState(false);
+
   const [feedbackSubject, setFeedbackSubject] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
 
@@ -1195,14 +1199,15 @@ function App() {
     }
 
     if (menuOpen && (e.key === 'Enter')) {
-      if (e.target.id === "adminInput") {
-        checkPswd(adminPswd, import.meta.env.VITE_ADMIN_PSWD)
-      } else if (e.target.id === 'URLInput') {
+      if (e.target.id === 'URLInput') {
         setServerURL(e.target.value)
       } else if (e.target.id === "subjectInput" || e.target.id === "feedbackInput") {
         handleFeedbackClick();
       }
     }
+    if ((e.key === "Enter") && (e.target.id === "adminInput")) {
+        checkPswd(adminPswd, import.meta.env.VITE_ADMIN_PSWD)
+      }
   }
 
   const handleFeedbackClick = () => {
@@ -1353,7 +1358,7 @@ function App() {
     let matchingMember = memberList.find((m) => m.email === email);
 
     if (selectedPrinter !== null) {
-      let fullNameRegex = /^[a-zA-Z0-9]+(?:\s+[a-zA-Z0-9]+)+$/;
+      let fullNameRegex = /^[^\s]+(?:\s+[^\s]+)+$/;
 
       //check for incorrect or empty values
       if (selectedPrinter.status !== 'available' && selectedPrinter.status !== 'admin' &&
@@ -1401,9 +1406,9 @@ function App() {
         showMsgForDuration(`Warning: Resin costs $${filamentSettings.resinCost} / ml,\neven for members.`, 'warn', popupTime + 5000);
       } else if (filamentUsage > 1000) {
         showMsgForDuration("Warning: Filament Usage Exceeds 1kg.\nContinue anyway?", 'warn', popupTime + 5000);
-      } else if ((MEMBERSHIP_FILAMENTS.includes(jobMaterial)) && !personalFilament && !matchingMember && !supervisorPrint) {
+      } else if ((MEMBERSHIP_FILAMENTS.includes(jobMaterial.toUpperCase())) && !personalFilament && !matchingMember && !supervisorPrint) {
         showMsgForDuration(`Warning: Non-members must pay per\ngram through TooCool. Continue?`, 'warn', popupTime + 5000);
-      } else if (!MEMBERSHIP_FILAMENTS.includes(jobMaterial)) {
+      } else if (!MEMBERSHIP_FILAMENTS.includes(jobMaterial.toUpperCase())) {
         showMsgForDuration(`Warning: User must pay per\ngram through TooCool. Continue?`, 'warn', popupTime + 5000);
       } else {
         //all fields have valid values...
@@ -1526,7 +1531,6 @@ function App() {
         major: formJob.major?.trim() ? formJob.major : matchingMember?.major,
       }
 
-      console.log('###### FORMJOB BUILT: ', formJob_built)
       Axios.post(`${serverURL}/api/insert`, formJob_built).then(() => {
         if (!queue) {
           setTimeout(() => {
@@ -2236,7 +2240,8 @@ function App() {
   }
 
   const settingsArgs = {
-    adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackSubject, feedbackText, handleFeedbackSubjectChange,
+    adminPswd, handlePswdChange, isAdmin, checkPswd, loginTextVisible, setLoginTextVisible, feedbackSubject,
+    feedbackText, handleFeedbackSubjectChange,
     handleFeedbackTextChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen,
     handleOpenMenu, memberList, setMemberList, formatDate, truncateString, showMsgForDuration,
     setOrganizerLinks, FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings,
@@ -2559,6 +2564,30 @@ function App() {
 
 
             {/* End printer status pages */}
+            { !isAdmin && (selectedPrinter?.status === "admin") &&
+              <div className='settings-wrapper' style={{'width':'52%', 'minWidth':'470px'}}>
+                {!isAdmin ? <div>
+                  <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>Admin Login</b></div>
+                  <span className="input-wrapper">
+                    <span onClick={() => { setLoginTextVisible(!loginTextVisible) }} >
+                      {loginTextVisible ?
+                        <img src={eye} alt="visible" className='visibility-icon no-select'></img> :
+                        <img src={eyeSlash} alt="invisible" className='visibility-icon no-select'></img>
+                      }
+                    </span>
+                    <input id="adminInput" type="text" autoComplete='off' placeholder=" Enter Admin Password..." value={adminPswd ?? ' '} onChange={handlePswdChange} style={{ width: '250px', fontSize: 'large' }} className={loginTextVisible ? "" : "customMasked"}></input> &nbsp;
+                    <button onClick={() => { checkPswd(adminPswd, import.meta.env.VITE_ADMIN_PSWD) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Login</button>
+                  </span>
+                </div>
+                  :
+                  <div>
+                    <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>Admin Logout</b></div>
+                    <button onClick={() => { handleIsAdminChange(false) }} style={{ fontSize: 'large', cursor: 'pointer' }}>Logout</button>
+
+                  </div>}
+              </div>
+            }
+
             {/* && (isAdmin || (selectedPrinter.status === 'broken') || (selectedPrinter.status === 'testing')) */}
             {selectedPrinter && (printerNotes === null) && <div>
               <div style={{ height: '20px' }}></div>

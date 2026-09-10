@@ -234,13 +234,7 @@ function HomeScreen({ homeScreenArgs }) {
     }
 
 
-
-
-
-
-
-
-
+    
 
     return (<>
         {(!selectedPrinter) && <div ref={wrapperRef} className={`page-wrapper ${(currentPage == 1) ? 'slide-left' : ''}`}>

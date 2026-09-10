@@ -118,6 +118,8 @@ function MemberTable({ isClubTable, memberTableArgs }) {
 
     const memberCleanForInsert = (member, isClubTable) => {
         let subjectText = isClubTable ? 'club' : 'member';
+        let fullNameRegex = /^[^\s]+(?:\s+[^\s]+)+$/;
+
         try {
             if (memberList.map(mem => {
                 if (mem.memberID == member.memberID) {
@@ -136,6 +138,8 @@ function MemberTable({ isClubTable, memberTableArgs }) {
             } else if (!member.name) {
                 showMsgForDuration(`Cannot insert ${subjectText}: Name absent!`, 'err');
                 return false;
+            } else if (!fullNameRegex.test(name)) {
+                showMsgForDuration(`Cannot insert ${subjectText}: Enter your full name.`, 'err');
             } else if (!member.major) {
                 showMsgForDuration(`Cannot insert ${subjectText}: Major absent!`, 'err');
                 return false;

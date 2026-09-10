@@ -14,14 +14,14 @@ import discord_qr from '/images/3dpc_discord.png'
 import MemberTable from './MemberTable';
 
 function Settings({ settingsArgs }) {
-  let { adminPswd, handlePswdChange, isAdmin, checkPswd, feedbackText, handleFeedbackTextChange, feedbackSubject,
-    handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, serverURL, setServerURL, menuOpen, handleOpenMenu,
+  let { adminPswd, handlePswdChange, isAdmin, checkPswd, loginTextVisible, setLoginTextVisible, feedbackText,
+    handleFeedbackTextChange, feedbackSubject, handleFeedbackSubjectChange, handleFeedbackClick, handleIsAdminChange, 
+    serverURL, setServerURL, menuOpen, handleOpenMenu,
     memberList, setMemberList, formatDate, truncateString, showMsgForDuration, setOrganizerLinks,
     FormCheckbox, generalSettings, setGeneralSettings, filamentSettings, setFilamentSettings,
     decSeason, endSeason, leftArrowClick, rightArrowClick, applyHighlight, ScrollCell
   } = settingsArgs
 
-  const [loginTextVisible, setLoginTextVisible] = useState(false);
   const [tempServerURL, setTempServerURL] = useState(serverURL);
 
   const [tempLocalData, setTempLocalData] = useState({});
@@ -263,7 +263,7 @@ function Settings({ settingsArgs }) {
         </div>}
         {/* End admin settings */}
 
-          
+
         {/* General Settings */}
         <div className='settings-wrapper'>
           <div>
