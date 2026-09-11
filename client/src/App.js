@@ -1765,7 +1765,7 @@ function App() {
             supervisorName: ["Officer/Lab Assistant Name", "Supervisor Name"],
             material: ["What type of material are you printing with?"],
             files: ["Upload your .stl file here", "Upload your .stl file(s) here"],
-            partNames: ["File Names"],
+            partNames: ["File Names", "names of the file"],
             notes: ["Please provide any details or requests about how you want your part to be printed."],
             color: ["What color do you want?"],
             layerHeight: ["What layer height? "],
@@ -2199,6 +2199,7 @@ function App() {
   function rightArrowClick(seasonPeriod, setSeasonPeriod) {
     if ((seasonPeriod.year === endSeason.year) && (seasonPeriod.seasonEnc === endSeason.seasonEnc)) {
       setSeasonPeriod((old) => ({ ...old, year: -1 }));
+      return;
     }
 
     // Ignore right arrow clicks if its already in "Total" mode
@@ -2781,7 +2782,7 @@ function StlPreviewSection({ showFilePreviews, curJob, getDirectDownloadLink, tr
 
 
 
-
+// Print history table
 function PrintHistoryTable({ printHistoryArgs }) {
   let {
     filteredHistoryList, historySearch, handleHistorySearch, setHistorySearch,

@@ -771,9 +771,6 @@ app.get('/api/getsummarydata', async (req, res) => {
 
 
 
-
-
-
 app.get('/api/getHistory', async (req, res) => {
     const value = req.query.value;
     const field = req.query.field;

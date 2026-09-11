@@ -87,6 +87,7 @@ function retrieveLatestSubmissions() {
   const numRowsToRetrieve = 25;
   const startRow = Math.max(2, lastRow - numRowsToRetrieve + 1);
 
+
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const numDataRows = lastRow - startRow + 1;
   const rows = sheet.getRange(startRow, 1, numDataRows, lastCol).getValues();
