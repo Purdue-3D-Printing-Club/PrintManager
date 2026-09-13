@@ -138,7 +138,7 @@ function MemberTable({ isClubTable, memberTableArgs }) {
             } else if (!member.name) {
                 showMsgForDuration(`Cannot insert ${subjectText}: Name absent!`, 'err');
                 return false;
-            } else if (!fullNameRegex.test(name)) {
+            } else if (!fullNameRegex.test(member.name)) {
                 showMsgForDuration(`Cannot insert ${subjectText}: Enter your full name.`, 'err');
             } else if (!member.major) {
                 showMsgForDuration(`Cannot insert ${subjectText}: Major absent!`, 'err');

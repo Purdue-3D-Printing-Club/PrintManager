@@ -69,13 +69,9 @@ function Settings({ settingsArgs }) {
     })
   }
 
-  // const handleFilamentChange = (filament, dataField) => {
-  //   let cleaned_filament = filament.replace(/[^\d.]/g, '')
-  //   setTempLocalData({ ...tempLocalData, filamentSettings: { ...tempLocalData.filamentSettings, [dataField]: cleaned_filament } });
-  // }
   const handleGeneralNumericInput = (input, key, settingObj = 'generalSettings') => {
     let cleaned_input = '';
-    cleaned_input = input.replace(/[^\d]/g, '')
+    cleaned_input = input.replace(/[^\d.]/g, '')
     setTempLocalData({ ...tempLocalData, [settingObj]: { ...tempLocalData[settingObj], [key]: cleaned_input } });
   }
 
