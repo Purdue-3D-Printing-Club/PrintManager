@@ -1450,14 +1450,15 @@ function App() {
     return sanitized
   }
 
-  const buildFormJob = () => {
-    let isMember = memberList.map(m => m.email).includes(email)
-    let paid = ''
-    if (MEMBERSHIP_FILAMENTS.includes(jobMaterial)) {
-      paid = personalFilament ? 'personal' : 'per-gram'
-    } else {
-      paid = personalFilament ? 'personal' : (isMember || supervisorPrint) ? 'member' : 'per-gram'
-    }
+    const buildFormJob = () => {
+      let isMember = memberList.map(m => m.email).includes(email)
+      let paid = ''
+
+      if (MEMBERSHIP_FILAMENTS.includes(jobMaterial)) {
+        paid = personalFilament ? 'personal' : ((isMember || supervisorPrint) ? 'member' : 'per-gram')
+      } else {
+        paid = personalFilament ? 'personal' : 'per-gram'
+      }
 
     let formJob = {
       files: files,
