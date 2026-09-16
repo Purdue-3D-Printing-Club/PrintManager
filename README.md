@@ -1,5 +1,5 @@
 # PrintManager
-This app is the new lab organizer for the Purdue 3D Printing Club (3DPC). To see how to use the app, see the video [here](https://www.linkedin.com/posts/andrewtho5942_after-improving-on-a-homework-assignment-activity-7262506305259487233-NDZ4/)
+This app is the second lab organizer for the Purdue 3D Printing Club (3DPC).
 
 ## General Notes
 - The organizer will automatically email members when their print is done, assuming it is turned on and they entered the right address. This now uses the club's official print3d@purdue.edu email to not go to spam. This is done with a service account on microsoft azure's graph API, which I had to get ITAP permission to enable automatic emailing from. The main thing to keep in mind with this is that the certificate will expire in about 2 years, so if the emailing just randomly stops working, then this is probably why.

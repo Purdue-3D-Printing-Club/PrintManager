@@ -123,7 +123,7 @@ function HomeScreen({ homeScreenArgs }) {
         }
 
         // fetch print of the day, but only once per page refresh!
-        if (!hasFetchedDailyPrint.current) {
+        /*if (!hasFetchedDailyPrint.current) {
             hasFetchedDailyPrint.current = true;
 
             try {
@@ -139,7 +139,7 @@ function HomeScreen({ homeScreenArgs }) {
                 console.error("Error fetching print of the day: ", error);
                 setPotdStatus('error')
             }
-        }
+        }*/
 
 
         const generateDateRange = (startDate, endDate) => {
@@ -266,19 +266,17 @@ function HomeScreen({ homeScreenArgs }) {
                         </div>
 
                         {/* Print of the day stl previews*/}
-                        <h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
+                        {/*<h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🔥 Trending Prints</b></h1>
                         {(potdStatus === 'done') && <TrendingPrints
                             dailyPrint={dailyPrint} selectedPrinter={selectedPrinter} menuOpen={menuOpen} truncateString={truncateString}>
                         </TrendingPrints>
                         }
-
-
                         {(potdStatus === 'loading') && <div>
                             <img src={loadingGif} alt="loading" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
                         </div>}
                         {(potdStatus === 'error') && <div>
                             <img src={xIcon} alt="error" style={{ width: "60px", height: "60px", margin: "auto", marginBottom: "15px", marginTop: "10px" }} />
-                        </div>}
+                        </div>}*/}
 
                         <h1 className={'menu-title ' + ((!selectedPrinter) ? '' : 'hidden')}><b>🕜 Recently Printed Files</b></h1>
                         <div className={'stl-previews ' + ((!selectedPrinter) ? '' : 'hidden')}>
