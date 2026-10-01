@@ -1133,7 +1133,7 @@ function App() {
     if (!isInputFocused) {
       if (!menuOpen) {
         switch (e.key) {
-          case 'Backspace':
+          case 'Escape':
             selectPrinter(null);
             handlePageChange(0);
             break;
@@ -1151,7 +1151,7 @@ function App() {
           handleStartPrintClick();
         }
       } else {
-        if (e.key === 'Backspace') {
+        if (e.key === 'Escape') {
           setMenuOpen(false);
 
         }
@@ -1206,8 +1206,8 @@ function App() {
       }
     }
     if ((e.key === "Enter") && (e.target.id === "adminInput")) {
-        checkPswd(adminPswd, import.meta.env.VITE_ADMIN_PSWD)
-      }
+      checkPswd(adminPswd, import.meta.env.VITE_ADMIN_PSWD)
+    }
   }
 
   const handleFeedbackClick = () => {
@@ -1450,15 +1450,15 @@ function App() {
     return sanitized
   }
 
-    const buildFormJob = () => {
-      let isMember = memberList.map(m => m.email).includes(email)
-      let paid = ''
+  const buildFormJob = () => {
+    let isMember = memberList.map(m => m.email).includes(email)
+    let paid = ''
 
-      if (MEMBERSHIP_FILAMENTS.includes(jobMaterial)) {
-        paid = personalFilament ? 'personal' : ((isMember || supervisorPrint) ? 'member' : 'per-gram')
-      } else {
-        paid = personalFilament ? 'personal' : 'per-gram'
-      }
+    if (MEMBERSHIP_FILAMENTS.includes(jobMaterial)) {
+      paid = personalFilament ? 'personal' : ((isMember || supervisorPrint) ? 'member' : 'per-gram')
+    } else {
+      paid = personalFilament ? 'personal' : 'per-gram'
+    }
 
     let formJob = {
       files: files,
@@ -1736,7 +1736,12 @@ function App() {
 
   const pullFormData = (e) => {
     try {
-
+      let requestStart = performance.now()
+      const now = () => new Date().toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit'
+      });
+      console.log('## retrieve pressed: ', now())
       let specialFilament = isSpecialty(selectedPrinter)
 
 
@@ -1745,9 +1750,13 @@ function App() {
         organizerLinks.mainAppScriptURL;
 
       setFormDataLoading(true);
+
+      console.log('## sent fetch: ', now())
       fetch(url).then(response => {
+        console.log('## response received: ', now())
         return response.json()
       }).then(data => {
+
         if (data !== null) {
           if (generalSettings?.debugMode) console.log('fetched form data: ', data);
           showMsgForDuration('Form Data Retrieved Successfully!', 'msg');
@@ -1786,14 +1795,15 @@ function App() {
           })
           if (generalSettings?.debugMode) console.log('headerIndexMap: ', headerIndexMap)
 
+            console.log('## Done processing data: ', now())
+            console.log(`Total request time: ${((performance.now() - requestStart) / 1000).toFixed(2)} s`);
 
           let formattedData = Object.values(data).map((job) => {
-            console.log('JOB: ', job)
             // clean the job's material value
             let material = job[headerIndexMap['material']] ?? 'PLA'
             if (material.includes('Resin')) material = 'Resin'
             material = material.trim()
-
+            
             return ({
               timestamp: job[headerIndexMap['timestamp']],
               name: job[headerIndexMap['name']],
@@ -1816,16 +1826,16 @@ function App() {
           setFormData(formattedData.reverse())
 
         } else {
-          if (generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
+          if (generalSettings?.debugMode) console.log('ERROR form responses failed to load.')
           showMsgForDuration('Error Filling Form...', 'err');
         }
       }).catch((e) => {
-        if (generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
+        if (generalSettings?.debugMode) console.log('ERROR form responses failed to load.', e)
         showMsgForDuration('Error Filling Form...', 'err');
         setFormDataLoading(false);
       });
     } catch (e) {
-      if (generalSettings?.debugMode) console.log('ERROR form responses failed to load. Appscript response: ', data)
+      if (generalSettings?.debugMode) console.log('ERROR form responses failed to load.', e)
       showMsgForDuration('Error Filling Form...', 'err');
       setFormDataLoading(false);
     }
@@ -2566,8 +2576,8 @@ function App() {
 
 
             {/* End printer status pages */}
-            { !isAdmin && (selectedPrinter?.status === "admin") &&
-              <div className='settings-wrapper' style={{'width':'52%', 'minWidth':'470px'}}>
+            {!isAdmin && (selectedPrinter?.status === "admin") &&
+              <div className='settings-wrapper' style={{ 'width': '52%', 'minWidth': '470px' }}>
                 {!isAdmin ? <div>
                   <div style={{ fontSize: 'x-large', marginBottom: '5px' }}><b>Admin Login</b></div>
                   <span className="input-wrapper">

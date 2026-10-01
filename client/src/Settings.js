@@ -302,7 +302,7 @@ function Settings({ settingsArgs }) {
                 <tr><td>&nbsp;↑</td><td>Move up one printer</td></tr>
                 <tr><td>&nbsp;↓</td><td>Move down one printer</td></tr>
                 <tr><td>Enter</td><td>Start a print</td></tr>
-                <tr><td>Backspace</td><td>Exit menu / clear selection</td></tr>
+                <tr><td>Escape</td><td>Exit menu / clear selection</td></tr>
                 <tr><td>c</td><td>Clear popups</td></tr>
                 <tr><td>s</td><td>Open/close settings</td></tr>
               </tbody>

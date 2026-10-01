@@ -15,7 +15,6 @@ const axios = require('axios');
 // The upper bounds for each season
 const seasonUpperBoundsStr = ['05-20', '08-20']
 
-
 const pool = mysql.createPool({
     host: "localhost",
     user: "root",
